@@ -1,21 +1,82 @@
+"use client"
+
+import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { TrendingUp, Users, Shield, Eye, Lock, Mail, LogIn } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function LoginPage() {
+  const router = useRouter()
+  const [emailOrMobile, setEmailOrMobile] = useState("")
+  const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+    setLoading(true)
+
+    try {
+      const response = await fetch("http://localhost:4000/api/v1/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          emailOrMobile,
+          password,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed")
+      }
+      // The backend wraps data inside "data"
+const user = data.data?.user;
+const token = data.data?.access_token;
+
+// Guard clause if no user returned
+if (!user) {
+  throw new Error("Invalid response: user not found");
+}
+
+const role = user.userRole?.toLowerCase();
+
+// Save token and user
+localStorage.setItem("token", token);
+localStorage.setItem("user", JSON.stringify(user));
+
+// Redirect based on role
+if (role === "vendor") {
+  router.push("/vendor/dashboard");
+} else if (role === "admin") {
+  router.push("/dashboard");
+} else {
+  router.push("/user/dashboard");
+}
+
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen flex">
+      {/* LEFT SIDE (same as before) */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#4a1d5f] via-[#5b2c6f] to-[#3d1850] relative overflow-hidden">
-        {/* Blur effects */}
         <div className="absolute top-20 left-20 w-64 h-64 bg-orange-500/20 rounded-full blur-3xl" />
         <div className="absolute bottom-40 right-20 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl" />
-
         <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
-          {/* Logo and Title */}
           <div>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-yellow-500 rounded-xl flex items-center justify-center">
@@ -25,8 +86,7 @@ export default function LoginPage() {
             </div>
             <p className="text-purple-200 text-lg font-bold">Admin Dashboard</p>
           </div>
-
-          {/* Features */}
+          {/* Features (same as before) */}
           <div className="space-y-8 my-auto">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-lg flex items-center justify-center flex-shrink-0">
@@ -37,7 +97,6 @@ export default function LoginPage() {
                 <p className="text-purple-200">Monitor orders, revenue, and performance</p>
               </div>
             </div>
-
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-lg flex items-center justify-center flex-shrink-0">
                 <Users className="w-6 h-6 text-orange-400" />
@@ -47,7 +106,6 @@ export default function LoginPage() {
                 <p className="text-purple-200">Manage vendors, riders, and customers</p>
               </div>
             </div>
-
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-lg flex items-center justify-center flex-shrink-0">
                 <Shield className="w-6 h-6 text-orange-400" />
@@ -72,31 +130,34 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Side - Login Form */}
+      {/* RIGHT SIDE - LOGIN FORM */}
       <div className="flex-1 flex items-center justify-center p-8 bg-gray-50">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back</h2>
-            <p className="text-gray-600">Sign in to your admin account</p>
+            <p className="text-gray-600">Sign in to your account</p>
           </div>
 
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={handleLogin}>
+            {/* Email or Mobile */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-700 font-medium">
-                Email Address
+              <Label htmlFor="emailOrMobile" className="text-gray-700 font-medium">
+                Email or Mobile
               </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="admin@cushyaccess.com"
+                  id="emailOrMobile"
+                  type="text"
+                  placeholder="vendor@example.com or 9153300907"
                   className="pl-10 h-12 bg-white border-gray-300"
+                  value={emailOrMobile}
+                  onChange={(e) => setEmailOrMobile(e.target.value)}
                 />
               </div>
             </div>
 
-    
+            {/* Password */}
             <div className="space-y-2">
               <Label htmlFor="password" className="text-gray-700 font-medium">
                 Password
@@ -105,20 +166,23 @@ export default function LoginPage() {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
                   className="pl-10 pr-10 h-12 bg-white border-gray-300"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
                 <button
                   type="button"
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  onClick={() => setShowPassword(!showPassword)}
                 >
                   <Eye className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-    
+            {/* Remember + Forgot */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Checkbox id="remember" />
@@ -126,18 +190,33 @@ export default function LoginPage() {
                   Remember me
                 </Label>
               </div>
-              <Link href="/" className="text-sm text-purple-700 hover:text-purple-800 font-medium">
+              <Link href="/forgot-password" className="text-sm text-purple-700 hover:text-purple-800 font-medium">
                 Forgot password?
               </Link>
             </div>
 
-            <Button className="w-full h-12 bg-[#5b2c6f] hover:bg-[#4a1d5f] text-white text-base font-medium">
-              <LogIn className="w-5 h-5 mr-2" />
-              Sign In
+            {/* Error Message */}
+            {error && (
+              <div className="text-red-500 text-sm font-medium text-center">
+                {error}
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 bg-[#5b2c6f] hover:bg-[#4a1d5f] text-white text-base font-medium"
+            >
+              {loading ? "Signing In..." : (
+                <>
+                  <LogIn className="w-5 h-5 mr-2" />
+                  Sign In
+                </>
+              )}
             </Button>
 
-            
-
+            {/* Security Info */}
             <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
               <Lock className="w-4 h-4" />
               <span>Your session is secured with end-to-end encryption</span>
@@ -145,8 +224,8 @@ export default function LoginPage() {
 
             {/* Sign Up Link */}
             <div className="text-center text-sm text-gray-600">
-              Don't have an account?{" "}
-              <Link href="/" className="text-purple-700 hover:text-purple-800 font-medium">
+              Don&apos;t have an account?{" "}
+              <Link href="/signup" className="text-purple-700 hover:text-purple-800 font-medium">
                 Sign up
               </Link>
             </div>
