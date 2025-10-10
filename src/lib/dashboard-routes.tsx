@@ -9,6 +9,7 @@ import {
   Users,
   Megaphone,
   HelpCircle,
+  Settings,
 } from "lucide-react"
 
 export const dashboardRoutes = [
@@ -79,6 +80,11 @@ export const dashboardRoutes = [
     label: "Support",
     icon: HelpCircle,
     href: "/dashboard/support",
+  },
+  {
+    label: "Settings",
+    icon: Settings,
+    href: "/dashboard/settings",
   },
 ]
 
