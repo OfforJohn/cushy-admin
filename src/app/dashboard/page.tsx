@@ -1,3 +1,7 @@
+"use client"
+
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { TrendingUp, ShoppingCart, CheckCircle2, Clock, Filter, Download } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -118,6 +122,16 @@ const orders = [
 ]
 
 export default function DashboardOverviewPage() {
+  const router = useRouter()
+
+  // 🔒 Protect route
+  useEffect(() => {
+    const token = localStorage.getItem("token")
+    if (!token) {
+      router.push("/auth/signin")
+    }
+  }, [router])
+
   return (
     <div className="space-y-6">
       {/* Metric Cards */}
