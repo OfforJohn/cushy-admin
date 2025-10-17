@@ -125,12 +125,15 @@ export default function DashboardOverviewPage() {
   const router = useRouter()
 
   // 🔒 Protect route
-  useEffect(() => {
-    const token = localStorage.getItem("token")
-    if (!token) {
-      router.push("/auth/signin")
-    }
-  }, [router])
+/*
+useEffect(() => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    router.push("/auth/signin");
+  }
+}, [router]);
+*/
+
 
   return (
     <div className="space-y-6">

@@ -3,7 +3,8 @@ import { JSX, useEffect, useState } from "react";
 import { Users, UserCheck, Wallet, RefreshCw, Clock, Plus } from "lucide-react";
 
 export default function UsersWalletPage() {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<unknown[]>([]);
+
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeUsers: 0,

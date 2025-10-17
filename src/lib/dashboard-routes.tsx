@@ -28,22 +28,10 @@ export const dashboardRoutes = [
     icon: Utensils,
     href: "/dashboard/restaurants",
     children: [
-      {
-        label: "Orders",
-        href: "/dashboard/restaurants/orders",
-      },
-      {
-        label: "Products",
-        href: "/dashboard/restaurants/products",
-      },
-      {
-        label: "Restaurants",
-        href: "/dashboard/restaurants/list",
-      },
-      {
-        label: "Branches",
-        href: "/dashboard/restaurants/branches",
-      },
+      { label: "Orders", href: "/dashboard/restaurants/orders" },
+      { label: "Products", href: "/dashboard/restaurants/products" },
+      { label: "Restaurants", href: "/dashboard/restaurants/list" },
+      { label: "Branches", href: "/dashboard/restaurants/branches" },
     ],
   },
   {
@@ -60,6 +48,11 @@ export const dashboardRoutes = [
     label: "Health",
     icon: Heart,
     href: "/dashboard/health",
+    children: [
+      { label: "Professionals", href: "/dashboard/health/professionals" },
+      { label: "Consultations", href: "/dashboard/health/consultations" },
+      { label: "Licenses & Verifications", href: "/dashboard/health/licenses-verifications" },
+    ],
   },
   {
     label: "Logistics",
@@ -77,9 +70,9 @@ export const dashboardRoutes = [
     href: "/dashboard/marketing",
   },
   {
-    label: "Support",
+    label: "Analytics",
     icon: HelpCircle,
-    href: "/dashboard/support",
+    href: "/dashboard/analytics",
   },
   {
     label: "Settings",
@@ -88,22 +81,29 @@ export const dashboardRoutes = [
   },
 ]
 
-export function getPageTitle(pathname: string) {
-  // Check for exact match first
-  const exactMatch = dashboardRoutes.find((route) => route.href === pathname)
-  if (exactMatch) return exactMatch.label
+// ✅ FIXED FUNCTION
+export function getPageTitle(pathname: string): string {
+  const cleanPath = pathname.split("?")[0].replace(/\/$/, "")
 
-  // Check for child routes
+  // 1️⃣ Check child routes FIRST
   for (const route of dashboardRoutes) {
     if (route.children) {
-      const childMatch = route.children.find((child) => child.href === pathname)
-      if (childMatch) return childMatch.label
+      const child = route.children.find((c) => cleanPath === c.href)
+      if (child) return child.label
     }
+  }
 
-    // Check if pathname starts with route href
-    if (pathname.startsWith(`${route.href}/`)) {
-      return route.label
+  // 2️⃣ Then check parent routes
+  const parentMatch = dashboardRoutes.find((r) => cleanPath === r.href)
+  if (parentMatch) return parentMatch.label
+
+  // 3️⃣ Try fuzzy match for partial (fallback)
+  for (const route of dashboardRoutes) {
+    if (route.children) {
+      const child = route.children.find((c) => cleanPath.startsWith(c.href))
+      if (child) return child.label
     }
+    if (cleanPath.startsWith(route.href)) return route.label
   }
 
   return "Dashboard"
