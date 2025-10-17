@@ -63,12 +63,14 @@ if (role === "vendor") {
   router.push("/user/dashboard");
 }
 
-    } catch (err: unknown) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+  } catch (err) {
+  if (err instanceof Error) {
+    setError(err.message);
+  } else {
+    setError("An unknown error occurred.");
   }
+}
+
 
   return (
     <div className="min-h-screen flex">
