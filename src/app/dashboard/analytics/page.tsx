@@ -243,7 +243,7 @@ export default function OrdersPage() {
 
 /* --- Components --- */
 
-function MetricCard({ title, value, change, positive, icon }: any) {
+function MetricCard({ title, value, change, positive, icon }: unknown) {
   return (
     <Card className="border border-gray-200">
       <CardContent className="p-6 flex justify-between items-start">
