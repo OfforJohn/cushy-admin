@@ -260,7 +260,7 @@ function MetricCard({ title, value, change, positive, icon }: unknown) {
   )
 }
 
-function VendorRow({ image, name, category, orders, revenue, rating, avgTime }: any) {
+function VendorRow({ image, name, category, orders, revenue, rating, avgTime }: unknown) {
   return (
     <tr className="border-b hover:bg-gray-50">
       <td className="flex items-center gap-3 px-4 py-3">
