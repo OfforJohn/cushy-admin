@@ -271,8 +271,25 @@ export default function OrdersPage() {
 /* --- Components --- */
 
 
+type VendorRowProps = {
+  image: string;
+  name: string;
+  category: string;
+  orders: number;
+  revenue: string;
+  rating: number;
+  avgTime: string;
+};
 
-function VendorRow({ image, name, category, orders, revenue, rating, avgTime }: unknown) {
+function VendorRow({
+  image,
+  name,
+  category,
+  orders,
+  revenue,
+  rating,
+  avgTime,
+}: VendorRowProps) {
   return (
     <tr className="border-b hover:bg-gray-50">
       <td className="flex items-center gap-3 px-4 py-3">
