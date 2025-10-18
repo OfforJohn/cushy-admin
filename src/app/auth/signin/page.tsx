@@ -62,9 +62,10 @@ if (role === "vendor") {
 } else {
   router.push("/user/dashboard");
 }
+} catch (err) {
+  setError((err as Error).message)
 
-    } catch (err) {
-      setError(err.message)
+
     } finally {
       setLoading(false)
     }
