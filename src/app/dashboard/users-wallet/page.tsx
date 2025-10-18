@@ -3,7 +3,9 @@ import { JSX, useEffect, useState } from "react";
 import { Users, UserCheck, Wallet, RefreshCw, Clock, Plus } from "lucide-react";
 
 export default function UsersWalletPage() {
-  const [users, setUsers] = useState<unknown[]>([]);
+
+  const [users, setUsers] = useState<User[]>([]);
+
 
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -12,6 +14,18 @@ export default function UsersWalletPage() {
     dailyTransactions: 0,
     pendingPayouts: "no data yet",
   });
+  type User = {
+  avatar?: string;
+  name: string;
+  phone: string;
+  email: string;
+  location?: string;
+  status: "Active" | "Suspended";
+  wallet?: number;
+  orders?: number;
+  lastActive?: string;
+};
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,7 +46,7 @@ export default function UsersWalletPage() {
         console.log("Daily Transactions:", dailyTxData);
 
         if (userSummariesData?.data?.users) {
-          setUsers(userSummariesData.data.users);
+        setUsers(userSummariesData.data.users as User[]); // ✅ cast to known type
           setStats(prev => ({
             ...prev,
             totalUsers: userSummariesData.data.pagination?.total ?? 0,
