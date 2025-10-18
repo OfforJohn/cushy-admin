@@ -100,20 +100,47 @@ const consultationsMock = [
   {
     id: "CONS-2024-1247",
     date: "Jan 15, 2024",
-    user: { name: "John Doe", phone: "+234 801 234 5678", initials: "JD" },
-    professional: { name: "Dr. Sarah Johnson", speciality: "General Medicine", initials: "SJ" },
+    user: {
+      id: 1,
+      name: "John Doe",
+      phone: "+234 801 234 5678",
+      initials: "JD",
+      gender: "male",
+      avatarUrl: "",
+    },
+    professional: {
+      id: 101,
+      name: "Dr. Sarah Johnson",
+      speciality: "General Medicine",
+      initials: "SJ",
+      gender: "female",
+      avatarUrl: "",
+    },
     mode: "Video",
     time: "2:30 PM • 30 min",
     fee: "₦5,000",
     status: "Ongoing",
     prescription: false,
   },
-  // add a few more rows to show table density/pagination look
   {
     id: "CONS-2024-1246",
     date: "Jan 14, 2024",
-    user: { name: "Jane Smith", phone: "+234 802 555 1234", initials: "JS" },
-    professional: { name: "Dr. Kemi Ade", speciality: "Paediatrics", initials: "KA" },
+    user: {
+      id: 2,
+      name: "Jane Smith",
+      phone: "+234 802 555 1234",
+      initials: "JS",
+      gender: "female",
+      avatarUrl: "",
+    },
+    professional: {
+      id: 102,
+      name: "Dr. Kemi Ade",
+      speciality: "Paediatrics",
+      initials: "KA",
+      gender: "female",
+      avatarUrl: "",
+    },
     mode: "Chat",
     time: "11:00 AM • 20 min",
     fee: "₦2,500",
@@ -123,8 +150,22 @@ const consultationsMock = [
   {
     id: "CONS-2024-1245",
     date: "Jan 13, 2024",
-    user: { name: "Michael Obi", phone: "+234 803 999 2020", initials: "MO" },
-    professional: { name: "Dr. Chike Nwosu", speciality: "Dermatology", initials: "CN" },
+    user: {
+      id: 3,
+      name: "Michael Obi",
+      phone: "+234 803 999 2020",
+      initials: "MO",
+      gender: "male",
+      avatarUrl: "",
+    },
+    professional: {
+      id: 103,
+      name: "Dr. Chike Nwosu",
+      speciality: "Dermatology",
+      initials: "CN",
+      gender: "male",
+      avatarUrl: "",
+    },
     mode: "Audio",
     time: "9:00 AM • 15 min",
     fee: "₦3,000",
@@ -132,6 +173,7 @@ const consultationsMock = [
     prescription: false,
   },
 ]
+
 
 // ----------------- small avatar helper -----------------
 const Avatar = ({ initials }: { initials: string }) => (
