@@ -15,6 +15,7 @@ import { Progress } from "@/components/ui/progress"
 import Image from "next/image"
 
 // ✅ Put this near the top of the file
+
 type MetricCardProps = {
   title: string;
   value: string;
@@ -23,7 +24,7 @@ type MetricCardProps = {
   icon: React.ReactNode;
 };
 
-function MetricCard({ title, value, change, positive, icon }: unknown) {
+function MetricCard({ title, value, change, positive, icon }: MetricCardProps) {
   return (
     <Card className="border border-gray-200">
       <CardContent className="p-6 flex justify-between items-start">
@@ -37,7 +38,7 @@ function MetricCard({ title, value, change, positive, icon }: unknown) {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 export default function OrdersPage() {
