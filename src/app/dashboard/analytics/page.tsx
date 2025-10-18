@@ -14,6 +14,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import Image from "next/image"
 
+// ✅ Put this near the top of the file
+type MetricCardProps = {
+  title: string;
+  value: string;
+  change: string;
+  positive?: boolean;
+  icon: React.ReactNode;
+};
+
+function MetricCard({ title, value, change, positive, icon }: unknown) {
+  return (
+    <Card className="border border-gray-200">
+      <CardContent className="p-6 flex justify-between items-start">
+        <div>
+          <p className="text-sm text-gray-600 mb-1">{title}</p>
+          <h3 className="text-3xl font-bold mb-1">{value}</h3>
+          <p className={`text-sm ${positive ? "text-emerald-600" : "text-red-500"}`}>{change}</p>
+        </div>
+        <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center">
+          {icon}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function OrdersPage() {
   const [city, setCity] = useState("all")
   const [category, setCategory] = useState("all")
@@ -243,22 +269,7 @@ export default function OrdersPage() {
 
 /* --- Components --- */
 
-function MetricCard({ title, value, change, positive, icon }: unknown) {
-  return (
-    <Card className="border border-gray-200">
-      <CardContent className="p-6 flex justify-between items-start">
-        <div>
-          <p className="text-sm text-gray-600 mb-1">{title}</p>
-          <h3 className="text-3xl font-bold mb-1">{value}</h3>
-          <p className={`text-sm ${positive ? "text-emerald-600" : "text-red-500"}`}>{change}</p>
-        </div>
-        <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center">
-          {icon}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
+
 
 function VendorRow({ image, name, category, orders, revenue, rating, avgTime }: unknown) {
   return (
