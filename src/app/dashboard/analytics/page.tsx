@@ -14,8 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import Image from "next/image"
 
-// ✅ Put this near the top of the file
-
 type MetricCardProps = {
   title: string;
   value: string;
@@ -49,7 +47,7 @@ export default function OrdersPage() {
     <div className="space-y-6 p-6">
       {/* Header Filters */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Button
             variant="secondary"
             className="bg-[#5B2C6F] text-white hover:bg-[#4A2359]"
@@ -61,19 +59,20 @@ export default function OrdersPage() {
           <Button variant="outline">90 Days</Button>
         </div>
 
-        <div className="flex gap-3 items-center">
-          <Select value={city} onValueChange={setCity}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="All Cities" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Cities</SelectItem>
-              <SelectItem value="lagos">Lagos</SelectItem>
-              <SelectItem value="abuja">Abuja</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+  <Select value={city} onValueChange={setCity}>
+  <SelectTrigger className="w-full sm:w-[150px]">
+    <SelectValue placeholder="All Cities" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="all">All Cities</SelectItem>
+    <SelectItem value="lagos">Lagos</SelectItem>
+    <SelectItem value="abuja">Abuja</SelectItem>
+  </SelectContent>
+</Select>
 
-          <Button variant="outline">
+
+          <Button variant="outline" className="w-full sm:w-auto flex justify-center sm:justify-start">
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
@@ -81,7 +80,7 @@ export default function OrdersPage() {
       </div>
 
       {/* Top Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 gap-y-8">
         <MetricCard
           title="Total GMV"
           value="₦2.4M"
@@ -112,19 +111,20 @@ export default function OrdersPage() {
       </div>
 
       {/* Graphs Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 gap-y-8">
         <Card className="h-[300px]">
           <CardHeader className="flex items-center justify-between">
             <CardTitle>GMV Trend</CardTitle>
-            <Select defaultValue="daily">
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Daily" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="daily">Daily</SelectItem>
-                <SelectItem value="weekly">Weekly</SelectItem>
-              </SelectContent>
-            </Select>
+           <Select defaultValue="daily">
+  <SelectTrigger className="w-full sm:w-[120px]">
+    <SelectValue placeholder="Daily" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="daily">Daily</SelectItem>
+    <SelectItem value="weekly">Weekly</SelectItem>
+  </SelectContent>
+</Select>
+
           </CardHeader>
           <CardContent className="flex items-center justify-center h-full text-gray-400">
             Chart Placeholder
@@ -134,16 +134,17 @@ export default function OrdersPage() {
         <Card className="h-[300px]">
           <CardHeader className="flex items-center justify-between">
             <CardTitle>Order Volume</CardTitle>
-            <Select defaultValue="all">
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="restaurant">Restaurant</SelectItem>
-                <SelectItem value="pharmacy">Pharmacy</SelectItem>
-              </SelectContent>
-            </Select>
+           <Select defaultValue="all">
+  <SelectTrigger className="w-full sm:w-[150px]">
+    <SelectValue placeholder="All Categories" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="all">All Categories</SelectItem>
+    <SelectItem value="restaurant">Restaurant</SelectItem>
+    <SelectItem value="pharmacy">Pharmacy</SelectItem>
+  </SelectContent>
+</Select>
+
           </CardHeader>
           <CardContent className="flex items-center justify-center h-full text-gray-400">
             Chart Placeholder
@@ -152,75 +153,76 @@ export default function OrdersPage() {
       </div>
 
       {/* Bottom 3 Panels */}
-   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {/* Delivery Performance */}
-      <Card className="border border-gray-100 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-gray-800">Delivery Performance</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <p className="text-sm text-gray-600">Avg Delivery Time</p>
-            <Progress value={87} className="[&>*]:bg-emerald-500" />
-            <p className="font-semibold text-gray-800">28 mins</p>
-          </div>
-
-          <div>
-            <p className="text-sm text-gray-600 mb-1">On-Time Delivery</p>
-            <Progress value={87} className="[&>*]:bg-dark-500" />
-            <p className="text-xs text-gray-700 mt-1 font-medium">87%</p>
-          </div>
-
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Completion Rate</p>
-            <Progress value={94} className="[&>*]:bg-amber-400" />
-            <p className="text-xs text-gray-700 mt-1 font-medium">94%</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Category Distribution */}
-      <Card className="border border-gray-100 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-gray-800">Category Distribution</CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center text-gray-400 h-[150px]">
-          Chart Placeholder
-        </CardContent>
-      </Card>
-
-      {/* Health Services */}
-      <Card className="border border-gray-100 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-gray-800">Health Services</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between bg-emerald-50 p-3 rounded-lg">
-            <p className="text-sm text-gray-700">Consultations</p>
-            <div className="text-right">
-              <p className="font-semibold text-emerald-600 text-lg">142</p>
-              <p className="text-xs text-emerald-500">+23% from last week</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 gap-y-8">
+        {/* Delivery Performance */}
+        <Card className="border border-gray-100 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-gray-800">Delivery Performance</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-sm text-gray-600">Avg Delivery Time</p>
+              <Progress value={87} className="[&>*]:bg-emerald-500" />
+              <p className="font-semibold text-gray-800">28 mins</p>
             </div>
-          </div>
 
-          <div className="bg-purple-50 p-3 rounded-lg">
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-gray-700">Completion Rate</p>
-              <p className="text-sm font-semibold text-purple-700">89%</p>
+            <div>
+              <p className="text-sm text-gray-600 mb-1">On-Time Delivery</p>
+              <Progress value={87} className="[&>*]:bg-dark-500" />
+              <p className="text-xs text-gray-700 mt-1 font-medium">87%</p>
             </div>
-            <p className="text-xs text-gray-500 mt-1">Average wait: 8 mins</p>
-          </div>
 
-          <div className="bg-amber-50 p-3 rounded-lg">
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-gray-700">Rx → Purchase</p>
-              <p className="text-sm font-semibold text-amber-500">67%</p>
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Completion Rate</p>
+              <Progress value={94} className="[&>*]:bg-amber-400" />
+              <p className="text-xs text-gray-700 mt-1 font-medium">94%</p>
             </div>
-            <p className="text-xs text-gray-500 mt-1">Conversion rate</p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          </CardContent>
+        </Card>
+
+        {/* Category Distribution */}
+        <Card className="border border-gray-100 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-gray-800">Category Distribution</CardTitle>
+          </CardHeader>
+          <CardContent className="flex items-center justify-center text-gray-400 h-[150px]">
+            Chart Placeholder
+          </CardContent>
+        </Card>
+
+        {/* Health Services */}
+        <Card className="border border-gray-100 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-gray-800">Health Services</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between bg-emerald-50 p-3 rounded-lg">
+              <p className="text-sm text-gray-700">Consultations</p>
+              <div className="text-right">
+                <p className="font-semibold text-emerald-600 text-lg">142</p>
+                <p className="text-xs text-emerald-500">+23% from last week</p>
+              </div>
+            </div>
+
+            <div className="bg-purple-50 p-3 rounded-lg">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-gray-700">Completion Rate</p>
+                <p className="text-sm font-semibold text-purple-700">89%</p>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Average wait: 8 mins</p>
+            </div>
+
+            <div className="bg-amber-50 p-3 rounded-lg">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-gray-700">Rx → Purchase</p>
+                <p className="text-sm font-semibold text-amber-500">67%</p>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Conversion rate</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Top Performing Vendors */}
       <Card>
         <CardHeader className="flex items-center justify-between">
@@ -229,7 +231,7 @@ export default function OrdersPage() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[600px] text-sm">
               <thead className="bg-gray-50 text-gray-600 uppercase text-xs border-b">
                 <tr>
                   <th className="text-left px-4 py-2">Vendor</th>
@@ -270,7 +272,6 @@ export default function OrdersPage() {
 
 /* --- Components --- */
 
-
 type VendorRowProps = {
   image: string;
   name: string;
@@ -292,10 +293,14 @@ function VendorRow({
 }: VendorRowProps) {
   return (
     <tr className="border-b hover:bg-gray-50">
-      <td className="flex items-center gap-3 px-4 py-3">
-        <img src="https://picsum.photos/40" width={40} height={40} alt="test" />
-
-
+      <td className="flex items-center gap-3 px-4 py-3 min-w-[150px]">
+        <Image
+          src={image}
+          alt={name}
+          width={40}
+          height={40}
+          className="rounded-full object-cover"
+        />
         <span className="font-medium">{name}</span>
       </td>
       <td className="px-4 py-3 text-gray-600">{category}</td>
