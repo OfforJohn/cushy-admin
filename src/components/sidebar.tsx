@@ -24,7 +24,9 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-56 bg-[#5B2C6F] text-white flex flex-col">
+  <aside className="w-full h-full bg-[#5B2C6F] text-white flex flex-col">
+
+
       <div className="p-4 flex items-center gap-3">
         <div className="w-10 h-10 bg-[#7B4A8F] rounded-lg flex items-center justify-center">
           <ShoppingCart className="w-6 h-6" />
