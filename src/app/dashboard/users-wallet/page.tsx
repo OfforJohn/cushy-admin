@@ -3,9 +3,19 @@ import { JSX, useEffect, useState } from "react";
 import { Users, UserCheck, Wallet, RefreshCw, Clock, Plus } from "lucide-react";
 
 export default function UsersWalletPage() {
+  type User = {
+    avatar?: string;
+    name: string;
+    phone: string;
+    email: string;
+    location?: string;
+    status: "Active" | "Suspended";
+    wallet?: number;
+    orders?: number;
+    lastActive?: string;
+  };
 
   const [users, setUsers] = useState<User[]>([]);
-
 
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -14,17 +24,6 @@ export default function UsersWalletPage() {
     dailyTransactions: 0,
     pendingPayouts: "no data yet",
   });
-  type User = {
-  avatar?: string;
-  name: string;
-  phone: string;
-  email: string;
-  location?: string;
-  status: "Active" | "Suspended";
-  wallet?: number;
-  orders?: number;
-  lastActive?: string;
-};
 
   const [loading, setLoading] = useState(true);
 
@@ -41,25 +40,21 @@ export default function UsersWalletPage() {
         const dashboardStatsData = await dashboardStatsRes.json();
         const dailyTxData = await dailyTxRes.json();
 
-        console.log("User Summaries:", userSummariesData);
-        console.log("Dashboard Stats:", dashboardStatsData);
-        console.log("Daily Transactions:", dailyTxData);
-
         if (userSummariesData?.data?.users) {
-        setUsers(userSummariesData.data.users as User[]); // ✅ cast to known type
-          setStats(prev => ({
+          setUsers(userSummariesData.data.users as User[]); // ✅ cast to known type
+          setStats((prev) => ({
             ...prev,
             totalUsers: userSummariesData.data.pagination?.total ?? 0,
           }));
         }
-setStats(prev => ({
-  ...prev,
-  totalUsers: dashboardStatsData?.data?.usersCount ?? prev.totalUsers,
-  activeUsers: dashboardStatsData?.data?.activeUsersResult ?? 0,
-  totalBalance: dashboardStatsData?.data?.totalBalanceResult ?? 0,
-  dailyTransactions: dailyTxData?.data?.totalTransactions ?? 0,
-}));
 
+        setStats((prev) => ({
+          ...prev,
+          totalUsers: dashboardStatsData?.data?.usersCount ?? prev.totalUsers,
+          activeUsers: dashboardStatsData?.data?.activeUsersResult ?? 0,
+          totalBalance: dashboardStatsData?.data?.totalBalanceResult ?? 0,
+          dailyTransactions: dailyTxData?.data?.totalTransactions ?? 0,
+        }));
       } catch (err) {
         console.error("Error fetching dashboard:", err);
       } finally {
@@ -79,57 +74,82 @@ setStats(prev => ({
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen space-y-6">
+    <div className="p-4 sm:p-6 bg-gray-50 min-h-screen space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold">Users & Wallet Management</h1>
-        <span className="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-sm font-medium">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
+        <h1 className="text-xl sm:text-2xl font-semibold">Users & Wallet Management</h1>
+        <span className="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap">
           Live
         </span>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard icon={<Users className="w-6 h-6 text-indigo-500" />} title="Total Users" value={stats.totalUsers.toLocaleString()} subtitle="All registered users" />
-        <StatCard icon={<UserCheck className="w-6 h-6 text-green-500" />} title="Active Users" value={stats.activeUsers.toLocaleString()} subtitle="Currently active" />
-        <StatCard icon={<Wallet className="w-6 h-6 text-yellow-500" />} title="Total Wallet Balance" value={`₦${stats.totalBalance.toLocaleString()}`} subtitle="Across all users" />
-        <StatCard icon={<RefreshCw className="w-6 h-6 text-purple-500" />} title="Daily Transactions" value={stats.dailyTransactions.toLocaleString()} subtitle="Today's activity" />
-        <StatCard icon={<Clock className="w-6 h-6 text-amber-500" />} title="Pending Payouts" value={stats.pendingPayouts} subtitle="Requires approval" />
+        <StatCard
+          icon={<Users className="w-6 h-6 text-indigo-500" />}
+          title="Total Users"
+          value={stats.totalUsers.toLocaleString()}
+          subtitle="All registered users"
+        />
+        <StatCard
+          icon={<UserCheck className="w-6 h-6 text-green-500" />}
+          title="Active Users"
+          value={stats.activeUsers.toLocaleString()}
+          subtitle="Currently active"
+        />
+        <StatCard
+          icon={<Wallet className="w-6 h-6 text-yellow-500" />}
+          title="Total Wallet Balance"
+          value={`₦${stats.totalBalance.toLocaleString()}`}
+          subtitle="Across all users"
+        />
+        <StatCard
+          icon={<RefreshCw className="w-6 h-6 text-purple-500" />}
+          title="Daily Transactions"
+          value={stats.dailyTransactions.toLocaleString()}
+          subtitle="Today's activity"
+        />
+        <StatCard
+          icon={<Clock className="w-6 h-6 text-amber-500" />}
+          title="Pending Payouts"
+          value={stats.pendingPayouts}
+          subtitle="Requires approval"
+        />
       </div>
 
       {/* Main Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Left - Users Management */}
-        <div className="bg-white border rounded-xl p-4 shadow-sm lg:col-span-2">
+        <div className="bg-white border rounded-xl p-4 shadow-sm lg:col-span-2 flex flex-col">
           {/* Header */}
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2 sm:gap-0">
             <h2 className="text-lg font-semibold">Users Management</h2>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <input
                 type="text"
                 placeholder="Search users..."
-                className="border rounded-lg px-3 py-2 text-sm w-56"
+                className="border rounded-lg px-3 py-2 text-sm w-full sm:w-56"
               />
-              <button className="bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+              <button className="bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 w-full sm:w-auto hover:bg-purple-800 transition">
                 <Plus className="w-4 h-4" /> Manual Credit
               </button>
             </div>
           </div>
 
           {/* Filters */}
-          <div className="flex flex-wrap gap-3 mb-4">
-            <select className="border rounded-lg px-3 py-2 text-sm">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 mb-4">
+            <select className="border rounded-lg px-3 py-2 text-sm w-full sm:w-auto">
               <option>All Status</option>
               <option>Active</option>
               <option>Suspended</option>
             </select>
-            <select className="border rounded-lg px-3 py-2 text-sm">
+            <select className="border rounded-lg px-3 py-2 text-sm w-full sm:w-auto">
               <option>All Cities</option>
               <option>Lagos</option>
               <option>Abuja</option>
               <option>Minna</option>
             </select>
-            <button className="border rounded-lg px-3 py-2 text-sm flex items-center gap-2">
+            <button className="border rounded-lg px-3 py-2 text-sm flex items-center gap-2 w-full sm:w-auto hover:bg-gray-100 transition">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="w-4 h-4"
@@ -143,40 +163,40 @@ setStats(prev => ({
             </button>
           </div>
 
-          {/* ✅ Users Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-base border-collapse">
+          {/* Users Table */}
+          <div className="w-full overflow-x-auto rounded-lg border">
+            <table className="min-w-full text-left text-sm border-collapse">
               <thead className="border-b bg-gray-100 text-gray-700">
                 <tr>
-                  <th className="py-3 px-6">User</th>
-                  <th className="py-3 px-6">City</th>
-                  <th className="py-3 px-6">Status</th>
-                  <th className="py-3 px-6">Wallet</th>
-                  <th className="py-3 px-6">Orders</th>
-                  <th className="py-3 px-6">Last Active</th>
-                  <th className="py-3 px-6 text-center">Actions</th>
+                  <th className="py-3 px-4">User</th>
+                  <th className="py-3 px-4">City</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">Wallet</th>
+                  <th className="py-3 px-4">Orders</th>
+                  <th className="py-3 px-4">Last Active</th>
+                  <th className="py-3 px-4 text-center">Actions</th>
                 </tr>
               </thead>
 
               <tbody>
                 {users.map((user, i) => (
                   <tr key={i} className="border-b hover:bg-gray-50 transition">
-                    <td className="py-4 px-6 flex items-center gap-4">
+                    <td className="py-4 px-4 flex items-center gap-3 min-w-[180px]">
                       <img
                         src={user.avatar || "/default-avatar.png"}
                         alt="avatar"
                         className="w-10 h-10 rounded-full object-cover"
                       />
-                      <div>
-                        <p className="font-semibold text-gray-800">{user.name}</p>
-                        <p className="text-sm text-gray-500">{user.phone}</p>
-                        <p className="text-sm text-gray-500">{user.email}</p>
+                      <div className="truncate">
+                        <p className="font-semibold text-gray-800 truncate">{user.name}</p>
+                        <p className="text-xs sm:text-sm text-gray-500 truncate">{user.phone}</p>
+                        <p className="text-xs sm:text-sm text-gray-500 truncate">{user.email}</p>
                       </div>
                     </td>
-                    <td className="px-6 text-gray-700">{user.location || "N/A"}</td>
-                    <td className="px-6">
+                    <td className="px-4 text-gray-700 whitespace-nowrap">{user.location || "N/A"}</td>
+                    <td className="px-4">
                       <span
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        className={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap ${
                           user.status === "Active"
                             ? "bg-green-100 text-green-700"
                             : "bg-orange-100 text-orange-700"
@@ -185,20 +205,34 @@ setStats(prev => ({
                         {user.status}
                       </span>
                     </td>
-                    <td className="px-6 font-semibold text-gray-800">
+                    <td className="px-4 font-semibold text-gray-800 whitespace-nowrap">
                       ₦{user.wallet?.toLocaleString() ?? 0}
                     </td>
-                    <td className="px-6 text-gray-700 font-medium">
-                      {user.orders ?? 0}
-                    </td>
-                    <td className="px-6 text-gray-500">
-                      {user.lastActive ?? "N/A"}
-                    </td>
-                    <td className="px-6 text-center">
-                      <div className="flex items-center justify-center gap-4 text-gray-600 text-[18px] font-semibold">
-                        <button className="hover:text-purple-600 transition">👁</button>
-                        <button className="hover:text-purple-600 transition">💰</button>
-                        <button className="hover:text-purple-600 transition">⋮</button>
+                    <td className="px-4 text-gray-700 font-medium whitespace-nowrap">{user.orders ?? 0}</td>
+                    <td className="px-4 text-gray-500 whitespace-nowrap">{user.lastActive ?? "N/A"}</td>
+                    <td className="px-4 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-4 text-gray-600 text-lg font-semibold">
+                        <button
+                          aria-label="View user details"
+                          className="hover:text-purple-600 transition"
+                          title="View"
+                        >
+                          👁
+                        </button>
+                        <button
+                          aria-label="Credit wallet"
+                          className="hover:text-purple-600 transition"
+                          title="Credit"
+                        >
+                          💰
+                        </button>
+                        <button
+                          aria-label="More actions"
+                          className="hover:text-purple-600 transition"
+                          title="More"
+                        >
+                          ⋮
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -233,7 +267,7 @@ function StatCard({
   subtitle: string;
 }) {
   return (
-    <div className="bg-white rounded-xl p-4 border shadow-sm flex items-start gap-3">
+    <div className="bg-white rounded-xl p-4 border shadow-sm flex items-start gap-3 min-w-[150px]">
       <div className="p-3 bg-gray-50 rounded-lg">{icon}</div>
       <div>
         <h3 className="text-gray-500 text-sm">{title}</h3>
