@@ -23,7 +23,8 @@ export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState("")
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-4 sm:px-6 lg:px-8 pb-10">
+
       {/* Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total Orders */}
@@ -85,7 +86,8 @@ export default function OrdersPage() {
 
       {/* Filters Section */}
       <div className="bg-white rounded-lg p-6 border border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+
           <div>
             <label className="text-sm font-medium text-gray-700 mb-2 block">Business Type:</label>
             <Select defaultValue="all-types">
