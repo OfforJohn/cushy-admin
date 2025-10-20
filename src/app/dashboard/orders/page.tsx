@@ -26,7 +26,8 @@ export default function OrdersPage() {
     <div className="space-y-6 px-4 sm:px-6 lg:px-8 pb-10">
 
       {/* Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* ... Cards (same as before) */}
         {/* Total Orders */}
         <div className="bg-white rounded-lg p-6 border border-gray-200">
           <div className="flex items-start justify-between">
@@ -87,11 +88,11 @@ export default function OrdersPage() {
       {/* Filters Section */}
       <div className="bg-white rounded-lg p-6 border border-gray-200">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
-
+          {/* Business Type */}
           <div>
             <label className="text-sm font-medium text-gray-700 mb-2 block">Business Type:</label>
             <Select defaultValue="all-types">
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent>
@@ -103,10 +104,11 @@ export default function OrdersPage() {
             </Select>
           </div>
 
+          {/* Status */}
           <div>
             <label className="text-sm font-medium text-gray-700 mb-2 block">Status:</label>
             <Select defaultValue="all-status">
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
@@ -118,10 +120,11 @@ export default function OrdersPage() {
             </Select>
           </div>
 
+          {/* City */}
           <div>
             <label className="text-sm font-medium text-gray-700 mb-2 block">City:</label>
             <Select defaultValue="all-cities">
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="All Cities" />
               </SelectTrigger>
               <SelectContent>
@@ -133,23 +136,25 @@ export default function OrdersPage() {
             </Select>
           </div>
 
+          {/* Date Range From */}
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">Date Range:</label>
-            <Input type="date" placeholder="mm/dd/yyyy" />
+            <label className="text-sm font-medium text-gray-700 mb-2 block">Date Range From:</label>
+            <Input type="date" placeholder="mm/dd/yyyy" className="w-full" />
           </div>
 
+          {/* Date Range To */}
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">&nbsp;</label>
-            <Input type="date" placeholder="mm/dd/yyyy" />
+            <label className="text-sm font-medium text-gray-700 mb-2 block">Date Range To:</label>
+            <Input type="date" placeholder="mm/dd/yyyy" className="w-full" />
           </div>
         </div>
 
-        <div className="flex gap-3">
-          <Button className="bg-[#5B2C6F] hover:bg-[#4a2359] text-white">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button className="bg-[#5B2C6F] hover:bg-[#4a2359] text-white w-full sm:w-auto flex items-center justify-center">
             <Filter className="w-4 h-4 mr-2" />
             Apply Filters
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" className="w-full sm:w-auto flex items-center justify-center">
             <Download className="w-4 h-4 mr-2" />
             Export CSV
           </Button>
@@ -159,19 +164,19 @@ export default function OrdersPage() {
       {/* Recent Orders Table */}
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <h2 className="text-xl font-bold">Recent Orders</h2>
-            <div className="flex items-center gap-3">
-              <div className="relative">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="relative flex-grow">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
                   placeholder="Search orders..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-64"
+                  className="pl-10 w-full"
                 />
               </div>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
                 <RefreshCw className="w-4 h-4" />
               </Button>
             </div>
@@ -182,35 +187,21 @@ export default function OrdersPage() {
           <table className="w-full min-w-[1200px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Order ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Vendor
-                </th>
+                {/* ...table headers remain unchanged */}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">City</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Items
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Payment
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
+              {/* Rows remain unchanged */}
               {/* Order 1 */}
               <tr className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
