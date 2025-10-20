@@ -37,7 +37,6 @@ import {
   Eye,
   Check,
   X,
-  User2,
   AlertTriangle,
   ArrowUpDown,
 } from "lucide-react"
@@ -131,7 +130,6 @@ const metricCards = [
   },
 ]
 
-
 export default function LicensesVerificationsPage() {
   const [statusFilter, setStatusFilter] = useState("All")
   const [typeFilter, setTypeFilter] = useState("All")
@@ -167,39 +165,37 @@ export default function LicensesVerificationsPage() {
   )
 
   return (
-    <div className="space-y-8 p-4">
-      
+    <div className="space-y-8 p-4 max-w-full">
       {/* Top area: metrics */}
-     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-  {metricCards.map((card) => (
-    <Card key={card.title} className="shadow-sm">
-      <CardContent className="flex items-center justify-between p-4">
-        <div>
-          <div className="text-sm font-medium text-gray-600">{card.title}</div>
-          <div className={cn("text-2xl font-bold mt-1", card.colorClass)}>
-            {card.value}
-          </div>
-          <div className="text-xs text-gray-500 mt-1">{card.subtext}</div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {metricCards.map((card) => (
+          <Card key={card.title} className="shadow-sm">
+            <CardContent className="flex items-center justify-between p-4">
+              <div>
+                <div className="text-sm font-medium text-gray-600">{card.title}</div>
+                <div className={cn("text-2xl font-bold mt-1", card.colorClass)}>
+                  {card.value}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">{card.subtext}</div>
+              </div>
 
-        <div
-          className={cn(
-            "w-9 h-9 flex items-center justify-center rounded-full",
-            card.iconBg,
-            card.iconColor
-          )}
-        >
-          {card.icon}
-        </div>
-      </CardContent>
-    </Card>
-  ))}
-</div>
-
+              <div
+                className={cn(
+                  "w-9 h-9 flex items-center justify-center rounded-full",
+                  card.iconBg,
+                  card.iconColor
+                )}
+              >
+                {card.icon}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
       {/* Quick Actions row */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex gap-2 items-center">
+        <div className="flex flex-wrap gap-2 items-center">
           <Button className="flex items-center gap-2 bg-purple-700 hover:bg-purple-800 text-white">
             <CheckCircle2 className="w-4 h-4" /> Bulk Approve (3)
           </Button>
@@ -215,7 +211,7 @@ export default function LicensesVerificationsPage() {
 
         <div className="flex items-center gap-3">
           <div className="text-sm text-gray-600">Quick Actions</div>
-          {/* small spacer / placeholder to match screenshot */}
+          {/* spacer placeholder */}
         </div>
       </div>
 
@@ -258,7 +254,7 @@ export default function LicensesVerificationsPage() {
           </SelectContent>
         </Select>
 
-        <Button variant="outline" className="flex items-center gap-2">
+        <Button variant="outline" className="flex items-center gap-2 whitespace-nowrap">
           <Filter className="w-4 h-4" /> More Filters
         </Button>
 
@@ -277,22 +273,22 @@ export default function LicensesVerificationsPage() {
 
       {/* Verification Queue */}
       <Card>
-        <CardHeader className="flex items-start justify-between">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-0">
           <div>
             <CardTitle className="text-lg">Verification Queue</CardTitle>
             <div className="text-sm text-gray-500">23 pending verifications</div>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="text-sm text-gray-500">Sort</div>
+            <div className="text-sm text-gray-500 whitespace-nowrap">Sort</div>
             <Button variant="ghost" className="flex items-center gap-2">
               <ArrowUpDown className="w-4 h-4" /> Date
             </Button>
           </div>
         </CardHeader>
 
-        <CardContent>
-          <Table>
+        <CardContent className="overflow-x-auto">
+          <Table className="min-w-[720px] sm:min-w-full">
             <TableHeader>
               <TableRow>
                 <TableHead>Professional</TableHead>
@@ -309,25 +305,25 @@ export default function LicensesVerificationsPage() {
             <TableBody>
               {filteredData.map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell className="flex items-center gap-3">
+                  <TableCell className="flex items-center gap-3 min-w-[180px]">
                     <Avatar initials={row.avatarInitials} />
-                    <div>
-                      <div className="font-medium">{row.professional}</div>
-                      <div className="text-xs text-gray-500">ID: PRO-2024-034</div>
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{row.professional}</div>
+                      <div className="text-xs text-gray-500 truncate">ID: PRO-2024-034</div>
                     </div>
                   </TableCell>
 
-                  <TableCell>{row.licenseType}</TableCell>
-                  <TableCell>{row.licenseNumber}</TableCell>
+                  <TableCell className="min-w-[140px]">{row.licenseType}</TableCell>
+                  <TableCell className="min-w-[120px]">{row.licenseNumber}</TableCell>
 
-                  <TableCell>
+                  <TableCell className="min-w-[140px]">
                     <div className="flex flex-col">
                       <span>{row.submittedDate}</span>
                       {row.overdueText && <span className="text-xs text-rose-600">{row.overdueText}</span>}
                     </div>
                   </TableCell>
 
-                  <TableCell>
+                  <TableCell className="min-w-[110px]">
                     <Badge
                       className={cn(
                         "capitalize",
@@ -340,7 +336,7 @@ export default function LicensesVerificationsPage() {
                     </Badge>
                   </TableCell>
 
-                  <TableCell>
+                  <TableCell className="min-w-[100px]">
                     <Badge
                       className={cn(
                         "capitalize",
@@ -353,14 +349,14 @@ export default function LicensesVerificationsPage() {
                     </Badge>
                   </TableCell>
 
-                  <TableCell className="flex items-center gap-2">
+                  <TableCell className="flex items-center gap-2 min-w-[80px]">
                     <FileText className="w-4 h-4" />
                     <span className="text-sm">{row.documents}</span>
                   </TableCell>
 
-                  <TableCell className="text-right">
+                  <TableCell className="text-right min-w-[100px]">
                     <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" className="p-1">
+                      <Button variant="ghost" className="p-1" aria-label="View details">
                         <Eye className="w-4 h-4" />
                       </Button>
                       <Button variant="ghost" className="p-1" title="Approve">
