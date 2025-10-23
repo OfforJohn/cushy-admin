@@ -63,7 +63,7 @@ export default function ManualWalletCreditPage() {
           Credit User Wallet
         </h2>
         <p className="text-sm text-gray-500 mb-6">
-          Manually add credit to a user's wallet. This action requires dual
+          Manually add credit to a user wallet. This action requires dual
           approval for amounts above ₦50,000.
         </p>
 
