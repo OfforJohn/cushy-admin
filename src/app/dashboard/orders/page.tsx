@@ -13,14 +13,23 @@ import {
   Eye,
   Edit,
   MoreVertical,
+  FileDown,
+  RefreshCcw,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Image from "next/image"
 
+
+import { useRouter } from "next/navigation"
+
 export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState("")
+  
+  const router = useRouter()
+
+
 
   return (
     <div className="space-y-6 px-4 sm:px-6 lg:px-8 pb-10">
@@ -149,16 +158,29 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Button className="bg-[#5B2C6F] hover:bg-[#4a2359] text-white w-full sm:w-auto flex items-center justify-center">
-            <Filter className="w-4 h-4 mr-2" />
-            Apply Filters
-          </Button>
-          <Button variant="outline" className="w-full sm:w-auto flex items-center justify-center">
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
-        </div>
+
+    <div className="flex flex-wrap gap-3">
+      {/* Apply Filters */}
+      <Button className="bg-[#5B2C6F] hover:bg-[#4a2359] text-white">
+        <Filter className="w-4 h-4 mr-2" />
+        Apply Filters
+      </Button>
+
+      {/* Export CSV */}
+      <Button variant="outline">
+        <FileDown className="w-4 h-4 mr-2 text-[#5B2C6F]" />
+        Export CSV
+      </Button>
+
+      {/* Update Orders */}
+      <Button
+        variant="outline"
+        onClick={() => router.push("ORD-2024-001264")}
+      >
+        <RefreshCcw className="w-4 h-4 mr-2 text-[#5B2C6F]" />
+        Update Orders
+      </Button>
+    </div>
       </div>
 
       {/* Recent Orders Table */}
