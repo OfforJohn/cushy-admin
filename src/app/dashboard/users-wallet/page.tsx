@@ -1,8 +1,12 @@
 "use client";
 import { JSX, useEffect, useState } from "react";
 import { Users, UserCheck, Wallet, RefreshCw, Clock, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+
 
 export default function UsersWalletPage() {
+  const router = useRouter();
+
   type User = {
     avatar?: string;
     name: string;
@@ -130,9 +134,13 @@ export default function UsersWalletPage() {
                 placeholder="Search users..."
                 className="border rounded-lg px-3 py-2 text-sm w-full sm:w-56"
               />
-              <button className="bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 w-full sm:w-auto hover:bg-purple-800 transition">
+              <button
+                onClick={() => router.push("/dashboard/manual-wallet-credit")}
+                className="bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 w-full sm:w-auto hover:bg-purple-800 transition"
+              >
                 <Plus className="w-4 h-4" /> Manual Credit
               </button>
+
             </div>
           </div>
 
@@ -196,11 +204,10 @@ export default function UsersWalletPage() {
                     <td className="px-4 text-gray-700 whitespace-nowrap">{user.location || "N/A"}</td>
                     <td className="px-4">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap ${
-                          user.status === "Active"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-orange-100 text-orange-700"
-                        }`}
+                        className={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap ${user.status === "Active"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-orange-100 text-orange-700"
+                          }`}
                       >
                         {user.status}
                       </span>
@@ -245,9 +252,13 @@ export default function UsersWalletPage() {
         {/* Right - Quick Wallet Actions */}
         <div className="bg-white border rounded-xl p-4 shadow-sm">
           <h3 className="text-lg font-semibold mb-4">Quick Wallet Actions</h3>
-          <button className="bg-green-500 text-white w-full py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium hover:bg-green-600 transition">
+          <button
+            onClick={() => router.push("/dashboard/manual-wallet-credit")}
+            className="bg-green-500 text-white w-full py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium hover:bg-green-600 transition"
+          >
             <Plus className="w-4 h-4" /> Manual Credit
           </button>
+
         </div>
       </div>
     </div>
