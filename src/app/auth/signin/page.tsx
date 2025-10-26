@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ToastProvider, useToast } from "@/components/ui/toast-provider"
+import { useToast } from "@/components/ui/toast-provider"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -47,9 +47,14 @@ export default function LoginPage() {
       if (role === "vendor") router.push("/vendor/dashboard")
       else if (role === "admin") router.push("/dashboard")
       else router.push("/user/dashboard")
-    } catch (err: any) {
-      showToast(err.message || "Login failed", "error")
-    } finally {
+   } catch (err: unknown) {
+  if (err instanceof Error) {
+    showToast(err.message, "error")
+  } else {
+    showToast("Login failed", "error")
+  }
+}
+ finally {
       setLoading(false)
     }
   }
