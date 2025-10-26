@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -8,64 +9,46 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { ToastProvider, useToast } from "@/components/ui/toast-provider"
 
 export default function LoginPage() {
   const router = useRouter()
   const [emailOrMobile, setEmailOrMobile] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+
+  const { Toast, showToast } = useToast()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
     setLoading(true)
 
     try {
-      const response = await fetch("http://localhost:4000/api/v1/auth/login", {
+      const response = await fetch("https://staging.cushyaccess.com/api/v1/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          emailOrMobile,
-          password,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailOrMobile, password }),
       })
 
       const data = await response.json()
+      if (!response.ok) throw new Error(data.message || "Login failed")
 
-      if (!response.ok) {
-        throw new Error(data.message || "Login failed")
-      }
-      // The backend wraps data inside "data"
-const user = data.data?.user;
-const token = data.data?.access_token;
+      const user = data.data?.user
+      const token = data.data?.access_token
+      if (!user) throw new Error("Invalid response: user not found")
 
-// Guard clause if no user returned
-if (!user) {
-  throw new Error("Invalid response: user not found");
-}
+      localStorage.setItem("token", token)
+      localStorage.setItem("user", JSON.stringify(user))
 
-const role = user.userRole?.toLowerCase();
+      showToast("Login successful!", "success")
 
-// Save token and user
-localStorage.setItem("token", token);
-localStorage.setItem("user", JSON.stringify(user));
-
-// Redirect based on role
-if (role === "vendor") {
-  router.push("/vendor/dashboard");
-} else if (role === "admin") {
-  router.push("/dashboard");
-} else {
-  router.push("/user/dashboard");
-}
-} catch (err) {
-  setError((err as Error).message)
-
-
+      const role = user.userRole?.toLowerCase()
+      if (role === "vendor") router.push("/vendor/dashboard")
+      else if (role === "admin") router.push("/dashboard")
+      else router.push("/user/dashboard")
+    } catch (err: any) {
+      showToast(err.message || "Login failed", "error")
     } finally {
       setLoading(false)
     }
@@ -196,12 +179,8 @@ if (role === "vendor") {
               </Link>
             </div>
 
-            {/* Error Message */}
-            {error && (
-              <div className="text-red-500 text-sm font-medium text-center">
-                {error}
-              </div>
-            )}
+             {Toast} {/* 👈 this makes it render on screen */}
+
 
             {/* Submit Button */}
             <Button

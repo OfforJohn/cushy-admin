@@ -1,50 +1,13 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { TrendingUp, ShoppingCart, CheckCircle2, Clock, Filter, Download } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
-const metrics = [
-  {
-    title: "GMV Today",
-    value: "₦2.4M",
-    change: "12.5% vs yesterday",
-    isPositive: true,
-    icon: TrendingUp,
-    iconBg: "bg-green-100",
-    iconColor: "text-green-600",
-  },
-  {
-    title: "Orders",
-    value: "1,247",
-    change: "8.2% vs yesterday",
-    isPositive: true,
-    icon: ShoppingCart,
-    iconBg: "bg-blue-100",
-    iconColor: "text-blue-600",
-  },
-  {
-    title: "Completion Rate",
-    value: "94.2%",
-    change: "2.1% vs yesterday",
-    isPositive: false,
-    icon: CheckCircle2,
-    iconBg: "bg-purple-100",
-    iconColor: "text-purple-600",
-  },
-  {
-    title: "Avg Delivery Time",
-    value: "28 min",
-    change: "3 min faster",
-    isPositive: true,
-    icon: Clock,
-    iconBg: "bg-orange-100",
-    iconColor: "text-orange-600",
-  },
-]
+
 
 const queueItems = [
   {
@@ -123,16 +86,104 @@ const orders = [
 
 export default function DashboardOverviewPage() {
   const router = useRouter()
+  
+  const [ordersCount, setOrdersCount] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
 
   // 🔒 Protect route
-/*
+
 useEffect(() => {
   const token = localStorage.getItem("token");
   if (!token) {
     router.push("/auth/signin");
   }
 }, [router]);
-*/
+
+// ✅ Fetch orders stats
+useEffect(() => {
+  const fetchOrderStats = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) return
+
+      // 🕒 Get yesterday and today dynamically
+      const today = new Date()
+      const yesterday = new Date()
+      yesterday.setDate(today.getDate() - 1)
+
+      const from = yesterday.toISOString().split("T")[0]
+      const to = today.toISOString().split("T")[0]
+
+      const response = await fetch(
+        `https://staging.cushyaccess.com/api/v1/admin/orders-stats?from=${from}&to=${to}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "cushy-access-key": `Bearer ${token}`,
+          },
+        }
+      )
+
+      const data = await response.json()
+      if (response.ok && data?.data) {
+        setOrdersCount(data.data.totalOrders)
+      } else {
+        console.error("Failed to fetch stats:", data?.message)
+      }
+    } catch (err) {
+      console.error("Error fetching order stats:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  fetchOrderStats()
+}, [])
+
+
+  const metrics = [
+  {
+    title: "GMV Today",
+    value: "₦2.4M",
+    change: "12.5% vs yesterday",
+    isPositive: true,
+    icon: TrendingUp,
+    iconBg: "bg-green-100",
+    iconColor: "text-green-600",
+  },
+ {
+      title: "Orders",
+      // 👇 dynamically show API value or fallback
+      value: loading
+        ? "Loading..."
+        : ordersCount !== null
+        ? ordersCount.toLocaleString()
+        : "0",
+      isPositive: true,
+      icon: ShoppingCart,
+      iconBg: "bg-blue-100",
+      iconColor: "text-blue-600",
+    },
+  {
+    title: "Completion Rate",
+    value: "94.2%",
+    change: "2.1% vs yesterday",
+    isPositive: false,
+    icon: CheckCircle2,
+    iconBg: "bg-purple-100",
+    iconColor: "text-purple-600",
+  },
+  {
+    title: "Avg Delivery Time",
+    value: "28 min",
+    change: "3 min faster",
+    isPositive: true,
+    icon: Clock,
+    iconBg: "bg-orange-100",
+    iconColor: "text-orange-600",
+  },
+]
+
 
 
   return (
@@ -147,7 +198,7 @@ useEffect(() => {
                   <p className="text-sm text-gray-600">{metric.title}</p>
                   <p className="text-3xl font-bold text-gray-900">{metric.value}</p>
                   <p className={`text-sm ${metric.isPositive ? "text-green-600" : "text-red-600"}`}>
-                    {metric.isPositive ? "↑" : "↓"} {metric.change}
+                    {metric.change}
                   </p>
                 </div>
                 <div className={`${metric.iconBg} p-3 rounded-lg`}>
