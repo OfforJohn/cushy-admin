@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   ShoppingCart,
   Clock,
@@ -29,6 +29,62 @@ export default function OrdersPage() {
   
   const router = useRouter()
 
+  const [loading, setLoading] = useState(true)
+  const [pendingOrders, setPendingOrders] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+
+  // ✅ Redirect if no token
+  useEffect(() => {
+    const token = localStorage.getItem("token")
+    if (!token) {
+      router.push("/auth/signin")
+    }
+  }, [router])
+
+
+
+
+
+
+  // ✅ Fetch PENDING orders count
+ useEffect(() => {
+  const fetchPendingOrders = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) return
+
+      const response = await fetch(
+        "https://staging.cushyaccess.com/api/v1/orders?filter[status]=PENDING",
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "cushy-access-key": `Bearer ${token}`,
+          },
+        }
+      )
+
+      const data = await response.json()
+
+      // ✅ Extract count from pagination
+      if (response.ok && data?.pagination) {
+        setPendingOrders(data.pagination.totalItems)
+      } else {
+        console.error("Unexpected response format:", data)
+        setError("Unexpected response from server")
+      }
+    } catch (err) {
+      console.error("Error fetching pending orders:", err)
+      setError("Failed to fetch pending orders")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  fetchPendingOrders()
+}, [])
+
+
 
 
   return (
@@ -56,8 +112,16 @@ export default function OrdersPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Pending Orders</p>
-              <h3 className="text-3xl font-bold mb-2">127</h3>
-              <p className="text-sm text-orange-600">Requires attention</p>
+              <h3 className="text-3xl font-bold mb-2">
+                {loading ? "..." : pendingOrders ?? "--"}
+              </h3>
+              <p className="text-sm text-orange-600">
+                {error
+                  ? error
+                  : pendingOrders === 0
+                  ? "No pending orders"
+                  : "Requires attention"}
+              </p>
             </div>
             <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center">
               <Clock className="w-6 h-6 text-orange-500" />
@@ -187,7 +251,7 @@ export default function OrdersPage() {
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="p-6 border-b border-gray-200">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <h2 className="text-xl font-bold">Recent Orders</h2>
+            <h2 className="text-xl font-bold">All Orders</h2>
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <div className="relative flex-grow">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

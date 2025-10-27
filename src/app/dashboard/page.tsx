@@ -191,7 +191,15 @@ useEffect(() => {
       {/* Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {metrics.map((metric) => (
-          <Card key={metric.title}>
+          <Card key={metric.title}
+          
+           onClick={() => {
+      if (metric.title === "Orders") {
+        router.push("/dashboard/orders") // 👈 navigate when “Orders” card is clicked
+      }
+    }}
+    className="cursor-pointer hover:shadow-md transition-shadow"
+          >
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
