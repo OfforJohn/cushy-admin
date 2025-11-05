@@ -237,13 +237,15 @@ export default function OrdersPage() {
       </Button>
 
       {/* Update Orders */}
-      <Button
-        variant="outline"
-        onClick={() => router.push("ORD-2024-001264")}
-      >
-        <RefreshCcw className="w-4 h-4 mr-2 text-[#5B2C6F]" />
-        Update Orders
-      </Button>
+     <Button
+  variant="outline"
+  onClick={() => router.push("ORD-2024-001264")}
+  className="cursor-pointer transition-transform duration-150 hover:scale-105 hover:border-[#5B2C6F]"
+>
+  <RefreshCcw className="w-4 h-4 mr-2 text-[#5B2C6F]" />
+  Update Orders
+</Button>
+
     </div>
       </div>
 

@@ -5,9 +5,11 @@ import { Bike, Clock, Package, TrendingUp, Download, Plus, RefreshCw, Filter } f
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 
 export default function LogisticsPage() {
   const [activeTab, setActiveTab] = useState("riders")
+    const router = useRouter() // 👈 initialize router
 
   return (
     <div className="space-y-6">
@@ -21,10 +23,14 @@ export default function LogisticsPage() {
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
-          <Button className="bg-[#5B2C6F] hover:bg-[#4a2359] text-white">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Rider
-          </Button>
+         <Button
+  className="bg-[#5B2C6F] hover:bg-[#4a2359] text-white cursor-pointer transition-transform duration-150 hover:scale-105"
+  onClick={() => router.push("/dashboard/logistics/Add-New-Rider")}
+>
+  <Plus className="w-4 h-4 mr-2" />
+  Add Rider
+</Button>
+
         </div>
       </div>
 
