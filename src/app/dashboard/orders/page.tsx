@@ -26,7 +26,7 @@ import { useRouter } from "next/navigation"
 
 export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState("")
-  
+
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
@@ -48,41 +48,41 @@ export default function OrdersPage() {
 
 
   // ✅ Fetch PENDING orders count
- useEffect(() => {
-  const fetchPendingOrders = async () => {
-    try {
-      const token = localStorage.getItem("token")
-      if (!token) return
+  useEffect(() => {
+    const fetchPendingOrders = async () => {
+      try {
+        const token = localStorage.getItem("token")
+        if (!token) return
 
-      const response = await fetch(
-        "https://staging.cushyaccess.com/api/v1/orders?filter[status]=PENDING",
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "cushy-access-key": `Bearer ${token}`,
-          },
+        const response = await fetch(
+          "https://staging.cushyaccess.com/api/v1/orders?filter[status]=PENDING",
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "cushy-access-key": `Bearer ${token}`,
+            },
+          }
+        )
+
+        const data = await response.json()
+
+        // ✅ Extract count from pagination
+        if (response.ok && data?.pagination) {
+          setPendingOrders(data.pagination.totalItems)
+        } else {
+          console.error("Unexpected response format:", data)
+          setError("Unexpected response from server")
         }
-      )
-
-      const data = await response.json()
-
-      // ✅ Extract count from pagination
-      if (response.ok && data?.pagination) {
-        setPendingOrders(data.pagination.totalItems)
-      } else {
-        console.error("Unexpected response format:", data)
-        setError("Unexpected response from server")
+      } catch (err) {
+        console.error("Error fetching pending orders:", err)
+        setError("Failed to fetch pending orders")
+      } finally {
+        setLoading(false)
       }
-    } catch (err) {
-      console.error("Error fetching pending orders:", err)
-      setError("Failed to fetch pending orders")
-    } finally {
-      setLoading(false)
     }
-  }
 
-  fetchPendingOrders()
-}, [])
+    fetchPendingOrders()
+  }, [])
 
 
 
@@ -119,8 +119,8 @@ export default function OrdersPage() {
                 {error
                   ? error
                   : pendingOrders === 0
-                  ? "No pending orders"
-                  : "Requires attention"}
+                    ? "No pending orders"
+                    : "Requires attention"}
               </p>
             </div>
             <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center">
@@ -223,30 +223,37 @@ export default function OrdersPage() {
         </div>
 
 
-    <div className="flex flex-wrap gap-3">
-      {/* Apply Filters */}
-      <Button className="bg-[#5B2C6F] hover:bg-[#4a2359] text-white">
-        <Filter className="w-4 h-4 mr-2" />
-        Apply Filters
-      </Button>
+        <div className="flex flex-wrap gap-3">
+          {/* Apply Filters */}
+          <Button className="bg-[#5B2C6F] hover:bg-[#4a2359] text-white">
+            <Filter className="w-4 h-4 mr-2" />
+            Apply Filters
+          </Button>
 
-      {/* Export CSV */}
-      <Button variant="outline">
-        <FileDown className="w-4 h-4 mr-2 text-[#5B2C6F]" />
-        Export CSV
-      </Button>
+          {/* Export CSV */}
+          <Button variant="outline">
+            <FileDown className="w-4 h-4 mr-2 text-[#5B2C6F]" />
+            Export CSV
+          </Button>
 
-      {/* Update Orders */}
+          {/* Update Orders */}
+          <Button
+            variant="outline"
+            onClick={() => router.push("ORD-2024-001264")}
+            className="cursor-pointer transition-transform duration-150 hover:scale-105 hover:border-[#5B2C6F]"
+          >
+            <RefreshCcw className="w-4 h-4 mr-2 text-[#5B2C6F]" />
+            Update Orders
+          </Button>
      <Button
-  variant="outline"
-  onClick={() => router.push("ORD-2024-001264")}
-  className="cursor-pointer transition-transform duration-150 hover:scale-105 hover:border-[#5B2C6F]"
->
-  <RefreshCcw className="w-4 h-4 mr-2 text-[#5B2C6F]" />
-  Update Orders
-</Button>
-
-    </div>
+            variant="outline"
+            onClick={() => router.push("/dashboard/orders/assign-rider")}
+            className="cursor-pointer transition-transform duration-150 hover:scale-105 hover:border-[#5B2C6F]"
+          >
+            <RefreshCcw className="w-4 h-4 mr-2 text-[#5B2C6F]" />
+            Assign Rider
+          </Button>
+        </div>
       </div>
 
       {/* Recent Orders Table */}
