@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import {
   Search,
-  Bell,
   ChevronDown,
   CheckCircle2,
   Hourglass,
@@ -52,21 +51,37 @@ export default function VendorApprovalPage() {
   const [activeVendor, setActiveVendor] = useState<any>(null);
   const [selectedRows, setSelectedRows] = useState<Record<string, boolean>>({});
 
+interface Vendor {
+  vendor: string;
+  id: string;
+  type: string;
+  cac: string;
+  nin: string;
+  submitted: string;
+  overdue: string;
+  status: string;
+  priority: string;
+  kycFlags: string[];
+}
+
+
   const toggleRow = (id: string) =>
     setSelectedRows((s) => ({ ...s, [id]: !s[id] }));
+const openApprove = (row: Vendor) => {
+  setActiveVendor(row);
+  setApproveOpen(true);
+};
 
-  const openApprove = (row: any) => {
-    setActiveVendor(row);
-    setApproveOpen(true);
-  };
-  const openReject = (row: any) => {
-    setActiveVendor(row);
-    setRejectOpen(true);
-  };
-  const openView = (row: any) => {
-    setActiveVendor(row);
-    setViewOpen(true);
-  };
+const openReject = (row: Vendor) => {
+  setActiveVendor(row);
+  setRejectOpen(true);
+};
+
+const openView = (row: Vendor) => {
+  setActiveVendor(row);
+  setViewOpen(true);
+};
+
 
   return (
     <div className="min-h-screen bg-[#F6F7F8] p-4 sm:p-6 space-y-6 text-sans">
