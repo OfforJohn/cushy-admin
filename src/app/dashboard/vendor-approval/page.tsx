@@ -48,7 +48,8 @@ export default function VendorApprovalPage() {
   const [approveOpen, setApproveOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
-  const [activeVendor, setActiveVendor] = useState<any>(null);
+  const [activeVendor, setActiveVendor] = useState<Vendor | null>(null);
+
   const [selectedRows, setSelectedRows] = useState<Record<string, boolean>>({});
 
 interface Vendor {
