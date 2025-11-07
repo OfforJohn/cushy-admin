@@ -4,6 +4,7 @@ import {
   Utensils,
   Pill,
   ShoppingBasket,
+  BadgeQuestionMark ,
   Heart,
   Truck,
   Users,
@@ -12,7 +13,11 @@ import {
   Settings,
 } from "lucide-react"
 
+
+const pendingVendors = 3; // fetched from API
 export const dashboardRoutes = [
+
+  
   {
     label: "Overview",
     icon: TrendingUp,
@@ -43,6 +48,19 @@ export const dashboardRoutes = [
     label: "Groceries",
     icon: ShoppingBasket,
     href: "/dashboard/groceries",
+  },
+   {
+    label: "Vendor Approval",
+   
+  icon: () => (
+    <div className="relative">
+      <BadgeQuestionMark className={pendingVendors > 0 ? "animate-pulse text-red-500" : ""} />
+      {pendingVendors > 0 && (
+        <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full animate-ping" />
+      )}
+    </div>
+  ),
+  href: "/dashboard/vendor-approval",
   },
   {
     label: "Health",

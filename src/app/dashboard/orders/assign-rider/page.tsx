@@ -75,13 +75,13 @@ export default function AssignRiderPage() {
                 <div className="flex items-center gap-2">
                     {/* Back button */}
                     <button className="flex items-center gap-2 text-[#031B4E] hover:text-[#5B2C6F] transition">
-                       <button
-  onClick={() => router.back()}
-  className="flex items-center gap-2 text-[#031B4E] hover:text-[#5B2C6F] transition cursor-pointer"
->
-  <ArrowLeft className="w-4 h-4" />
-  <span className="text-base font-semibold">Assign Rider</span>
-</button>
+                        <button
+                            onClick={() => router.back()}
+                            className="flex items-center gap-2 text-[#031B4E] hover:text-[#5B2C6F] transition cursor-pointer"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            <span className="text-base font-semibold">Assign Rider</span>
+                        </button>
 
                     </button>
 
