@@ -362,8 +362,15 @@ const openView = (row: Vendor) => {
   );
 }
 
-/* ---------- Helper Components ---------- */
-function StatCard({ title, value, subtitle, icon }: any) {
+/* ---------- Helper Components ---------- */interface StatCardProps {
+  title: string;
+  value: string;
+  subtitle: React.ReactNode;
+  icon: React.ReactNode;
+}
+
+function StatCard({ title, value, subtitle, icon }: StatCardProps) {
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4">
       <div className="flex items-center gap-3">
@@ -377,8 +384,13 @@ function StatCard({ title, value, subtitle, icon }: any) {
     </div>
   );
 }
+interface SmallSelectProps {
+  label: string;
+  icon?: boolean;
+}
 
-function SmallSelect({ label, icon }: any) {
+function SmallSelect({ label, icon }: SmallSelectProps) {
+
   return (
     <button className="bg-white border border-gray-200 px-3 py-2 rounded-md text-sm flex items-center gap-2 w-full sm:w-auto justify-between">
       <span>{label}</span>
@@ -386,8 +398,14 @@ function SmallSelect({ label, icon }: any) {
     </button>
   );
 }
+interface ModalProps {
+  children: React.ReactNode;
+  onClose: () => void;
+  title: string;
+}
 
-function Modal({ children, onClose, title }: any) {
+function Modal({ children, onClose, title }: ModalProps) {
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div onClick={onClose} className="absolute inset-0 bg-black/40" />
