@@ -6,6 +6,7 @@ import { TrendingUp, ShoppingCart, CheckCircle2, Clock, Filter, Download } from 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useToast } from "@/components/ui/toast-provider"
 
 
 
@@ -86,59 +87,78 @@ const orders = [
 
 export default function DashboardOverviewPage() {
   const router = useRouter()
-  
+ 
+  const { Toast, showToast } = useToast() // ✅ match your signin logic
   const [ordersCount, setOrdersCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
+  
+  const [authChecked, setAuthChecked] = useState(false) // ✅ wait until token check completes
 
-  // 🔒 Protect route
 
-useEffect(() => {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    router.push("/auth/signin");
-  }
-}, [router]);
 
-// ✅ Fetch orders stats
-useEffect(() => {
-  const fetchOrderStats = async () => {
-    try {
-      const token = localStorage.getItem("token")
-      if (!token) return
 
-      // 🕒 Get yesterday and today dynamically
-      const today = new Date()
-      const yesterday = new Date()
-      yesterday.setDate(today.getDate() - 1)
+  // 🔒 Route guard
+  useEffect(() => {
+    const token = localStorage.getItem("token")
 
-      const from = yesterday.toISOString().split("T")[0]
-      const to = today.toISOString().split("T")[0]
-
-      const response = await fetch(
-        `https://staging.cushyaccess.com/api/v1/admin/orders-stats?from=${from}&to=${to}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "cushy-access-key": `Bearer ${token}`,
-          },
-        }
-      )
-
-      const data = await response.json()
-      if (response.ok && data?.data) {
-        setOrdersCount(data.data.totalOrders)
-      } else {
-        console.error("Failed to fetch stats:", data?.message)
-      }
-    } catch (err) {
-      console.error("Error fetching order stats:", err)
-    } finally {
-      setLoading(false)
+    if (!token) {
+      router.replace("/auth/signin")
+      return
     }
-  }
 
-  fetchOrderStats()
-}, [])
+    setAuthChecked(true) // ✅ only allow page to load once token exists
+  }, [router])
+
+  useEffect(() => {
+    if (!authChecked) return // wait until token verified
+
+    const fetchOrderStats = async () => {
+      try {
+        const token = localStorage.getItem("token")
+        if (!token) return
+
+        const today = new Date()
+        const yesterday = new Date()
+        yesterday.setDate(today.getDate() - 1)
+
+        const from = yesterday.toISOString().split("T")[0]
+        const to = today.toISOString().split("T")[0]
+
+        const response = await fetch(
+          `https://staging.cushyaccess.com/api/v1/admin/orders-stats?from=${from}&to=${to}`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "cushy-access-key": `Bearer ${token}`,
+            },
+          }
+        )
+
+        const data = await response.json()
+
+        if (response.status === 401 || data?.message === "TOKEN_EXPIRED") {
+          localStorage.removeItem("token")
+          showToast("Session expired. Please sign in again to continue.", "error")
+          setTimeout(() => router.replace("/auth/signin"), 1200)
+          return
+        }
+
+        if (response.ok && data?.data) {
+          setOrdersCount(data.data.totalOrders)
+        }
+      } catch (err) {
+        console.error("Error fetching order stats:", err)
+        showToast("Unable to fetch order statistics", "error")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchOrderStats()
+  }, [authChecked, router, showToast])
+
+  // 🚫 Don’t render dashboard until auth check is done
+  if (!authChecked) return null
 
 
   const metrics = [
