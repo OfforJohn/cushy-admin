@@ -87,27 +87,31 @@ const orders = [
 
 export default function DashboardOverviewPage() {
   const router = useRouter()
- 
+
   const { Toast, showToast } = useToast() // ✅ match your signin logic
   const [ordersCount, setOrdersCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
-  
+
   const [authChecked, setAuthChecked] = useState(false) // ✅ wait until token check completes
 
 
 
 
   // 🔒 Route guard
+
   useEffect(() => {
     const token = localStorage.getItem("token")
 
     if (!token) {
+      // ✅ Always set a flash message for unauthenticated users
+      sessionStorage.setItem("authMessage", "Please sign back in to continue.")
       router.replace("/auth/signin")
       return
     }
 
-    setAuthChecked(true) // ✅ only allow page to load once token exists
+    setAuthChecked(true) // only allow page to load once token exists
   }, [router])
+
 
   useEffect(() => {
     if (!authChecked) return // wait until token verified
@@ -135,11 +139,13 @@ export default function DashboardOverviewPage() {
         )
 
         const data = await response.json()
-
         if (response.status === 401 || data?.message === "TOKEN_EXPIRED") {
           localStorage.removeItem("token")
-          showToast("Session expired. Please sign in again to continue.", "error")
-          setTimeout(() => router.replace("/auth/signin"), 1200)
+
+          // ✅ Save a flash message to display after redirect
+          sessionStorage.setItem("authMessage", "Please sign back in to continue.")
+
+          router.replace("/auth/signin")
           return
         }
 
@@ -162,47 +168,47 @@ export default function DashboardOverviewPage() {
 
 
   const metrics = [
-  {
-    title: "GMV Today",
-    value: "₦2.4M",
-    change: "12.5% vs yesterday",
-    isPositive: true,
-    icon: TrendingUp,
-    iconBg: "bg-green-100",
-    iconColor: "text-green-600",
-  },
- {
+    {
+      title: "GMV Today",
+      value: "₦2.4M",
+      change: "12.5% vs yesterday",
+      isPositive: true,
+      icon: TrendingUp,
+      iconBg: "bg-green-100",
+      iconColor: "text-green-600",
+    },
+    {
       title: "Orders",
       // 👇 dynamically show API value or fallback
       value: loading
         ? "Loading..."
         : ordersCount !== null
-        ? ordersCount.toLocaleString()
-        : "0",
+          ? ordersCount.toLocaleString()
+          : "0",
       isPositive: true,
       icon: ShoppingCart,
       iconBg: "bg-blue-100",
       iconColor: "text-blue-600",
     },
-  {
-    title: "Completion Rate",
-    value: "94.2%",
-    change: "2.1% vs yesterday",
-    isPositive: false,
-    icon: CheckCircle2,
-    iconBg: "bg-purple-100",
-    iconColor: "text-purple-600",
-  },
-  {
-    title: "Avg Delivery Time",
-    value: "28 min",
-    change: "3 min faster",
-    isPositive: true,
-    icon: Clock,
-    iconBg: "bg-orange-100",
-    iconColor: "text-orange-600",
-  },
-]
+    {
+      title: "Completion Rate",
+      value: "94.2%",
+      change: "2.1% vs yesterday",
+      isPositive: false,
+      icon: CheckCircle2,
+      iconBg: "bg-purple-100",
+      iconColor: "text-purple-600",
+    },
+    {
+      title: "Avg Delivery Time",
+      value: "28 min",
+      change: "3 min faster",
+      isPositive: true,
+      icon: Clock,
+      iconBg: "bg-orange-100",
+      iconColor: "text-orange-600",
+    },
+  ]
 
 
 
@@ -212,13 +218,13 @@ export default function DashboardOverviewPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {metrics.map((metric) => (
           <Card key={metric.title}
-          
-           onClick={() => {
-      if (metric.title === "Orders") {
-        router.push("/dashboard/orders") // 👈 navigate when “Orders” card is clicked
-      }
-    }}
-    className="cursor-pointer hover:shadow-md transition-shadow"
+
+            onClick={() => {
+              if (metric.title === "Orders") {
+                router.push("/dashboard/orders") // 👈 navigate when “Orders” card is clicked
+              }
+            }}
+            className="cursor-pointer hover:shadow-md transition-shadow"
           >
             <CardContent className="p-6">
               <div className="flex items-start justify-between">

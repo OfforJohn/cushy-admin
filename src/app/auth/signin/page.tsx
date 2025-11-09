@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { TrendingUp, Users, Shield, Eye, Lock, Mail, LogIn } from "lucide-react"
@@ -19,6 +19,14 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
 
   const { Toast, showToast } = useToast()
+
+  useEffect(() => {
+    const message = sessionStorage.getItem("authMessage")
+    if (message) {
+      showToast(message, "error") // 🔥 show toast after redirect
+      sessionStorage.removeItem("authMessage") // clear it
+    }
+  }, [showToast])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
