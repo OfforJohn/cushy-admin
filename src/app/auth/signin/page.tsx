@@ -23,7 +23,7 @@ export default function LoginPage() {
   useEffect(() => {
     const message = sessionStorage.getItem("authMessage")
     if (message) {
-      showToast(message, "error") // 🔥 show toast after redirect
+      showToast(message, "error") // 🔥 show st after redirect
       sessionStorage.removeItem("authMessage") // clear it
     }
   }, [showToast])
