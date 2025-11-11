@@ -36,7 +36,7 @@ type Rider = {
   company_id: number;
   created_at: string;
   updated_at: string;
-  assigned_zones: any[];
+  assigned_zones: [];
 };
 
   useEffect(() => {

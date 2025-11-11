@@ -40,7 +40,7 @@ export default function AddNewRiderPage() {
 
 const createRider = async () => {
   try {
-    const token = localStorage.getItem("token")
+    const token = localStorage.getItem("token");
 
     const response = await fetch(`${API_BASE_URL}/api/v1/admin/create-rider`, {
       method: "POST",
@@ -49,34 +49,36 @@ const createRider = async () => {
         "cushy-access-key": `Bearer ${token}`,
       },
       body: JSON.stringify(riderData),
-    })
+    });
 
-    const data = await response.json()
+    const data = await response.json();
 
-    // ⚠️ If the server sent an error
     if (!response.ok) {
       const message =
         Array.isArray(data.message)
           ? data.message.join(", ")
-          : data.message || data.error || "Something went wrong"
+          : data.message || data.error || "Something went wrong";
 
-      showToast(message, "error")
-      return
+      showToast(message, "error");
+      return;
     }
 
-    // ✅ Success message from API
-    const successMessage =
-      data.message ||
-      data.statusMessage ||
-      "Rider created successfully!"
+    const successMessage = data.message || data.statusMessage || "Rider created successfully!";
 
-    console.log("Rider created:", data)
-    showToast(successMessage, "success")
-  } catch (error: any) {
-    console.error("Error creating rider:", error)
-    showToast(error.message || "Network error — please try again.", "error")
+    console.log("Rider created:", data);
+    showToast(successMessage, "success");
+  } catch (error: unknown) {
+    console.error("Error creating rider:", error);
+
+    // Type narrowing
+    if (error instanceof Error) {
+      showToast(error.message, "error");
+    } else {
+      showToast("Network error — please try again.", "error");
+    }
   }
-}
+};
+
 
 
 
