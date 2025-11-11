@@ -264,22 +264,23 @@ useEffect(() => {
                   Rider
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  City/Zone
+                  Phone/Number
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Active Jobs
+                  Email
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Success Rate
+                  Vehicle Type
                 </th>
-                <th className=" py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Avg Time
-                </th>
+             
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Wallet
+                  Vehicle Id
+                </th>
+                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Company Id
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -300,21 +301,37 @@ useEffect(() => {
                 .join("")}
             </span>
           </div>
-          <div>
-            <p className="text-sm font-medium text-gray-900">{rider.name}</p>
-            <p className="text-sm text-gray-500">RID{rider.id}</p>
-          </div>
+
+         <div className="flex flex-col">
+  <p className="text-sm font-semibold text-gray-900">{rider.name}</p>
+  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full w-max">
+    RIDER ID{rider.id}
+  </span>
+</div>
+
         </div>
       </td>
 
       {/* City/Zone */}
       <td className="px-6 py-4 whitespace-nowrap">
-        <span className="text-sm text-gray-900">
-          {rider.assigned_zones && rider.assigned_zones.length > 0
-            ? rider.assigned_zones.join(", ")
-            : "-"}
-        </span>
-      </td>
+  <div className="flex items-center gap-2">
+    <svg
+      className="w-4 h-4 text-gray-500"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M3 5.5a2.5 2.5 0 012.5-2.5h1.75a.75.75 0 01.75.75v3a.75.75 0 01-.75.75H6a2.5 2.5 0 01-2.5-2.5zM21 16.5a2.5 2.5 0 01-2.5 2.5h-1.75a.75.75 0 01-.75-.75v-3a.75.75 0 01.75-.75H18a2.5 2.5 0 012.5 2.5z"
+      />
+    </svg>
+    <span className="text-sm text-gray-900">{rider.phone}</span>
+  </div>
+</td>
+
 
       {/* Status */}
       <td className="px-6 py-4 whitespace-nowrap">
@@ -334,11 +351,52 @@ useEffect(() => {
         </span>
       </td>
 
-      {/* Active Jobs, Success Rate, Avg Time, Wallet */}
-      <td className="px-6 py-4 whitespace-nowrap">-</td>
-      <td className="px-6 py-4 whitespace-nowrap">-</td>
-      <td className="px-6 py-4 whitespace-nowrap">-</td>
-      <td className="px-6 py-4 whitespace-nowrap">-</td>
+      {/* Active Jobs, Success Rate, Avg Time, Wallet */}<td className="px-6 py-4 whitespace-nowrap">
+  <div className="flex items-center gap-2">
+    <svg
+      className="w-4 h-4 text-gray-400"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M16 12H8m0 0l4-4m0 0l4 4M12 16v-8"
+      />
+    </svg>
+    <span className="text-sm text-gray-700 truncate max-w-[200px]" title={rider.email}>
+      {rider.email}
+    </span>
+  </div>
+</td>
+<td className="px-6 py-4 whitespace-nowrap">
+  <div className="flex items-center gap-2">
+    {rider.vehicle_type === "motorcycle" && (
+      <Bike className="w-4 h-4 text-purple-600" />
+    )}
+    {rider.vehicle_type === "bicycle" && (
+      <svg className="w-4 h-4 text-green-600" /* your bicycle icon */ />
+    )}
+    {rider.vehicle_type === "car" && (
+      <svg className="w-4 h-4 text-blue-600" /* car icon */ />
+    )}
+    <span className="text-sm text-gray-700 capitalize">{rider.vehicle_type || "-"}</span>
+  </div>
+</td>
+<td className="px-6 py-4 whitespace-nowrap">
+  <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-800">
+    {rider.vehicle_id || "-"}
+  </span>
+</td>
+<td className="px-6 py-4 whitespace-nowrap">
+  <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-800">
+    {rider.company_id || "-"}
+  </span>
+</td>
+
+
 
       {/* Actions */}
       <td className="px-6 py-4 whitespace-nowrap">
