@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { API_BASE_URL } from "@/lib/apiConfig";
 import { useToast } from "@/components/ui/toast-provider"
 
 export default function LoginPage() {
@@ -33,7 +34,7 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const response = await fetch("https://staging.cushyaccess.com/api/v1/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ emailOrMobile, password }),

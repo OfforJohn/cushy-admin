@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Image from "next/image"
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 
 import { useRouter } from "next/navigation"
@@ -55,7 +56,7 @@ export default function OrdersPage() {
         if (!token) return
 
         const response = await fetch(
-          "https://staging.cushyaccess.com/api/v1/orders?filter[status]=PENDING",
+          `${API_BASE_URL}/api/v1/orders?filter[status]=PENDING`,
           {
             headers: {
               "Content-Type": "application/json",

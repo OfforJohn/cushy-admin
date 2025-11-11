@@ -1,15 +1,81 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Bike, Clock, Package, TrendingUp, Download, Plus, RefreshCw, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
+import { API_BASE_URL } from "@/lib/apiConfig"
 
 export default function LogisticsPage() {
   const [activeTab, setActiveTab] = useState("riders")
-    const router = useRouter() // 👈 initialize router
+  const router = useRouter() // 👈 initialize router
+const [riders, setRiders] = useState<Rider[]>([]);
+
+  const [authChecked, setAuthChecked] = useState(false) // ✅ wait until token check completes
+
+
+const activeRidersCount = riders.filter(rider => rider.status === "active").length;
+
+
+type Rider = {
+  id: number;
+  name: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  email: string;
+  status: string; // active, inactive, etc.
+  vehicle_type: string | null;
+  vehicle_id: string;
+  photo_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  last_active: string | null;
+  company_id: number;
+  created_at: string;
+  updated_at: string;
+  assigned_zones: any[];
+};
+
+  useEffect(() => {
+    const token = localStorage.getItem("token")
+
+    if (!token) {
+      // ✅ Always set a flash message for unauthenticated users
+      sessionStorage.setItem("authMessage", "Please sign back in to continue.")
+      router.replace("/auth/signin")
+      return
+    }
+
+    setAuthChecked(true) // only allow page to load once token exists
+  }, [router])
+
+  // ✅ Fetch riders from API
+useEffect(() => {
+  
+    if (!authChecked) return // wait until token verified
+  async function fetchRiders() {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/get-all-riders`, {
+        headers: {
+          "Content-Type": "application/json",
+          "cushy-access-key": `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (!data.error) {
+        setRiders(data.data.drivers); // store all riders
+      }
+    } catch (error) {
+      console.error("Failed to fetch riders:", error);
+    }
+  }
+  fetchRiders();
+}, [authChecked]);
+
 
   return (
     <div className="space-y-6">
@@ -23,13 +89,13 @@ export default function LogisticsPage() {
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
-         <Button
-  className="bg-[#5B2C6F] hover:bg-[#4a2359] text-white cursor-pointer transition-transform duration-150 hover:scale-105"
-  onClick={() => router.push("/dashboard/logistics/Add-New-Rider")}
->
-  <Plus className="w-4 h-4 mr-2" />
-  Add Rider
-</Button>
+          <Button
+            className="bg-[#5B2C6F] hover:bg-[#4a2359] text-white cursor-pointer transition-transform duration-150 hover:scale-105"
+            onClick={() => router.push("/dashboard/logistics/Add-New-Rider")}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Rider
+          </Button>
 
         </div>
       </div>
@@ -39,31 +105,28 @@ export default function LogisticsPage() {
         <div className="flex gap-8">
           <button
             onClick={() => setActiveTab("riders")}
-            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "riders"
+            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === "riders"
                 ? "border-[#5B2C6F] text-[#5B2C6F]"
                 : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
+              }`}
           >
             Riders
           </button>
           <button
             onClick={() => setActiveTab("delivery-jobs")}
-            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "delivery-jobs"
+            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === "delivery-jobs"
                 ? "border-[#5B2C6F] text-[#5B2C6F]"
                 : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
+              }`}
           >
             Delivery Jobs
           </button>
           <button
             onClick={() => setActiveTab("zones")}
-            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "zones"
+            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === "zones"
                 ? "border-[#5B2C6F] text-[#5B2C6F]"
                 : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
+              }`}
           >
             Zones & SLAs
           </button>
@@ -76,7 +139,7 @@ export default function LogisticsPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Active Riders</p>
-              <h3 className="text-3xl font-bold">142</h3>
+              <h3 className="text-3xl font-bold">{activeRidersCount}</h3>
             </div>
             <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center">
               <Bike className="w-6 h-6 text-green-600" />
@@ -223,196 +286,81 @@ export default function LogisticsPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              <tr className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-3">
-                    <Image src="/man.jpg" alt="John Adebayo" width={40} height={40} className="rounded-full" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">John Adebayo</p>
-                      <p className="text-sm text-gray-500">RID001</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">Lagos / Zone A</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-600 mr-1.5"></span>
-                    Online
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">2</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">96.5%</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">22min</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm font-medium text-gray-900">₦12,450</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <Button variant="link" size="sm" className="text-[#5B2C6F] h-auto p-0">
-                      View
-                    </Button>
-                    <Button variant="link" size="sm" className="text-green-600 h-auto p-0">
-                      Payout
-                    </Button>
-                  </div>
-                </td>
-              </tr>
+        <tbody className="bg-white divide-y divide-gray-200">
+  {riders.map((rider) => (
+    <tr key={rider.id} className="hover:bg-gray-50">
+      {/* Rider Name and Avatar */}
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+            <span className="text-sm font-medium text-gray-600">
+              {rider.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")}
+            </span>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-900">{rider.name}</p>
+            <p className="text-sm text-gray-500">RID{rider.id}</p>
+          </div>
+        </div>
+      </td>
 
-              {/* Rider 2 */}
-              <tr className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-3">
-                    <Image
-                      src="/professional-woman-diverse.png"
-                      alt="Michael Okafor"
-                      width={40}
-                      height={40}
-                      className="rounded-full"
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Michael Okafor</p>
-                      <p className="text-sm text-gray-500">RID002</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">Abuja / Zone B</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600 mr-1.5"></span>
-                    On Delivery
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">1</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">94.2%</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">25min</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm font-medium text-gray-900">₦8,320</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <Button variant="link" size="sm" className="text-[#5B2C6F] h-auto p-0">
-                      View
-                    </Button>
-                    <Button variant="link" size="sm" className="text-green-600 h-auto p-0">
-                      Payout
-                    </Button>
-                  </div>
-                </td>
-              </tr>
+      {/* City/Zone */}
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className="text-sm text-gray-900">
+          {rider.assigned_zones && rider.assigned_zones.length > 0
+            ? rider.assigned_zones.join(", ")
+            : "-"}
+        </span>
+      </td>
 
-              {/* Rider 3 */}
-              <tr className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                      <span className="text-sm font-medium text-gray-600">DI</span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">David Ibrahim</p>
-                      <p className="text-sm text-gray-500">RID003</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">Minna / Zone C</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-500 mr-1.5"></span>
-                    Offline
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">0</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">91.8%</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">28min</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm font-medium text-gray-900">₦5,670</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <Button variant="link" size="sm" className="text-[#5B2C6F] h-auto p-0">
-                      View
-                    </Button>
-                    <Button variant="link" size="sm" className="text-green-600 h-auto p-0">
-                      Payout
-                    </Button>
-                  </div>
-                </td>
-              </tr>
+      {/* Status */}
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            rider.status === "active"
+              ? "bg-green-50 text-green-700"
+              : "bg-gray-100 text-gray-700"
+          }`}
+        >
+          <span
+            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+              rider.status === "active" ? "bg-green-600" : "bg-gray-500"
+            }`}
+          ></span>
+          {rider.status.charAt(0).toUpperCase() + rider.status.slice(1)}
+        </span>
+      </td>
 
-              {/* Rider 4 */}
-              <tr className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                      <span className="text-sm font-medium text-gray-600">SE</span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Samuel Eze</p>
-                      <p className="text-sm text-gray-500">RID004</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">Lagos / Zone A</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-50 text-yellow-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-yellow-600 mr-1.5"></span>
-                    Pending Verification
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-400">-</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-400">-</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-400">-</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-400">-</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <Button variant="link" size="sm" className="text-[#5B2C6F] h-auto p-0">
-                      View
-                    </Button>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="text-green-600 h-auto p-0 opacity-50 pointer-events-none"
-                    >
-                      Payout
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
+      {/* Active Jobs, Success Rate, Avg Time, Wallet */}
+      <td className="px-6 py-4 whitespace-nowrap">-</td>
+      <td className="px-6 py-4 whitespace-nowrap">-</td>
+      <td className="px-6 py-4 whitespace-nowrap">-</td>
+      <td className="px-6 py-4 whitespace-nowrap">-</td>
+
+      {/* Actions */}
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          <Button variant="link" size="sm" className="text-[#5B2C6F] h-auto p-0">
+            View
+          </Button>
+          <Button
+            variant="link"
+            size="sm"
+            className={`text-green-600 h-auto p-0 ${
+              rider.status !== "active" ? "opacity-50 pointer-events-none" : ""
+            }`}
+          >
+            Payout
+          </Button>
+        </div>
+      </td>
+    </tr>
+  ))}
+</tbody>
+
           </table>
         </div>
       </div>

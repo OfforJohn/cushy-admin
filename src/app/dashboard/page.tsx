@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/components/ui/toast-provider"
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 
 
@@ -129,7 +130,7 @@ export default function DashboardOverviewPage() {
         const to = today.toISOString().split("T")[0]
 
         const response = await fetch(
-          `https://staging.cushyaccess.com/api/v1/admin/orders-stats?from=${from}&to=${to}`,
+          `${API_BASE_URL}/api/v1/admin/orders-stats?from=${from}&to=${to}`,
           {
             headers: {
               "Content-Type": "application/json",
