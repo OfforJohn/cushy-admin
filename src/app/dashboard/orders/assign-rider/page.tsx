@@ -2,12 +2,7 @@
 
 import {
     MapPin,
-    User,
-    Truck,
-    CheckCircle2,
-    Clock,
     Star,
-    Search,
     ArrowLeft,
 } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -19,6 +14,12 @@ import { useToast } from "@/components/ui/toast-provider"
 type Order = {
     id: string
     totalAmount: string
+}
+
+interface ApiOrder {
+    id?: string;
+    dropOffLocationId?: string;
+    Charges?: string;
 }
 
 export default function AssignRiderPage() {
@@ -84,9 +85,9 @@ export default function AssignRiderPage() {
 
                 if (Array.isArray(data) && data.length > 0) {
                     // Map API response to Order type
-                    const orderData: Order[] = data.map((order: any) => ({
-                        id: order.dropOffLocationId || order.id || "N/A", // fallback if ID not present
-                        totalAmount: order.Charges || "0",
+                    const orderData: Order[] = (data as ApiOrder[]).map((order) => ({
+                        id: order.dropOffLocationId ?? order.id ?? "N/A",
+                        totalAmount: order.Charges ?? "0",
                     }));
 
                     setOrders(orderData);
@@ -300,14 +301,14 @@ export default function AssignRiderPage() {
                             >
                                 {/* LEFT: Avatar + Name + Ratings */}
                                 <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-            <span className="text-sm font-medium text-gray-600">
-              {rider.name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")}
-            </span>
-          </div>
+                                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                        <span className="text-sm font-medium text-gray-600">
+                                            {rider.name
+                                                .split(" ")
+                                                .map((n) => n[0])
+                                                .join("")}
+                                        </span>
+                                    </div>
                                     <div>
                                         <p className="font-medium text-gray-900 text-sm">{rider.name}</p>
                                         <p className="text-xs text-gray-500">ID: {rider.id}</p>
@@ -382,10 +383,16 @@ export default function AssignRiderPage() {
                                                     setRiders((prev) =>
                                                         prev.map((r) => (r.id === rider.id ? { ...r, available: false } : r))
                                                     );
-                                                } catch (error: any) {
-                                                    console.error(error);
-                                                    alert("Error assigning rider: " + error.message);
+                                                } catch (error) {
+                                                    if (error instanceof Error) {
+                                                        console.error(error);
+                                                        alert("Error assigning rider: " + error.message);
+                                                    } else {
+                                                        console.error("Unknown error:", error);
+                                                        alert("An unknown error occurred while assigning the rider.");
+                                                    }
                                                 }
+
                                             }}
                                         >
                                             Assign
