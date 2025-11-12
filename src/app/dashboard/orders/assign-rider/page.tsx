@@ -10,61 +10,138 @@ import {
     Search,
     ArrowLeft,
 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
+import { API_BASE_URL } from "@/lib/apiConfig"
+import { useToast } from "@/components/ui/toast-provider"
+
+type Order = {
+    id: string
+    totalAmount: string
+}
 
 export default function AssignRiderPage() {
-    const [zone, setZone] = useState("All Zones")
-    const [status, setStatus] = useState("Online Only")
+
+    const [riders, setRiders] = useState<Rider[]>([]);
+    const { Toast, showToast } = useToast()
+
+    const [openOrderId, setOpenOrderId] = useState<string | null>(null);
+
     const router = useRouter();
 
-    const riders = [
-        {
-            name: "Michael Adebayo",
-            id: "RDR-001",
-            distance: "2.1 km away",
-            eta: "8 mins",
-            rating: 4.8,
-            reviews: 127,
-            success: 98,
-            online: true,
-            available: true,
-        },
-        {
-            name: "David Okafor",
-            id: "RDR-005",
-            distance: "3.2 km away",
-            eta: "12 mins",
-            rating: 4.9,
-            reviews: 89,
-            success: 95,
-            online: true,
-            available: true,
-        },
-        {
-            name: "Emmanuel Okoro",
-            id: "RDR-012",
-            distance: "4.8 km away",
-            eta: "18 mins",
-            rating: 4.7,
-            reviews: 156,
-            success: 92,
+    const [orders, setOrders] = useState<Order[]>([])
 
 
-        },
-        {
-            name: "Ahmed Musa",
-            id: "RDR-018",
-            distance: "5.4 km away",
-            eta: "22 mins",
-            rating: 4.6,
-            reviews: 203,
-            success: 94,
-            online: true,
-            available: true,
-        },
-    ]
+
+    const [authChecked] = useState(false) // ✅ wait until token check completes
+
+
+    type Rider = {
+        id: number
+        name: string
+        first_name: string
+        last_name: string
+        phone: string
+        email: string
+        status: string // active, inactive, etc.
+        vehicle_type: string | null
+        vehicle_id: string
+        photo_url: string | null
+        latitude: number | null
+        longitude: number | null
+        last_active: string | null
+        company_id: number
+        created_at: string
+        updated_at: string
+        assigned_zones: []
+
+        // ✅ UI-only fields (not from backend)
+        online?: boolean
+        available?: boolean
+        rating?: number
+        reviews?: number
+        success?: number
+        distance?: string
+        eta?: string
+    }
+
+
+    useEffect(() => {
+        async function fetchOrders() {
+            try {
+                const token = localStorage.getItem("token");
+                if (!token) return;
+
+                const res = await fetch(`${API_BASE_URL}/api/v1/orders/get-all-orders`, {
+                    headers: {
+                        "Content-Type": "application/json",
+                        "cushy-access-key": `Bearer ${token}`,
+                    },
+                });
+
+                const data = await res.json();
+
+                if (Array.isArray(data) && data.length > 0) {
+                    // Map API response to Order type
+                    const orderData: Order[] = data.map((order: any) => ({
+                        id: order.dropOffLocationId || order.id || "N/A", // fallback if ID not present
+                        totalAmount: order.Charges || "0",
+                    }));
+
+                    setOrders(orderData);
+                } else {
+                    console.error("Unexpected API response:", data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch orders:", error);
+            }
+        }
+
+        fetchOrders();
+    }, []);
+
+
+
+
+
+
+    // ✅ Fetch riders from API
+    useEffect(() => {
+        async function fetchRiders() {
+            try {
+                const token = localStorage.getItem("token")
+                if (!token) return
+
+                const res = await fetch(`${API_BASE_URL}/api/v1/admin/get-all-riders`, {
+                    headers: {
+                        "Content-Type": "application/json",
+                        "cushy-access-key": `Bearer ${token}`,
+                    },
+                })
+
+                const data = await res.json()
+                if (!data.error && data.data && data.data.drivers) {
+                    const updatedRiders = data.data.drivers.map((rider: Rider) => ({
+                        ...rider,
+                        online: rider.status === "active",   // ✅ mark online if status is active
+                        available: rider.status === "active" // ✅ mark available too
+                    }))
+                    setRiders(updatedRiders)
+                } else {
+                    console.error("Unexpected API response:", data)
+                }
+            } catch (error) {
+                console.error("Failed to fetch riders:", error)
+            }
+        }
+
+        fetchRiders()
+    }, [authChecked])
+
+
+
+
 
     return (
         <div className="min-h-screen bg-gray-50 p-6 space-y-6">
@@ -113,56 +190,58 @@ export default function AssignRiderPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Panel - Order Details */}
                 <div className="space-y-4">
-                    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-5">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-4">Order Details</h3>
+                    {orders.length > 0 ? (
+                        orders.map((order) => {
+                            const isOpen = openOrderId === order.id;
 
-                        <div className="text-sm space-y-3">
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Order ID</span>
-                                <span className="text-[#5B2C6F] font-medium">#ORD-2024-001</span>
-                            </div>
+                            return (
+                                <div key={order.id} className="border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                                    {/* Header */}
+                                    <button
+                                        className="w-full bg-white flex justify-between items-center px-5 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50"
+                                        onClick={() => setOpenOrderId(isOpen ? null : order.id)}
+                                    >
+                                        <span>Order ID: {order.id}</span>
+                                        <span className="font-semibold text-gray-900">₦{order.totalAmount}</span>
+                                    </button>
 
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-600">Customer</span>
-                                <div className="flex items-center gap-2">
-                                    <img
-                                        src="https://i.pravatar.cc/40?img=12"
-                                        alt="avatar"
-                                        className="w-5 h-5 rounded-full object-cover"
-                                    />
-                                    <span className="text-gray-800 font-medium">John Doe</span>
+                                    {/* Collapsible content */}
+                                    {isOpen && (
+                                        <div className="bg-gray-50 p-5 space-y-3 text-sm text-gray-700">
+                                            <div className="flex justify-between">
+                                                <span>Customer:</span>
+                                                <span>John Doe</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>Vendor:</span>
+                                                <span>Tasty Bites Restaurant</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>Business Type:</span>
+                                                <span className="bg-orange-100 text-orange-700 text-xs px-2 py-[2px] rounded-full">Restaurant</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>Total Amount:</span>
+                                                <span className="font-semibold text-gray-900">₦{order.totalAmount}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>Delivery Type:</span>
+                                                <span className="bg-yellow-100 text-yellow-700 text-xs px-2 py-[2px] rounded-full">Express</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>Payment Status:</span>
+                                                <span className="bg-green-100 text-green-600 text-xs px-2 py-[2px] rounded-full font-medium">Paid</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
+                            );
+                        })
+                    ) : (
+                        <p>No orders available</p>
+                    )}
 
-                            </div>
 
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Vendor</span>
-                                <span className="text-gray-800 font-medium">Tasty Bites Restaurant</span>
-                            </div>
-
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Business Type</span>
-                                <span className="bg-orange-100 text-orange-700 text-xs px-2 py-[2px] rounded-full">Restaurant</span>
-                            </div>
-
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Total Amount</span>
-                                <span className="font-semibold text-gray-900">₦12,500</span>
-                            </div>
-
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Delivery Type</span>
-                                <span className="bg-yellow-100 text-yellow-700 text-xs px-2 py-[2px] rounded-full">Express</span>
-                            </div>
-
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-600">Payment Status</span>
-                                <span className="bg-green-100 text-green-600 text-xs px-2 py-[2px] rounded-full font-medium">
-                                    Paid
-                                </span>
-                            </div>
-                        </div>
-                    </div>
                     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-5">
                         <h3 className="text-sm font-semibold text-gray-900 mb-4">Delivery Address</h3>
 
@@ -211,6 +290,7 @@ export default function AssignRiderPage() {
                 </div>
 
                 {/* Right Panel - Riders */}
+                {/* Right Panel - Riders */}
                 <div className="lg:col-span-2 bg-white border border-gray-200 rounded-lg shadow-sm p-5">
                     <div className="space-y-3">
                         {riders.map((rider, i) => (
@@ -220,29 +300,17 @@ export default function AssignRiderPage() {
                             >
                                 {/* LEFT: Avatar + Name + Ratings */}
                                 <div className="flex items-center gap-3">
-                                    <div className="relative">
-                                        <img
-                                            src={`https://i.pravatar.cc/60?img=${i + 1}`}
-                                            alt="rider"
-                                            className="w-12 h-12 rounded-full object-cover"
-                                        />
-
-                                        {/* ✅ Status dot positioned properly */}
-                                        <span
-                                            className={`absolute -bottom-[2px] left-[78%] w-4 h-4 rounded-full border-2 border-white ${rider.online
-                                                ? "bg-green-500"
-                                                : rider.available
-                                                    ? "bg-green-300"
-                                                    : "bg-orange-400"
-                                                }`}
-                                        ></span>
-                                    </div>
+                                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+            <span className="text-sm font-medium text-gray-600">
+              {rider.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")}
+            </span>
+          </div>
                                     <div>
-                                        <p className="font-medium text-gray-900 text-sm">
-                                            {rider.name}
-                                        </p>
+                                        <p className="font-medium text-gray-900 text-sm">{rider.name}</p>
                                         <p className="text-xs text-gray-500">ID: {rider.id}</p>
-
                                         <div className="flex items-center gap-1 mt-1 text-xs text-gray-600">
                                             <Star className="w-3 h-3 text-yellow-500" />
                                             {rider.rating} ({rider.reviews} reviews) • {rider.success}% success rate
@@ -250,7 +318,7 @@ export default function AssignRiderPage() {
                                     </div>
                                 </div>
 
-                                {/* ✅ MIDDLE: Badges + Location + ETA CENTERED */}
+                                {/* MIDDLE: Badges + Location + ETA */}
                                 <div className="flex flex-col items-center justify-center mt-3 sm:mt-0 text-xs text-gray-600">
                                     <div className="flex items-center gap-2">
                                         {rider.online ? (
@@ -259,7 +327,7 @@ export default function AssignRiderPage() {
                                             </span>
                                         ) : (
                                             <span className="bg-gray-100 text-gray-700 text-[11px] px-2 py-[2px] rounded-full">
-                                                I Active Job
+                                                Inactive
                                             </span>
                                         )}
 
@@ -273,17 +341,56 @@ export default function AssignRiderPage() {
                                             </span>
                                         )}
                                     </div>
-
-                                    <p className="mt-1">📍 {rider.distance}</p>
-                                    <p>⏱ ETA: {rider.eta}</p>
+                                    <p className="mt-1">📍 {rider.distance || "N/A"}</p>
+                                    <p>⏱ ETA: {rider.eta || "N/A"}</p>
                                 </div>
 
-                                {/* RIGHT: Button */}
+                                {/* RIGHT: Assign Button */}
                                 <div className="mt-3 sm:mt-0">
                                     {rider.available ? (
-                                        <Button className="bg-[#5B2C6F] hover:bg-[#4a2359] text-white text-xs px-4 py-1.5">
+                                        <Button
+                                            className="bg-[#5B2C6F] hover:bg-[#4a2359] text-white text-xs px-4 py-1.5"
+                                            disabled={!openOrderId} // disable if no order selected
+                                            onClick={async () => {
+                                                if (!openOrderId) return;
+
+                                                // ✅ get token from localStorage
+                                                const token = localStorage.getItem("token");
+                                                if (!token) return alert("No token found. Please login.");
+
+                                                try {
+                                                    const response = await fetch(
+                                                        `${API_BASE_URL}/api/v1/admin/assign-ride-to-order?orderId=${openOrderId}&riderId=${rider.id}`,
+                                                        {
+                                                            method: "POST",
+                                                            headers: {
+                                                                "Content-Type": "application/json",
+                                                                "cushy-access-key": `Bearer ${token}`, // ✅ use cushy-access-key header
+                                                            },
+                                                        }
+                                                    );
+
+                                                    if (!response.ok) {
+                                                        const errorData = await response.json();
+                                                        throw new Error(errorData.message || "Failed to assign rider");
+                                                    }
+
+
+                                                    showToast(`Order ${openOrderId} assigned to rider ${rider.name} successfully!`, "success");
+
+                                                    // Update rider availability locally
+                                                    setRiders((prev) =>
+                                                        prev.map((r) => (r.id === rider.id ? { ...r, available: false } : r))
+                                                    );
+                                                } catch (error: any) {
+                                                    console.error(error);
+                                                    alert("Error assigning rider: " + error.message);
+                                                }
+                                            }}
+                                        >
                                             Assign
                                         </Button>
+
                                     ) : (
                                         <Button
                                             variant="outline"
@@ -296,33 +403,11 @@ export default function AssignRiderPage() {
                             </div>
                         ))}
                     </div>
-
-
-                    {/* Footer Buttons */}
-                    <div className="flex flex-col sm:flex-row items-center justify-end gap-3 mt-6">
-                        <Button
-                            variant="outline"
-                            className="border-gray-300 text-gray-700 text-sm px-4 py-2"
-                        >
-                            Auto-Assign Best Match
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="border-gray-300 text-gray-700 text-sm px-4 py-2"
-                        >
-                            Broadcast to Zone
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="border-gray-300 text-gray-700 text-sm px-4 py-2"
-                        >
-                            Cancel
-                        </Button>
-                        <Button className="bg-[#F39C12] hover:bg-[#D68910] text-white text-sm px-4 py-2">
-                            Send Assignment
-                        </Button>
-                    </div>
                 </div>
+
+                {/* 👇 ADD THIS */}
+                {Toast}
+
             </div>
 
 

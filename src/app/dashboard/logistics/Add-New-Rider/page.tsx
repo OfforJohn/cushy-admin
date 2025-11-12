@@ -10,7 +10,6 @@ import { API_BASE_URL } from "@/lib/apiConfig"
 import { useToast } from "@/components/ui/toast-provider"
 
 export default function AddNewRiderPage() {
-  const [date, setDate] = useState<Date | undefined>(undefined)
     const { Toast, showToast } = useToast()
 
   // Update riderData dynamically

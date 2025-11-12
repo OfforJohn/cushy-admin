@@ -29,10 +29,14 @@ export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState("")
 
   const router = useRouter()
-
   const [loading, setLoading] = useState(true)
   const [pendingOrders, setPendingOrders] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const [totalOrdersToday, setTotalOrdersToday] = useState<number | null>(null)
+const [totalOrdersYesterday, setTotalOrdersYesterday] = useState<number | null>(null)
+const [percentageChange, setPercentageChange] = useState<number | null>(null)
+
 
 
   // ✅ Redirect if no token
@@ -42,6 +46,66 @@ export default function OrdersPage() {
       router.push("/auth/signin")
     }
   }, [router])
+
+
+useEffect(() => {
+  const fetchDailyOrders = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) return
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/orders/get-all-orders`, {
+        headers: {
+          "Content-Type": "application/json",
+          "cushy-access-key": `Bearer ${token}`,
+        },
+      })
+
+      const data = await response.json()
+
+      if (response.ok && Array.isArray(data)) {
+        const today = new Date().toISOString().split("T")[0]
+
+        // Get yesterday’s date (YYYY-MM-DD)
+        const yesterday = new Date()
+        yesterday.setDate(yesterday.getDate() - 1)
+        const yesterdayDate = yesterday.toISOString().split("T")[0]
+
+        // Filter orders created today
+        const todayOrders = data.filter((order) =>
+          order.createdAt.startsWith(today)
+        )
+
+        // Filter orders created yesterday
+        const yesterdayOrders = data.filter((order) =>
+          order.createdAt.startsWith(yesterdayDate)
+        )
+
+        const todayCount = todayOrders.length
+        const yesterdayCount = yesterdayOrders.length
+
+        setTotalOrdersToday(todayCount)
+        setTotalOrdersYesterday(yesterdayCount)
+
+        // Calculate % change (avoid divide by zero)
+        if (yesterdayCount > 0) {
+          const percent = ((todayCount - yesterdayCount) / yesterdayCount) * 100
+          setPercentageChange(percent)
+        } else {
+          setPercentageChange(null)
+        }
+      } else {
+        console.error("Unexpected API response:", data)
+      }
+    } catch (err) {
+      console.error("Error fetching total orders:", err)
+    }
+  }
+
+  fetchDailyOrders()
+}, [])
+
+
 
 
 
@@ -95,18 +159,33 @@ export default function OrdersPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* ... Cards (same as before) */}
         {/* Total Orders */}
-        <div className="bg-white rounded-lg p-6 border border-gray-200">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Total Orders</p>
-              <h3 className="text-3xl font-bold mb-2">2,847</h3>
-              <p className="text-sm text-teal-600">+12% from yesterday</p>
-            </div>
-            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
-              <ShoppingCart className="w-6 h-6 text-blue-500" />
-            </div>
-          </div>
-        </div>
+      <div className="bg-white rounded-lg p-6 border border-gray-200">
+  <div className="flex items-start justify-between">
+    <div>
+      <p className="text-sm text-gray-600 mb-1">Total Orders (Today)</p>
+      <h3 className="text-3xl font-bold mb-2">
+        {totalOrdersToday !== null ? totalOrdersToday : "..."}
+      </h3>
+      <p className="text-sm text-teal-600">
+        {percentageChange !== null && totalOrdersYesterday !== null ? (
+          <>
+            {percentageChange >= 0 ? "+" : ""}
+            {percentageChange.toFixed(1)}% from yesterday
+          </>
+        ) : (
+          totalOrdersYesterday === 0
+            ? "No orders yesterday for comparison"
+            : "Fetching data..."
+        )}
+      </p>
+    </div>
+
+    <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
+      <ShoppingCart className="w-6 h-6 text-blue-500" />
+    </div>
+  </div>
+</div>
+
 
         {/* Pending Orders */}
         <div className="bg-white rounded-lg p-6 border border-gray-200">
@@ -304,8 +383,11 @@ export default function OrdersPage() {
                   <span className="text-sm font-medium text-[#5B2C6F]">#ORD-2024-001</span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-3">
-                    <Image src="/man.jpg" alt="John Doe" width={40} height={40} className="rounded-full" />
+                  <div className="flex items-center gap-3"> <img
+                                            src={`https://i.pravatar.cc/55`}
+                                            alt="rider"
+                                            className="w-12 h-12 rounded-full object-cover"
+                                        />
                     <div>
                       <p className="text-sm font-medium text-gray-900">John Doe</p>
                       <p className="text-sm text-gray-500">+234 801 234 5678</p>
@@ -361,13 +443,11 @@ export default function OrdersPage() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-3">
-                    <Image
-                      src="/professional-woman-diverse.png"
-                      alt="Sarah Johnson"
-                      width={40}
-                      height={40}
-                      className="rounded-full"
-                    />
+                   <img
+                                            src={`https://i.pravatar.cc/61`}
+                                            alt="rider"
+                                            className="w-12 h-12 rounded-full object-cover"
+                                        />
                     <div>
                       <p className="text-sm font-medium text-gray-900">Sarah Johnson</p>
                       <p className="text-sm text-gray-500">+234 802 345 6789</p>
