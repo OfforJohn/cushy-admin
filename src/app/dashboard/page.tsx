@@ -129,7 +129,11 @@ export default function DashboardOverviewPage() {
             fullHouseAddress: o.fullHouseAddress || "N/A",
             customerName: o.customer?.name || "Unknown",
             customerPhone: o.customer?.phone || "--",
-            orderItems: o.orderItems?.map((i: any) => ({ name: i.name, quantity: i.quantity, price: i.price })) || [],
+            orderItems: (o.orderItems || []).map((item) => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: item.price.toString(),
+            })),
             totalAmount: Number(o.totalAmount || 0),
             paymentStatus: Number(o.totalAmount) > 0 ? "Paid" : "Unpaid",
             status: o.status || "Pending",
