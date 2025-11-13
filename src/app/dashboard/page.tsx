@@ -230,19 +230,32 @@ export default function DashboardOverviewPage() {
 
       {/* Recent Orders */}
       <Card>
-        <CardHeader className="flex justify-between items-center">
-          <CardTitle>Recent Orders</CardTitle>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Search orders..."
-              className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
-            <Button size="sm" className="bg-[#5B2C6F] hover:bg-[#4A2359]"><Download className="w-4 h-4 mr-2" />Export</Button>
-          </div>
-        </CardHeader>
+        
+  <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+  <CardTitle>Recent Orders</CardTitle>
+
+  <div className="flex w-full sm:w-auto gap-2">
+    <input
+      type="text"
+      placeholder="Search orders..."
+      className="flex-1 border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+      value={searchQuery}
+      onChange={e => setSearchQuery(e.target.value)}
+    />
+
+    {/* Responsive Export Button */}
+    <Button
+      size="sm"
+      className="bg-[#5B2C6F] hover:bg-[#4A2359] flex items-center justify-center"
+    >
+      {/* Icon only on mobile */}
+      <Download className="w-4 h-4 sm:mr-2" />
+      {/* Show text only on medium+ screens */}
+      <span className="hidden sm:inline">Export</span>
+    </Button>
+  </div>
+</CardHeader>
+
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -306,9 +319,7 @@ export default function DashboardOverviewPage() {
                     <td className="py-3 px-4">
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm" className="text-purple-600 hover:bg-purple-50">View</Button>
-                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600">
-                          <Download className="w-4 h-4" />
-                        </Button>
+  
                       </div>
                     </td>
                   </tr>
