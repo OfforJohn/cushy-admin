@@ -15,11 +15,11 @@ import {
   MoreVertical,
   FileDown,
   RefreshCcw,
+  UserCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import Image from "next/image"
 import { API_BASE_URL } from "@/lib/apiConfig";
 
 
@@ -36,29 +36,29 @@ export default function OrdersPage() {
 
 
   const [totalOrdersToday, setTotalOrdersToday] = useState<number | null>(null)
-  
-const [totalOrdersYesterday, setTotalOrdersYesterday] = useState<number | null>(null)
-const [percentageChange, setPercentageChange] = useState<number | null>(null)
+
+  const [totalOrdersYesterday, setTotalOrdersYesterday] = useState<number | null>(null)
+  const [percentageChange, setPercentageChange] = useState<number | null>(null)
 
 
-interface OrderItem {
-  id: string
-  name: string
-  price: string
-  quantity: number
-  storeId: string
-}
+  interface OrderItem {
+    id: string
+    name: string
+    price: string
+    quantity: number
+    storeId: string
+  }
 
-interface Order {
-  id: string
-  type: string
-  totalItems: number
-  totalAmount: string
-  fullHouseAddress: string
-  additionalPhoneNumber: string
-  createdAt: string
-  orderItems: OrderItem[] | null
-}
+  interface Order {
+    id: string
+    type: string
+    totalItems: number
+    totalAmount: string
+    fullHouseAddress: string
+    additionalPhoneNumber: string
+    createdAt: string
+    orderItems: OrderItem[] | null
+  }
 
 
   // ✅ Redirect if no token
@@ -69,69 +69,69 @@ interface Order {
     }
   }, [router])
 
-useEffect(() => {
-  const fetchDailyOrders = async () => {
-    try {
-      const token = localStorage.getItem("token")
-      if (!token) return
+  useEffect(() => {
+    const fetchDailyOrders = async () => {
+      try {
+        const token = localStorage.getItem("token")
+        if (!token) return
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/orders/get-all-orders`, {
-        headers: {
-          "Content-Type": "application/json",
-          "cushy-access-key": `Bearer ${token}`,
-        },
-      })
+        const response = await fetch(`${API_BASE_URL}/api/v1/orders/get-all-orders`, {
+          headers: {
+            "Content-Type": "application/json",
+            "cushy-access-key": `Bearer ${token}`,
+          },
+        })
 
-      const data = await response.json()
+        const data = await response.json()
 
-      if (response.ok && Array.isArray(data)) {
-        setOrders(data)
+        if (response.ok && Array.isArray(data)) {
+          setOrders(data)
 
-        // ✅ Get today and yesterday
-        const today = new Date().toISOString().split("T")[0]
-        const yesterday = new Date()
-        yesterday.setDate(yesterday.getDate() - 1)
-        const yesterdayDate = yesterday.toISOString().split("T")[0]
+          // ✅ Get today and yesterday
+          const today = new Date().toISOString().split("T")[0]
+          const yesterday = new Date()
+          yesterday.setDate(yesterday.getDate() - 1)
+          const yesterdayDate = yesterday.toISOString().split("T")[0]
 
-        // ✅ Filter orders
-        const todayOrders = data.filter(order =>
-          order.createdAt.startsWith(today)
-        )
-        const yesterdayOrders = data.filter(order =>
-          order.createdAt.startsWith(yesterdayDate)
-        )
+          // ✅ Filter orders
+          const todayOrders = data.filter(order =>
+            order.createdAt.startsWith(today)
+          )
+          const yesterdayOrders = data.filter(order =>
+            order.createdAt.startsWith(yesterdayDate)
+          )
 
-        // ✅ Extract item names for logging or display
- data.forEach((order: Order) => {
-  const itemNames = order.orderItems?.map((item: OrderItem) => item.name) || []
-  console.log(`🛒 Order ${order.id} has items:`, itemNames.join(", "))
-})
+          // ✅ Extract item names for logging or display
+          data.forEach((order: Order) => {
+            const itemNames = order.orderItems?.map((item: OrderItem) => item.name) || []
+            console.log(`🛒 Order ${order.id} has items:`, itemNames.join(", "))
+          })
 
 
-        // ✅ Count totals
-        const todayCount = todayOrders.length
-        const yesterdayCount = yesterdayOrders.length
+          // ✅ Count totals
+          const todayCount = todayOrders.length
+          const yesterdayCount = yesterdayOrders.length
 
-        setTotalOrdersToday(todayCount)
-        setTotalOrdersYesterday(yesterdayCount)
+          setTotalOrdersToday(todayCount)
+          setTotalOrdersYesterday(yesterdayCount)
 
-        // ✅ Calculate % change safely
-        if (yesterdayCount > 0) {
-          const percent = ((todayCount - yesterdayCount) / yesterdayCount) * 100
-          setPercentageChange(percent)
+          // ✅ Calculate % change safely
+          if (yesterdayCount > 0) {
+            const percent = ((todayCount - yesterdayCount) / yesterdayCount) * 100
+            setPercentageChange(percent)
+          } else {
+            setPercentageChange(null)
+          }
         } else {
-          setPercentageChange(null)
+          console.error("Unexpected orders response:", data)
         }
-      } else {
-        console.error("Unexpected orders response:", data)
+      } catch (err) {
+        console.error("Error fetching total orders:", err)
       }
-    } catch (err) {
-      console.error("Error fetching total orders:", err)
     }
-  }
 
-  fetchDailyOrders()
-}, [])
+    fetchDailyOrders()
+  }, [])
 
 
 
@@ -178,7 +178,7 @@ useEffect(() => {
     fetchPendingOrders()
   }, [])
 
-    // ✅ Filter orders by search query
+  // ✅ Filter orders by search query
   const filteredOrders = orders.filter((order) =>
     order.id.toLowerCase().includes(searchQuery.toLowerCase())
   )
@@ -193,32 +193,32 @@ useEffect(() => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* ... Cards (same as before) */}
         {/* Total Orders */}
-      <div className="bg-white rounded-lg p-6 border border-gray-200">
-  <div className="flex items-start justify-between">
-    <div>
-      <p className="text-sm text-gray-600 mb-1">Total Orders (Today)</p>
-      <h3 className="text-3xl font-bold mb-2">
-        {totalOrdersToday !== null ? totalOrdersToday : "..."}
-      </h3>
-      <p className="text-sm text-teal-600">
-        {percentageChange !== null && totalOrdersYesterday !== null ? (
-          <>
-            {percentageChange >= 0 ? "+" : ""}
-            {percentageChange.toFixed(1)}% from yesterday
-          </>
-        ) : (
-          totalOrdersYesterday === 0
-            ? "No orders yesterday for comparison"
-            : "Fetching data..."
-        )}
-      </p>
-    </div>
+        <div className="bg-white rounded-lg p-6 border border-gray-200">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Total Orders (Today)</p>
+              <h3 className="text-3xl font-bold mb-2">
+                {totalOrdersToday !== null ? totalOrdersToday : "..."}
+              </h3>
+              <p className="text-sm text-teal-600">
+                {percentageChange !== null && totalOrdersYesterday !== null ? (
+                  <>
+                    {percentageChange >= 0 ? "+" : ""}
+                    {percentageChange.toFixed(1)}% from yesterday
+                  </>
+                ) : (
+                  totalOrdersYesterday === 0
+                    ? "No orders yesterday for comparison"
+                    : "Fetching data..."
+                )}
+              </p>
+            </div>
 
-    <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
-      <ShoppingCart className="w-6 h-6 text-blue-500" />
-    </div>
-  </div>
-</div>
+            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
+              <ShoppingCart className="w-6 h-6 text-blue-500" />
+            </div>
+          </div>
+        </div>
 
 
         {/* Pending Orders */}
@@ -353,25 +353,25 @@ useEffect(() => {
           {/* Update Orders */}
           <Button
             variant="outline"
-            onClick={() => router.push("ORD-2024-001264")}
+            onClick={() => router.push("/dashboard/orders/assign-riders")}
             className="cursor-pointer transition-transform duration-150 hover:scale-105 hover:border-[#5B2C6F]"
           >
             <RefreshCcw className="w-4 h-4 mr-2 text-[#5B2C6F]" />
             Update Orders
           </Button>
-     <Button
+          <Button
             variant="outline"
             onClick={() => router.push("/dashboard/orders/assign-rider")}
             className="cursor-pointer transition-transform duration-150 hover:scale-105 hover:border-[#5B2C6F]"
           >
-            <RefreshCcw className="w-4 h-4 mr-2 text-[#5B2C6F]" />
+            <UserCheck className="w-4 h-4 mr-2 text-[#5B2C6F]" />    
             Assign Rider
           </Button>
         </div>
       </div>
 
       {/* Recent Orders Table */}
-   <div className="bg-white rounded-lg border border-gray-200">
+      <div className="bg-white rounded-lg border border-gray-200">
         <div className="p-6 border-b border-gray-200">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <h2 className="text-xl font-bold">Recent Orders</h2>
@@ -437,9 +437,9 @@ useEffect(() => {
                         </p>
                       </div>
                     </td>
-                  
+
                     <td className="px-6 py-4 text-sm text-gray-900">
-                    {order.orderItems?.map(item => item.name).join(", ")}
+                      {order.orderItems?.map(item => item.name).join(", ")}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       {order.totalItems}
@@ -453,7 +453,7 @@ useEffect(() => {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                    
+
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
