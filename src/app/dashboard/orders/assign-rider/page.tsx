@@ -412,7 +412,6 @@ export default function AssignRiderPage() {
                     </div>
                 </div>
 
-                {/* 👇 ADD THIS */}
                 {Toast}
 
             </div>
