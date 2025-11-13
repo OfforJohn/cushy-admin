@@ -47,6 +47,7 @@ export default function OrdersPage() {
     price: string
     quantity: number
     storeId: string
+    isAvailable: boolean
   }
 
   interface Order {
@@ -400,9 +401,9 @@ export default function OrdersPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name of items</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Num of items</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
+             
+               
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
@@ -447,14 +448,20 @@ export default function OrdersPage() {
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
                       ₦{Number(order.totalAmount).toLocaleString()}
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-700">
-                        {Number(order.totalAmount) > 0 ? "Paid" : "Unpaid"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
+                   <td className="px-6 py-4">
+  <span
+    className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium 
+      ${order.orderItems?.every(item => item.isAvailable)
+        ? "bg-green-50 text-green-700"
+        : "bg-red-50 text-red-700"}`}
+  >
+    {order.orderItems?.every(item => item.isAvailable)
+      ? "Available"
+      : "Unavailable"}
+  </span>
+</td>
 
-                    </td>
+
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <Button variant="ghost" size="icon" className="h-8 w-8">

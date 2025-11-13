@@ -12,6 +12,7 @@ import { API_BASE_URL } from "@/lib/apiConfig"
 interface OrderItem {
   name: string
   quantity: number
+  isAvailable: boolean
   price: string
 }
 
@@ -124,7 +125,7 @@ export default function DashboardOverviewPage() {
         })
         const data = await res.json()
         if (res.ok && Array.isArray(data)) {
-  const formatted: Order[] = (data as OrderResponse[]).map((o) => ({
+          const formatted: Order[] = (data as OrderResponse[]).map((o) => ({
             id: o.id,
             fullHouseAddress: o.fullHouseAddress || "N/A",
             customerName: o.customer?.name || "Unknown",
@@ -133,11 +134,13 @@ export default function DashboardOverviewPage() {
               name: item.name,
               quantity: item.quantity,
               price: item.price.toString(),
+              isAvailable: true, // ✅ correct place
             })),
             totalAmount: Number(o.totalAmount || 0),
             paymentStatus: Number(o.totalAmount) > 0 ? "Paid" : "Unpaid",
             status: o.status || "Pending",
           }))
+
           setRecentOrders(formatted)
         } else {
           console.error("Unexpected response:", data)
@@ -161,7 +164,7 @@ export default function DashboardOverviewPage() {
 
   const metrics = [
     { title: "GMV Today", value: "₦2.4M", change: "12.5% vs yesterday", isPositive: true, icon: TrendingUp, iconBg: "bg-green-100", iconColor: "text-green-600" },
-    { title: "Orders", value: loading ? "Loading..." : ordersCount?.toLocaleString() || "0", isPositive: true, icon: ShoppingCart, iconBg: "bg-blue-100", iconColor: "text-blue-600" },
+    { title: "Admin Orders", value: loading ? "Loading..." : ordersCount?.toLocaleString() || "0", isPositive: true, icon: ShoppingCart, iconBg: "bg-blue-100", iconColor: "text-blue-600" },
     { title: "Completion Rate", value: "94.2%", change: "2.1% vs yesterday", isPositive: false, icon: CheckCircle2, iconBg: "bg-purple-100", iconColor: "text-purple-600" },
     { title: "Avg Delivery Time", value: "28 min", change: "3 min faster", isPositive: true, icon: Clock, iconBg: "bg-orange-100", iconColor: "text-orange-600" },
   ]
@@ -171,7 +174,7 @@ export default function DashboardOverviewPage() {
       {/* Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {metrics.map(metric => (
-          <Card key={metric.title} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => metric.title === "Orders" && router.push("/dashboard/orders")}>
+          <Card key={metric.title} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => metric.title === "Admin Orders" && router.push("/dashboard/orders")}>
             <CardContent className="p-6 flex justify-between items-start">
               <div className="space-y-2">
                 <p className="text-sm text-gray-600">{metric.title}</p>
@@ -247,12 +250,12 @@ export default function DashboardOverviewPage() {
                 <tr className="border-b border-gray-200">
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Full House Address</th>
-                  <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Name of Items</th>
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Num of Items</th>
-                  <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
-                  <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-                  <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
+
+                  <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
+
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
@@ -263,65 +266,52 @@ export default function DashboardOverviewPage() {
                 ) : filteredOrders.length === 0 ? (
                   <tr><td colSpan={10} className="py-6 text-center text-gray-500">No orders found.</td></tr>
                 ) : filteredOrders.map(order => (
-                <tr key={order.id} className="bg-white hover:bg-gray-50 transition-colors border-b border-gray-200">
-  <td className="py-3 px-4 text-sm font-medium text-gray-900">{order.id}</td>
+                  <tr key={order.id} className="bg-white hover:bg-gray-50 transition-colors border-b border-gray-200">
+                    <td className="py-3 px-4 text-sm font-medium text-gray-900">{order.id}</td>
 
-  <td className="py-3 px-4 text-sm text-gray-700">{order.fullHouseAddress}</td>
+                    <td className="py-3 px-4 text-sm text-gray-700">{order.fullHouseAddress}</td>
 
-  <td className="py-3 px-4">
-    <div className="flex items-center gap-2">
-      <div className="flex flex-col">
-        <span className="font-medium text-gray-900">{order.customerName}</span>
-        <span className="text-xs text-gray-500">{order.customerPhone}</span>
-      </div>
-    </div>
-  </td>
 
-  <td className="py-3 px-4 text-sm text-gray-700">
-    {order.orderItems.map((i, idx) => (
-      <span key={idx} className="inline-block mr-1 px-2 py-0.5 bg-purple-50 text-purple-800 text-xs rounded">
-        {i.name}
-      </span>
-    ))}
-  </td>
 
-  <td className="py-3 px-4 text-sm text-gray-700">{order.orderItems.reduce((sum, i) => sum + i.quantity, 0)}</td>
+                    <td className="py-3 px-4 text-sm text-gray-700">
+                      {order.orderItems.map((i, idx) => (
+                        <span key={idx} className="inline-block mr-1 px-2 py-0.5 bg-purple-50 text-purple-800 text-xs rounded">
+                          {i.name}
+                        </span>
+                      ))}
+                    </td>
 
-  <td className="py-3 px-4 text-sm text-gray-700">
-    {order.orderItems.map(i => `₦${Number(i.price).toLocaleString()}`).join(", ")}
-  </td>
+                    <td className="py-3 px-4 text-sm text-gray-700">{order.orderItems.reduce((sum, i) => sum + i.quantity, 0)}</td>
 
-  <td className="py-3 px-4 text-sm font-semibold text-gray-900">₦{order.totalAmount.toLocaleString()}</td>
 
-  <td className="py-3 px-4">
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-      order.paymentStatus === "Paid" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-    }`}>
-      {order.paymentStatus}
-    </span>
-  </td>
 
-  <td className="py-3 px-4">
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-      order.status === "Completed"
-        ? "bg-green-100 text-green-800"
-        : order.status === "Pending"
-        ? "bg-yellow-100 text-yellow-800"
-        : "bg-gray-100 text-gray-800"
-    }`}>
-      {order.status}
-    </span>
-  </td>
+                    <td className="py-3 px-4 text-sm font-semibold text-gray-900">₦{order.totalAmount.toLocaleString()}</td>
 
-  <td className="py-3 px-4">
-    <div className="flex gap-2">
-      <Button variant="outline" size="sm" className="text-purple-600 hover:bg-purple-50">View</Button>
-      <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600">
-        <Download className="w-4 h-4" />
-      </Button>
-    </div>
-  </td>
-</tr>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium 
+      ${order.orderItems?.every(item => item.isAvailable)
+                            ? "bg-green-50 text-green-700"
+                            : "bg-red-50 text-red-700"}`}
+                      >
+                        {order.orderItems?.every(item => item.isAvailable)
+                          ? "Available"
+                          : "Unavailable"}
+                      </span>
+                    </td>
+
+
+
+
+                    <td className="py-3 px-4">
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="text-purple-600 hover:bg-purple-50">View</Button>
+                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600">
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
 
                 ))}
               </tbody>
