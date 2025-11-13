@@ -56,6 +56,13 @@ export default function OrderDetailsPage() {
 
   const { Toast, showToast } = useToast()
 
+
+  interface UpdateOrderStatusBody {
+  status: string;
+  cancellationReason?: string;
+}
+
+
   const updateOrderStatus = async () => {
   if (!selectedOrder) {
     alert("Please select an order first.");
@@ -70,7 +77,8 @@ export default function OrderDetailsPage() {
     }
 
     // Build the request body according to API rules
-    const body: any = { status };
+  
+    const body: UpdateOrderStatusBody = { status };
 
     if (status === "CANCELLED") {
       if (!reason.trim()) {

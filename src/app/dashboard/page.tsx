@@ -8,17 +8,32 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast-provider"
 import { API_BASE_URL } from "@/lib/apiConfig"
 
-interface Customer {
-  name: string
-  phone: string
-  avatar?: string
-}
 
 interface OrderItem {
   name: string
   quantity: number
   price: string
 }
+
+interface OrderItemResponse {
+  name: string;
+  quantity: number;
+  price: number;
+}
+
+interface OrderResponse {
+  id: string;
+  fullHouseAddress?: string;
+  customer?: {
+    name?: string;
+    phone?: string;
+    avatar?: string;
+  };
+  orderItems?: OrderItemResponse[];
+  totalAmount?: number | string;
+  status?: string;
+}
+
 
 interface Order {
   id: string
@@ -109,7 +124,7 @@ export default function DashboardOverviewPage() {
         })
         const data = await res.json()
         if (res.ok && Array.isArray(data)) {
-          const formatted: Order[] = data.map((o: any) => ({
+  const formatted: Order[] = (data as OrderResponse[]).map((o) => ({
             id: o.id,
             fullHouseAddress: o.fullHouseAddress || "N/A",
             customerName: o.customer?.name || "Unknown",
