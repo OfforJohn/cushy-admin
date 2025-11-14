@@ -426,7 +426,7 @@ export default function OrdersPage() {
                 filteredOrders.map((order) => (
                   <tr key={order.fullHouseAddress} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm font-medium text-[#5B2C6F]">
-                      #{order.fullHouseAddress.slice(0, 8).toUpperCase()}
+                      #{(order.fullHouseAddress  ?? "Unknown").slice(0, 8).toUpperCase()}
                     </td>
                     <td className="px-6 py-4">
                       <div>
