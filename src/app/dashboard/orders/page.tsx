@@ -419,7 +419,7 @@ export default function OrdersPage() {
               ) : filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="text-center py-6 text-gray-500">
-                    No recent orders found.
+                    No recent orders found
                   </td>
                 </tr>
               ) : (
