@@ -407,7 +407,7 @@ export default function AssignRiderPage() {
 
                                                 try {
                                                     const response = await fetch(
-                                                        `${API_BASE_URL}/api/v1/admin/assign-ride-to-order?orderId=${openOrderId}&riderId=${rider.id}`,
+                                                        `${API_BASE_URL}/api/v1/admin/assign-rider-to-order?orderId=${openOrderId}&riderId=${rider.id}`,
                                                         {
                                                             method: "POST",
                                                             headers: {
