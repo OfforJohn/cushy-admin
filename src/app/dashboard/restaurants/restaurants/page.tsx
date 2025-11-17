@@ -202,136 +202,123 @@ export default function RestaurantsDashboard() {
 
       {/* RESPONSIVE TABLE */}
       {/* Responsive Restaurants Table */}
-      <div className="bg-white rounded-xl border overflow-hidden mt-6">
-        <div className="w-full overflow-x-auto">
-          <table className="min-w-max text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr className="text-gray-600 text-xs">
-                <th className="px-4 py-3 w-10 md:px-6 md:py-4">
-                  <input type="checkbox" className="rounded" />
-                </th>
-                <th className="px-4 py-3 md:px-6 md:py-4 font-medium">RESTAURANT</th>
-                <th className="px-4 py-3 md:px-6 md:py-4 font-medium">OWNER</th>
-                <th className="px-4 py-3 md:px-6 md:py-4 font-medium">LOCATION</th>
-                <th className="px-4 py-3 md:px-6 md:py-4 font-medium">CONTACT</th>
-                <th className="px-4 py-3 md:px-6 md:py-4 font-medium text-center">
-                  BRANCHES
-                </th>
-                <th className="px-4 py-3 md:px-6 md:py-4 font-medium text-center">
-                  PRODUCTS
-                </th>
-                <th className="px-4 py-3 md:px-6 md:py-4 font-medium text-right">
-                  STATUS
-                </th>
-              </tr>
-            </thead>
+    {/* RESPONSIVE TABLE */}
+<div className="bg-white rounded-xl border overflow-hidden mt-6">
+  <div className="w-full overflow-x-auto">
+    <table className="w-full table-auto text-sm">
+      <thead className="bg-gray-50 border-b">
+        <tr className="text-gray-600 text-xs">
+          <th className="px-3 py-3 w-10">
+            <input type="checkbox" className="rounded" />
+          </th>
+          <th className="px-3 py-3 font-medium text-left">RESTAURANT</th>
+          <th className="px-3 py-3 font-medium text-left">OWNER</th>
+          <th className="px-3 py-3 font-medium text-left">LOCATION</th>
+          <th className="px-3 py-3 font-medium text-left">CONTACT</th>
+          <th className="px-3 py-3 font-medium text-center">BRANCHES</th>
+          <th className="px-3 py-3 font-medium text-center">PRODUCTS</th>
+          <th className="px-3 py-3 font-medium text-right">STATUS</th>
+        </tr>
+      </thead>
 
-            <tbody>
-              {restaurants.map((r) => (
-                <tr
-                  key={r.id}
-                  className="border-b hover:bg-gray-50/70 transition"
-                >
-                  <td className="px-4 py-4 md:px-6 md:py-5 align-top">
-                    <input type="checkbox" className="rounded" />
-                  </td>
+      <tbody>
+        {restaurants.map((r) => (
+          <tr key={r.id} className="border-b hover:bg-gray-50 transition">
+            {/* Checkbox */}
+            <td className="px-3 py-3 align-top">
+              <input type="checkbox" className="rounded" />
+            </td>
 
-                  <td className="px-4 py-4 md:px-6 md:py-5 align-top">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg overflow-hidden">
-                        <Image
-                          src={r.image ?? "/rest-thumb-1.png"}
-                          alt={r.name}
-                          width={48}
-                          height={48}
-                          className="object-cover"
-                        />
-                      </div>
+            {/* Restaurant */}
+            <td className="px-3 py-3 align-top">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg overflow-hidden flex-shrink-0">
+                  <Image
+                    src={r.image ?? "/rest-thumb-1.png"}
+                    alt={r.name}
+                    width={48}
+                    height={48}
+                    className="object-cover"
+                  />
+                </div>
+                <div>
+                  <div className="font-medium text-sm md:text-base">{r.name}</div>
+                  <div className="text-xs text-gray-400">#{r.id.toUpperCase()}</div>
+                </div>
+              </div>
+            </td>
 
-                      <div>
-                        <div className="font-medium text-sm md:text-base">
-                          {r.name}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          #{r.id.toUpperCase()}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
+            {/* Owner */}
+            <td className="px-3 py-3 align-top">
+              <div className="flex items-center gap-3">
+                <div className="w-7 h-7 md:w-8 md:h-8 rounded-full overflow-hidden flex-shrink-0">
+                  <Image
+                    src={r.ownerAvatar ?? "/default-owner-1.png"}
+                    alt={r.owner}
+                    width={32}
+                    height={32}
+                    className="object-cover"
+                  />
+                </div>
+                <div>
+                  <div className="text-sm font-medium">{r.owner}</div>
+                  <div className="text-xs text-gray-400">Owner</div>
+                </div>
+              </div>
+            </td>
 
-                  {/* OWNER */}
-                  <td className="px-4 py-4 md:px-6 md:py-5 align-top">
-                    <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 md:w-8 md:h-8 rounded-full overflow-hidden">
-                        <Image
-                          src={r.ownerAvatar ?? "/default-owner-1.png"}
-                          alt={r.owner}
-                          width={32}
-                          height={32}
-                          className="object-cover"
-                        />
-                      </div>
+            {/* Location */}
+            <td className="px-3 py-3 align-top">
+              <div className="font-medium">{r.city ?? "N/A"}</div>
+              <div className="text-xs text-gray-400">{r.location ?? "N/A"}</div>
+            </td>
 
-                      <div>
-                        <div className="text-sm font-medium">{r.owner}</div>
-                        <div className="text-xs text-gray-400">Owner</div>
-                      </div>
-                    </div>
-                  </td>
+            {/* Contact */}
+            <td className="px-3 py-3 align-top">
+              <div className="text-sm font-medium">{r.phone ?? "N/A"}</div>
+              <div className="text-xs text-gray-400">{r.email ?? "N/A"}</div>
+            </td>
 
-                  {/* LOCATION */}
-                  <td className="px-4 py-4 md:px-6 md:py-5 align-top">
-                    <div className="font-medium">{r.city}</div>
-                    <div className="text-xs text-gray-400">{r.location}</div>
-                  </td>
+            {/* Branches */}
+            <td className="px-3 py-3 align-top text-center">
+              <span className="font-medium">{r.branches ?? 0}</span>
+            </td>
 
-                  {/* CONTACT */}
-                  <td className="px-4 py-4 md:px-6 md:py-5 align-top">
-                    <div className="text-sm font-medium">{r.phone}</div>
-                    <div className="text-xs text-gray-400">{r.email}</div>
-                  </td>
+            {/* Products */}
+            <td className="px-3 py-3 align-top text-center">
+              <span className="font-medium">{r.products ?? 0}</span>
+            </td>
 
-                  {/* BRANCHES */}
-                  <td className="px-4 py-4 md:px-6 md:py-5 align-top text-center">
-                    <span className="font-medium">{r.branches}</span>
-                  </td>
+            {/* Status */}
+            <td className="px-3 py-3 align-top text-right">
+              {r.status === "Verified" && (
+                <span className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                  ✓ Verified
+                </span>
+              )}
+              {r.status === "Pending" && (
+                <span className="px-3 py-1 bg-yellow-100 text-yellow-600 text-xs rounded-full">
+                  Pending
+                </span>
+              )}
+              {r.status === "Suspended" && (
+                <span className="px-3 py-1 bg-red-100 text-red-600 text-xs rounded-full">
+                  Suspended
+                </span>
+              )}
+              {r.status === "Inactive" && (
+                <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                  Inactive
+                </span>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</div>
 
-                  {/* PRODUCTS */}
-                  <td className="px-4 py-4 md:px-6 md:py-5 align-top text-center">
-                    <span className="font-medium">{r.products}</span>
-                  </td>
-
-                  {/* STATUS */}
-                  <td className="px-4 py-4 md:px-6 md:py-5 align-top">
-                    <div className="flex justify-end">
-                      {r.status === "Verified" && (
-                        <span className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                          ✓ Verified
-                        </span>
-                      )}
-                      {r.status === "Pending" && (
-                        <span className="px-3 py-1 bg-yellow-100 text-yellow-600 text-xs rounded-full">
-                          Pending
-                        </span>
-                      )}
-                      {r.status === "Suspended" && (
-                        <span className="px-3 py-1 bg-red-100 text-red-600 text-xs rounded-full">
-                          Suspended
-                        </span>
-                      )}
-                      {r.status === "Inactive" && (
-                        <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                          Inactive
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
 
       <p className="text-gray-400 text-xs mt-4">
