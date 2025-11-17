@@ -24,7 +24,6 @@ interface OrderItemResponse {
 
 interface OrderResponse {
   id: string;
-  fullHouseAddress?: string;
   customer?: {
     name?: string;
     phone?: string;
@@ -33,19 +32,35 @@ interface OrderResponse {
   orderItems?: OrderItemResponse[];
   totalAmount?: number | string;
   status?: string;
+
+  orderTracking?: OrderTracking[];
+
+  additionalPhoneNumber: number;
 }
 
 
 interface Order {
   id: string
-  fullHouseAddress: string
   customerName: string
+
+  additionalPhoneNumber: number;
   customerPhone: string
   orderItems: OrderItem[]
   totalAmount: number
   paymentStatus: "Paid" | "Unpaid"
   status: "Completed" | "Pending" | string
+
+  orderTracking: OrderTracking[];   // ← added
 }
+
+interface OrderTracking {
+  id: string;
+  orderStatus: string;
+  description?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 
 const queueItems = [
   { title: "New Orders", description: "Awaiting vendor acceptance", count: 23, bgColor: "bg-yellow-50", borderColor: "border-yellow-200", badgeColor: "bg-orange-500", dotColor: "bg-orange-400" },
@@ -58,6 +73,8 @@ const alerts = [
   { title: "Support Tickets", description: "Awaiting response", count: 34, bgColor: "bg-purple-50", borderColor: "border-purple-200", badgeColor: "bg-purple-600", dotColor: "bg-purple-500" },
   { title: "Consultations", description: "Booked for today", count: 67, bgColor: "bg-yellow-50", borderColor: "border-yellow-200", badgeColor: "bg-orange-500", dotColor: "bg-orange-400" },
 ]
+
+
 
 export default function DashboardOverviewPage() {
   const router = useRouter()
@@ -127,7 +144,7 @@ export default function DashboardOverviewPage() {
         if (res.ok && Array.isArray(data)) {
           const formatted: Order[] = (data as OrderResponse[]).map((o) => ({
             id: o.id,
-            fullHouseAddress: o.fullHouseAddress || "N/A",
+            additionalPhoneNumber: o.additionalPhoneNumber,
             customerName: o.customer?.name || "Unknown",
             customerPhone: o.customer?.phone || "--",
             orderItems: (o.orderItems || []).map((item) => ({
@@ -139,6 +156,8 @@ export default function DashboardOverviewPage() {
             totalAmount: Number(o.totalAmount || 0),
             paymentStatus: Number(o.totalAmount) > 0 ? "Paid" : "Unpaid",
             status: o.status || "Pending",
+            orderTracking: o.orderTracking || [],
+
           }))
 
           setRecentOrders(formatted)
@@ -158,7 +177,6 @@ export default function DashboardOverviewPage() {
 
   const filteredOrders = recentOrders.filter(
     (o) =>
-      o.fullHouseAddress.toLowerCase().includes(searchQuery.toLowerCase()) ||
       o.customerName.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
@@ -230,44 +248,44 @@ export default function DashboardOverviewPage() {
 
       {/* Recent Orders */}
       <Card>
-        
-  <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-  <CardTitle>Recent Orders</CardTitle>
 
-  <div className="flex w-full sm:w-auto gap-2">
-    <input
-      type="text"
-      placeholder="Search orders..."
-      className="flex-1 border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-      value={searchQuery}
-      onChange={e => setSearchQuery(e.target.value)}
-    />
+        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <CardTitle>Recent Orders</CardTitle>
 
-    {/* Responsive Export Button */}
-    <Button
-      size="sm"
-      className="bg-[#5B2C6F] hover:bg-[#4A2359] flex items-center justify-center"
-    >
-      {/* Icon only on mobile */}
-      <Download className="w-4 h-4 sm:mr-2" />
-      {/* Show text only on medium+ screens */}
-      <span className="hidden sm:inline">Export</span>
-    </Button>
-  </div>
-</CardHeader>
+          <div className="flex w-full sm:w-auto gap-2">
+            <input
+              type="text"
+              placeholder="Search orders..."
+              className="flex-1 border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+
+            {/* Responsive Export Button */}
+            <Button
+              size="sm"
+              className="bg-[#5B2C6F] hover:bg-[#4A2359] flex items-center justify-center"
+            >
+              {/* Icon only on mobile */}
+              <Download className="w-4 h-4 sm:mr-2" />
+              {/* Show text only on medium+ screens */}
+              <span className="hidden sm:inline">Export</span>
+            </Button>
+          </div>
+        </CardHeader>
 
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
-                  <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Full House Address</th>
 
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Name of Items</th>
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Num of Items</th>
 
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
+
+                  <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Phone Number</th>
 
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -280,10 +298,6 @@ export default function DashboardOverviewPage() {
                   <tr><td colSpan={10} className="py-6 text-center text-gray-500">No orders found.</td></tr>
                 ) : filteredOrders.map(order => (
                   <tr key={order.id} className="bg-white hover:bg-gray-50 transition-colors border-b border-gray-200">
-                    <td className="py-3 px-4 text-sm font-medium text-gray-900">{order.id}</td>
-
-                    <td className="py-3 px-4 text-sm text-gray-700">{order.fullHouseAddress}</td>
-
 
 
                     <td className="py-3 px-4 text-sm text-gray-700">
@@ -292,34 +306,54 @@ export default function DashboardOverviewPage() {
                           {i.name}
                         </span>
                       ))}
+                    </td><td className="py-3 px-4 text-sm text-gray-700 font-medium">
+                      <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-800 px-2 py-1 rounded-md">
+                        {order.orderItems.reduce((sum, i) => sum + i.quantity, 0)}
+                      </span>
                     </td>
 
-                    <td className="py-3 px-4 text-sm text-gray-700">{order.orderItems.reduce((sum, i) => sum + i.quantity, 0)}</td>
+                    <td className="py-3 px-4 text-sm font-bold text-green-700">
+                      <span className=" px-2 py-1 rounded-md">
+                        ₦{order.totalAmount.toLocaleString()}
+                      </span>
+                    </td>
 
-
-
-                    <td className="py-3 px-4 text-sm font-semibold text-gray-900">₦{order.totalAmount.toLocaleString()}</td>
-
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium 
-      ${order.orderItems?.every(item => item.isAvailable)
-                            ? "bg-green-50 text-green-700"
-                            : "bg-red-50 text-red-700"}`}
-                      >
-                        {order.orderItems?.every(item => item.isAvailable)
-                          ? "Available"
-                          : "Unavailable"}
+                    <td className="py-3 px-4 text-sm text-gray-800">
+                      <span className="inline-flex items-center gap-2  text-blue-700 px-2 py-1 rounded-md">
+                        {order.additionalPhoneNumber || "—"}
                       </span>
                     </td>
 
 
 
 
+
+                    <td className="py-3 px-4 text-sm font-medium">
+                      {order.orderTracking && order.orderTracking.length > 0 ? (
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${(() => {
+                              const status = order.orderTracking[order.orderTracking.length - 1].orderStatus;
+                              if (status === "DELIVERED" || status === "PICKED_UP") return "bg-green-50 text-green-700";
+                              if (status === "PENDING") return "bg-yellow-50 text-yellow-700";
+                              if (status === "CANCELLED") return "bg-red-50 text-red-700";
+                              return "bg-gray-50 text-gray-500";
+                            })()
+                            }`}
+                        >
+                          {order.orderTracking[order.orderTracking.length - 1].orderStatus.replace("_", " ")}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-gray-50 text-gray-500">
+                          No status
+                        </span>
+                      )}
+                    </td>
+
+
                     <td className="py-3 px-4">
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm" className="text-purple-600 hover:bg-purple-50">View</Button>
-  
+
                       </div>
                     </td>
                   </tr>

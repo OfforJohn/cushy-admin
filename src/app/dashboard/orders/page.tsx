@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   TrendingUp,
   Filter,
-  Download,
   Search,
   RefreshCw,
   Eye,
@@ -32,9 +31,12 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true)
   const [pendingOrders, setPendingOrders] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+
   const [orders, setOrders] = useState<Order[]>([])
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
 
-
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const [totalOrdersToday, setTotalOrdersToday] = useState<number | null>(null)
 
   const [totalOrdersYesterday, setTotalOrdersYesterday] = useState<number | null>(null)
@@ -57,9 +59,34 @@ export default function OrdersPage() {
     totalAmount: string
     fullHouseAddress: string
     additionalPhoneNumber: string
+    noteForVendor: string
+    noteForStore: string
     createdAt: string
+    totalAmountBeforeCharges: number
+    Charges: number
     orderItems: OrderItem[] | null
+
+    orderTracking: OrderTracking[];   // ← added
   }
+
+  interface OrderTracking {
+    id: string;
+    orderStatus: string;
+    description?: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }
+
+  const handleViewDetails = (order: Order) => {
+    setSelectedOrder(order);
+    setIsModalOpen(true);
+  };
+
+
+  const closeModal = () => {
+    setSelectedOrder(null);
+    setIsModalOpen(false);
+  };
 
 
   // ✅ Redirect if no token
@@ -365,7 +392,7 @@ export default function OrdersPage() {
             onClick={() => router.push("/dashboard/orders/assign-rider")}
             className="cursor-pointer transition-transform duration-150 hover:scale-105 hover:border-[#5B2C6F]"
           >
-            <UserCheck className="w-4 h-4 mr-2 text-[#5B2C6F]" />    
+            <UserCheck className="w-4 h-4 mr-2 text-[#5B2C6F]" />
             Assign Rider
           </Button>
         </div>
@@ -397,13 +424,13 @@ export default function OrdersPage() {
           <table className="w-full min-w-[1200px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Full House Address</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name of items</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone Number</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Num of items</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
-             
-               
+
+
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
@@ -425,48 +452,64 @@ export default function OrdersPage() {
               ) : (
                 filteredOrders.map((order) => (
                   <tr key={order.fullHouseAddress} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium text-[#5B2C6F]">
-                      #{(order.fullHouseAddress  ?? "Unknown").slice(0, 8).toUpperCase()}
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {order.orderItems?.map(item => item.name).join(", ")}
                     </td>
                     <td className="px-6 py-4">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {order.fullHouseAddress || "Unknown"}
-                        </p>
+
                         <p className="text-sm text-gray-500">
                           {order.additionalPhoneNumber || "--"}
                         </p>
                       </div>
                     </td>
 
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {order.orderItems?.map(item => item.name).join(", ")}
-                    </td>
+
                     <td className="px-6 py-4 text-sm text-gray-900">
                       {order.totalItems}
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      ₦{Number(order.totalAmount).toLocaleString()}
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-50 text-green-700">
+                        ₦{Number(order.totalAmount).toLocaleString()}
+                      </span>
                     </td>
-                   <td className="px-6 py-4">
-  <span
-    className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium 
-      ${order.orderItems?.every(item => item.isAvailable)
-        ? "bg-green-50 text-green-700"
-        : "bg-red-50 text-red-700"}`}
-  >
-    {order.orderItems?.every(item => item.isAvailable)
-      ? "Available"
-      : "Unavailable"}
-  </span>
-</td>
+
+                    <td className="px-6 py-4">
+                      {order.orderTracking && order.orderTracking.length > 0 ? (
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${(() => {
+                              const status = order.orderTracking[order.orderTracking.length - 1].orderStatus;
+                              if (status === "DELIVERED" || status === "PICKED_UP") return "bg-green-50 text-green-700";
+                              if (status === "PENDING") return "bg-yellow-50 text-yellow-700";
+                              if (status === "CANCELLED") return "bg-red-50 text-red-700";
+                              return "bg-gray-50 text-gray-500";
+                            })()
+                            }`}
+                        >
+                          {order.orderTracking[order.orderTracking.length - 1].orderStatus.replace("_", " ")}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-gray-50 text-gray-500">
+                          No status
+                        </span>
+                      )}
+                    </td>
+
+
 
 
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleViewDetails(order)}
+                        >
                           <Eye className="w-4 h-4" />
                         </Button>
+
+
                         <Button variant="ghost" size="icon" className="h-8 w-8">
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -478,6 +521,103 @@ export default function OrdersPage() {
                   </tr>
                 ))
               )}
+              {isModalOpen && selectedOrder && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                  <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto p-6 md:p-8 animate-fadeIn">
+
+                    {/* Header */}
+                    <div className="flex justify-between items-center border-b pb-3 mb-4">
+                      <h2 className="text-2xl font-bold text-gray-800">Order Details</h2>
+                      <button
+                        className="text-gray-400 hover:text-gray-700 transition"
+                        onClick={closeModal}
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    {/* General Info */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-700">
+                      <div>
+                        <p><span className="font-semibold">Order ID:</span> {selectedOrder.id}</p>
+                        <p><span className="font-semibold">Total Items:</span> {selectedOrder.totalItems}</p>
+                        <p><span className="font-semibold">Total Amount:</span> <span className="text-green-600 font-bold">₦{Number(selectedOrder.totalAmount).toLocaleString()}</span></p>
+                      </div>
+                      <div>
+                        <p><span className="font-semibold">Address:</span> {selectedOrder.fullHouseAddress}</p>
+                        <p><span className="font-semibold">Phone:</span> {selectedOrder.additionalPhoneNumber}</p>
+                        <p><span className="font-semibold">Created At:</span> {new Date(selectedOrder.createdAt).toLocaleString()}</p>
+                      </div>
+                    </div>
+
+                    {/* Notes */}
+                    <div className="mt-4 p-4 bg-gray-50 rounded-md border">
+                      <h3 className="font-semibold text-gray-800 mb-2">Notes</h3>
+                      <p><span className="font-semibold">Note for Vendor:</span> {selectedOrder.noteForVendor || "—"}</p>
+                      <p><span className="font-semibold">Note for Store:</span> {selectedOrder.noteForStore || "—"}</p>
+                    </div>
+
+                    {/* Items */}
+                    <div className="mt-6">
+                      <h3 className="font-semibold text-gray-800 mb-2">Items</h3>
+                      <ul className="divide-y divide-gray-200 border rounded-md overflow-hidden">
+                        {selectedOrder.orderItems?.map((item) => (
+                          <li
+                            key={item.id}
+                            className="flex justify-between p-3 hover:bg-gray-50 transition"
+                          >
+                            <span>{item.name} x {item.quantity}</span>
+                            <span className="font-semibold text-gray-800">₦{Number(item.price).toLocaleString()}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Charges */}
+                    <div className="mt-6 p-4 bg-gray-50 rounded-md border">
+
+
+                      <p><span className="font-semibold">Amount Amount:</span>     ₦{Number(selectedOrder.totalAmount).toLocaleString()}</p>
+                      <p><span className="font-semibold">Amount Before Charges:</span> ₦{Number(selectedOrder.totalAmountBeforeCharges).toLocaleString()}</p>
+                      <p><span className="font-semibold"> Charges:</span> ₦{Number(selectedOrder.Charges).toLocaleString()}</p>
+                    </div>
+
+                    {/* Tracking */}
+                    <div className="mt-6">
+                      <h3 className="font-semibold text-gray-800 mb-2">Tracking</h3>
+                      <ul className="space-y-2">
+                        {selectedOrder.orderTracking?.map((track) => (
+                          <li
+                            key={track.id}
+                            className="flex justify-between items-center p-2 border rounded-md"
+                          >
+                            <span className={`px-2 py-1 rounded text-sm font-medium 
+                ${track.orderStatus === 'Delivered' ? 'bg-green-100 text-green-800' :
+                                track.orderStatus === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                                  track.orderStatus === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                                    'bg-blue-100 text-blue-800'}`}>
+                              {track.orderStatus}
+                            </span>
+                            <span className="text-gray-500 text-sm">{new Date(track.createdAt).toLocaleString()}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Close Button */}
+                    <div className="mt-6 text-right">
+                      <button
+                        onClick={closeModal}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
+                      >
+                        Close
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+              )}
+
             </tbody>
           </table>
         </div>

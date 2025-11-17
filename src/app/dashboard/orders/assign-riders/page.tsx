@@ -34,16 +34,25 @@ interface OrderItem {
     quantity: number
 }
 
+interface OrderTracking {
+    id: string;
+    orderStatus: string;
+    description: string;
+    createdAt: string;
+}
+
 interface Order {
-  id: string;
-  totalAmount: string;
-  totalItems: number;
-  fullHouseAddress: string;
-  createdAt: string;
-  orderItems: OrderItem[];
-  storeId: string;
-  status?: string; // ✅ add this line
-  cancellationReason?: string; // optional
+    id: string;
+    totalAmount: string;
+    totalItems: number;
+    fullHouseAddress: string;
+    createdAt: string;
+    orderItems: OrderItem[];
+    storeId: string;
+    status?: string; // ✅ add this line
+    cancellationReason?: string; // optional
+
+    orderTracking?: OrderTracking[];  // ⭐ add this
 }
 
 
@@ -51,75 +60,78 @@ export default function OrderDetailsPage() {
     const [orders, setOrders] = useState<Order[]>([])
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
     const [loading, setLoading] = useState(true)
-    const [status, setStatus] = useState("In Transit")
+    const [status, setStatus] = useState("")
+
     const [reason, setReason] = useState("");
 
-  const { Toast, showToast } = useToast()
+    const { Toast, showToast } = useToast()
 
 
-  interface UpdateOrderStatusBody {
-  status: string;
-  cancellationReason?: string;
-}
-
-
-  const updateOrderStatus = async () => {
-  if (!selectedOrder) {
-    alert("Please select an order first.");
-    return;
-  }
-
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("No token found!");
-      return;
+    interface UpdateOrderStatusBody {
+        status: string;
+        cancellationReason?: string;
     }
 
-    // Build the request body according to API rules
-  
-    const body: UpdateOrderStatusBody = { status };
 
-    if (status === "CANCELLED") {
-      if (!reason.trim()) {
-        
-        showToast("Please provide a reason for cancellation.");
-        return;
-      }
-      body.cancellationReason = reason.trim();
-    }
+    const updateOrderStatus = async () => {
+        if (!selectedOrder) {
+            alert("Please select an order first.");
+            return;
+        }
 
-    const res = await fetch(
-      `${API_BASE_URL}/api/v1/orders/update-order-status?orderId=${selectedOrder.id}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "cushy-access-key": `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
-      }
-    );
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                alert("No token found!");
+                return;
+            }
 
-    const data = await res.json();
+            // Build the request body according to API rules
 
-    if (res.ok) {
-         showToast(`✅ Order status updated to "${status}" successfully!`, "success");
+            const body: UpdateOrderStatusBody = { status };
 
-      // Optional: Update UI without refetching all orders
-      setOrders((prevOrders) =>
-        prevOrders.map((o) =>
-          o.id === selectedOrder.id ? { ...o, status } : o
-        )
-      );
-    } else {
-         showToast(`❌ Failed to update status: ${data.message || "Error"}`, "error");
-    }
-  } catch (err) {
-    console.error("Error updating order status:", err);
-       showToast(`❌ An error occurred while updating order status.`, "error");
-  }
-};
+            if (status === "CANCELLED") {
+                if (!reason.trim()) {
+
+                    showToast("Please provide a reason for cancellation.");
+                    return;
+                }
+                body.cancellationReason = reason.trim();
+            }
+
+            const res = await fetch(
+                `${API_BASE_URL}/api/v1/orders/update-order-status?orderId=${selectedOrder.id}`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "cushy-access-key": `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(body),
+                }
+            );
+
+            const data = await res.json();
+
+            if (res.ok) {
+                showToast(`✅ Order status updated to "${status}" successfully!`, "success");
+
+                // Optional: Update UI without refetching all orders
+                setOrders((prevOrders) =>
+                    prevOrders.map((o) =>
+                        o.id === selectedOrder.id ? { ...o, status } : o
+                    )
+                );
+            } else {
+                showToast(`❌ Failed to update status: ${data.message || "Error"}`, "error");
+            }
+        } catch (err) {
+            console.error("Error updating order status:", err);
+            showToast(`❌ An error occurred while updating order status.`, "error");
+        }
+    };
+
+
 
 
 
@@ -207,8 +219,8 @@ export default function OrderDetailsPage() {
                                 <th className="px-4 py-3">Date</th>
                                 <th className="px-4 py-3">Items</th>
                                 <th className="px-4 py-3">Amount</th>
-                                <th className="px-4 py-3">Address</th>
                                 <th className="px-4 py-3">Name</th>
+                                <th className="px-4 py-3">status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -221,13 +233,14 @@ export default function OrderDetailsPage() {
                                 >
                                     <td className="px-4 py-3 font-medium text-gray-900">
                                         #{order.id.slice(0, 8).toUpperCase()}
+                                    </td><td className="px-4 py-3 text-center text-sm text-gray-700">
+                                        {formatDate(order.createdAt)}
                                     </td>
-                                    <td className="px-4 py-3">{formatDate(order.createdAt)}</td>
+
                                     <td className="px-4 py-3">{order.totalItems}</td>
                                     <td className="px-4 py-3 font-semibold">
                                         ₦{Number(order.totalAmount).toLocaleString()}
                                     </td>
-                                    <td className="px-4 py-3 truncate max-w-[200px]">{order.fullHouseAddress}</td>
                                     <td className="px-4 py-3">
                                         <span className="px-2 py-1 rounded-full text-xs text-green-700">
                                             {order.orderItems?.map((item) => (
@@ -235,6 +248,26 @@ export default function OrderDetailsPage() {
                                             ))}
 
                                         </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {order.orderTracking && order.orderTracking.length > 0 ? (
+                                            <span
+                                                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${(() => {
+                                                    const status = order.orderTracking[order.orderTracking.length - 1].orderStatus;
+                                                    if (status === "DELIVERED" || status === "PICKED_UP") return "bg-green-50 text-green-700";
+                                                    if (status === "PENDING") return "bg-yellow-50 text-yellow-700";
+                                                    if (status === "CANCELLED") return "bg-red-50 text-red-700";
+                                                    return "bg-gray-50 text-gray-500";
+                                                })()
+                                                    }`}
+                                            >
+                                                {order.orderTracking[order.orderTracking.length - 1].orderStatus.replace("_", " ")}
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-gray-50 text-gray-500">
+                                                No status
+                                            </span>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
@@ -259,12 +292,8 @@ export default function OrderDetailsPage() {
                             </div>
 
                             <div className="flex items-center gap-3">
-                                <span className="px-3 py-1 text-xs font-semibold bg-amber-100 text-amber-700 rounded-full">
-                                    {status}
-                                </span>
-                                <button className="bg-[#5B2C6F] hover:bg-[#4a2359] text-white text-sm font-medium px-4 py-2 rounded-md">
-                                    Update Status
-                                </button>
+                           
+
                             </div>
                         </div>
 
@@ -339,55 +368,54 @@ export default function OrderDetailsPage() {
                                 ))}
                             </div>
 
-                         {/* Change Status Form */}
-<div className="space-y-4">
-  {/* Status Dropdown */}
-  <div>
-    <label className="text-sm font-medium text-gray-700">New Status</label>
-    <select
-      value={status}
-      onChange={(e) => setStatus(e.target.value)}
-      className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-[#5B2C6F] focus:border-[#5B2C6F]"
-    >
-      <option value="PENDING">Pending</option>
-      <option value="PICKED_UP">Picked Up</option>
-      <option value="DELIVERED">Delivered</option>
-      <option value="CANCELLED">Cancelled</option>
-    </select>
-  </div>
+                            {/* Change Status Form */}
+                            <div className="space-y-4">
+                                {/* Status Dropdown */}
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700">New Status</label>
+                                    <select
+                                        value={status}
+                                        onChange={(e) => setStatus(e.target.value)}
+                                        className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-[#5B2C6F] focus:border-[#5B2C6F]"
+                                    >
+                                        <option value="PENDING">Pending</option>
+                                        <option value="PICKED_UP">Picked Up</option>
+                                        <option value="DELIVERED">Delivered</option>
+                                        <option value="CANCELLED">Cancelled</option>
+                                    </select>
+                                </div>
 
-  {/* Reason/Notes - only show if CANCELLED */}
-  {status === "CANCELLED" && (
-    <div>
-      <label className="text-sm font-medium text-gray-700">Reason/Notes</label>
-      <textarea
-        placeholder="Add reason for cancellation..."
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-[#5B2C6F] focus:border-[#5B2C6F]"
-      ></textarea>
-    </div>
-  )}
+                                {/* Reason/Notes - only show if CANCELLED */}
+                                {status === "CANCELLED" && (
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700">Reason/Notes</label>
+                                        <textarea
+                                            placeholder="Add reason for cancellation..."
+                                            value={reason}
+                                            onChange={(e) => setReason(e.target.value)}
+                                            className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-[#5B2C6F] focus:border-[#5B2C6F]"
+                                        ></textarea>
+                                    </div>
+                                )}
 
-  {/* Buttons */}
-  <div className="flex gap-3 pt-2">
-    <button
-      onClick={updateOrderStatus}
-      disabled={status === "CANCELLED" && reason.trim() === ""}
-      className={`bg-[#5B2C6F] hover:bg-[#4a2359] text-white w-full py-2 rounded-md text-sm font-medium ${
-        status === "CANCELLED" && reason.trim() === "" ? "opacity-50 cursor-not-allowed" : ""
-      }`}
-    >
-      Update Status
-    </button>
-    <button className="border border-gray-300 w-full py-2 rounded-md text-sm text-gray-700 hover:bg-gray-50">
-      Cancel
-    </button>
-  </div>
-</div>
+                                {/* Buttons */}
+                                <div className="flex gap-3 pt-2">
+                                    <button
+                                        onClick={updateOrderStatus}
+                                        disabled={status === "CANCELLED" && reason.trim() === ""}
+                                        className={`bg-[#5B2C6F] hover:bg-[#4a2359] text-white w-full py-2 rounded-md text-sm font-medium ${status === "CANCELLED" && reason.trim() === "" ? "opacity-50 cursor-not-allowed" : ""
+                                            }`}
+                                    >
+                                        Update Status
+                                    </button>
+                                    <button className="border border-gray-300 w-full py-2 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
 
-                {/* 👇 ADD THIS */}
-                {Toast}
+                            {/* 👇 ADD THIS */}
+                            {Toast}
 
                         </div>
                     </div>

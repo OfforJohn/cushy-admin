@@ -11,16 +11,35 @@ import { useRouter } from "next/navigation"
 import { API_BASE_URL } from "@/lib/apiConfig"
 import { useToast } from "@/components/ui/toast-provider"
 
-type Order = {
-    id: string
-    totalAmount: string
+interface Order {
+    id: string;
+    totalAmount: string;
+    charges: string;
+    status: string;
+    itemName: string;
+    itemPrice: string;
+    itemQty: number;
+    fullAddress: string;
+    phone: string;
 }
 
 interface ApiOrder {
-    id?: string;
-    dropOffLocationId?: string;
-    Charges?: string;
+    id: string;
+    orderItems: {
+        name: string;
+        price: string;
+        quantity: number;
+    }[];
+    orderTracking: {
+        orderStatus: string;
+        createdAt: string;
+    }[];
+    totalAmount: string;
+    Charges: string;
+    fullHouseAddress: string;
+    additionalPhoneNumber: string;
 }
+
 
 export default function AssignRiderPage() {
 
@@ -32,6 +51,8 @@ export default function AssignRiderPage() {
     const router = useRouter();
 
     const [orders, setOrders] = useState<Order[]>([])
+
+
 
 
 
@@ -84,14 +105,29 @@ export default function AssignRiderPage() {
                 const data = await res.json();
 
                 if (Array.isArray(data) && data.length > 0) {
-                    // Map API response to Order type
-                    const orderData: Order[] = (data as ApiOrder[]).map((order) => ({
-                        id: order.dropOffLocationId ?? order.id ?? "N/A",
-                        totalAmount: order.Charges ?? "0",
-                    }));
+                    const orderData: Order[] = data.map((order: ApiOrder) => {
+                        const firstItem = order.orderItems?.[0];
+
+                        // ✅ GET LAST TRACKING STATUS
+                        const tracking = order.orderTracking || [];
+                        const latestTracking = tracking[tracking.length - 1];
+
+                        return {
+                            id: order.id,
+                            totalAmount: order.totalAmount,
+                            charges: order.Charges,
+                            status: latestTracking?.orderStatus || "UNKNOWN",
+                            itemName: firstItem?.name || "No item",
+                            itemPrice: firstItem?.price || "0",
+                            itemQty: firstItem?.quantity || 0,
+                            fullAddress: order.fullHouseAddress || "N/A",
+                            phone: order.additionalPhoneNumber || "N/A",
+                        };
+                    });
 
                     setOrders(orderData);
-                } else {
+                }
+                else {
                     console.error("Unexpected API response:", data);
                 }
             } catch (error) {
@@ -139,6 +175,7 @@ export default function AssignRiderPage() {
 
         fetchRiders()
     }, [authChecked])
+
 
 
 
@@ -202,7 +239,8 @@ export default function AssignRiderPage() {
                                         className="w-full bg-white flex justify-between items-center px-5 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50"
                                         onClick={() => setOpenOrderId(isOpen ? null : order.id)}
                                     >
-                                        <span>Order ID: {order.id}</span>
+
+                                        <span>{order.itemName} (x{order.itemQty})</span>
                                         <span className="font-semibold text-gray-900">₦{order.totalAmount}</span>
                                     </button>
 
@@ -211,28 +249,38 @@ export default function AssignRiderPage() {
                                         <div className="bg-gray-50 p-5 space-y-3 text-sm text-gray-700">
                                             <div className="flex justify-between">
                                                 <span>Customer:</span>
-                                                <span>John Doe</span>
+
+                                                <span>{order.itemName} (x{order.itemQty})</span>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span>Vendor:</span>
-                                                <span>Tasty Bites Restaurant</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span>Business Type:</span>
-                                                <span className="bg-orange-100 text-orange-700 text-xs px-2 py-[2px] rounded-full">Restaurant</span>
-                                            </div>
+
+
                                             <div className="flex justify-between">
                                                 <span>Total Amount:</span>
                                                 <span className="font-semibold text-gray-900">₦{order.totalAmount}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span>Delivery Type:</span>
-                                                <span className="bg-yellow-100 text-yellow-700 text-xs px-2 py-[2px] rounded-full">Express</span>
+                                                <span>Phone Number:</span>
+                                                <span className=" text-yellow-700 font-bold  text-xs px-2 py-[2px] rounded-full">{order.phone}</span>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span>Payment Status:</span>
-                                                <span className="bg-green-100 text-green-600 text-xs px-2 py-[2px] rounded-full font-medium">Paid</span>
+                                            <div className="flex justify-between items-center">
+                                                <span>Order Status:</span>
+
+                                                <span
+                                                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${(() => {
+                                                        const status = order.status; // payment status
+
+                                                        if (status === "DELIVERED" || status === "PICKED_UP") return "bg-green-50 text-green-700";
+                                                        if (status === "PENDING") return "bg-yellow-50 text-yellow-700";
+                                                        if (status === "CANCELLED") return "bg-red-50 text-red-700";
+
+                                                        return "bg-gray-50 text-gray-500";
+                                                    })()}`}
+
+                                                >
+                                                    {order.status?.replace("_", " ")}
+                                                </span>
                                             </div>
+
                                         </div>
                                     )}
                                 </div>
@@ -289,8 +337,6 @@ export default function AssignRiderPage() {
                     </div>
 
                 </div>
-
-                {/* Right Panel - Riders */}
                 {/* Right Panel - Riders */}
                 <div className="lg:col-span-2 bg-white border border-gray-200 rounded-lg shadow-sm p-5">
                     <div className="space-y-3">
@@ -366,32 +412,31 @@ export default function AssignRiderPage() {
                                                             method: "POST",
                                                             headers: {
                                                                 "Content-Type": "application/json",
-                                                                "cushy-access-key": `Bearer ${token}`, // ✅ use cushy-access-key header
+                                                                "cushy-access-key": `Bearer ${token}`,
                                                             },
                                                         }
                                                     );
 
                                                     if (!response.ok) {
                                                         const errorData = await response.json();
+                                                        showToast(errorData.message || "Failed to assign rider", "error");
                                                         throw new Error(errorData.message || "Failed to assign rider");
                                                     }
 
-
                                                     showToast(`Order ${openOrderId} assigned to rider ${rider.name} successfully!`, "success");
 
-                                                    // Update rider availability locally
                                                     setRiders((prev) =>
                                                         prev.map((r) => (r.id === rider.id ? { ...r, available: false } : r))
                                                     );
+
                                                 } catch (error) {
                                                     if (error instanceof Error) {
-                                                        console.error(error);
-                                                        alert("Error assigning rider: " + error.message);
+                                                        showToast("Error assigning rider: " + error.message, "error");
                                                     } else {
-                                                        console.error("Unknown error:", error);
-                                                        alert("An unknown error occurred while assigning the rider.");
+                                                        showToast("An unknown error occurred while assigning the rider.", "error");
                                                     }
                                                 }
+
 
                                             }}
                                         >
