@@ -35,7 +35,7 @@ export const dashboardRoutes = [
     children: [
       { label: "Orders", href: "/dashboard/restaurants/orders" },
       { label: "Products", href: "/dashboard/restaurants/products" },
-      { label: "Restaurants", href: "/dashboard/restaurants/list" },
+      { label: "Restaurants", href: "/dashboard/restaurants/restaurants" },
       { label: "Branches", href: "/dashboard/restaurants/branches" },
     ],
   },
