@@ -112,7 +112,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                     <button
                       onClick={() => {
                         localStorage.removeItem("token");
-                        router.push("auth/signin");
+                        router.push("/auth/signin");
                       }}
                       className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 text-sm"
                     >
