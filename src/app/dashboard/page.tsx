@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { TrendingUp, ShoppingCart, CheckCircle2, Clock, Filter, Download } from "lucide-react"
+import { TrendingUp, ShoppingCart, CheckCircle2, Clock, Download } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast-provider"
 import { API_BASE_URL } from "@/lib/apiConfig"
-
 
 interface OrderItem {
   name: string
@@ -32,25 +31,20 @@ interface OrderResponse {
   orderItems?: OrderItemResponse[];
   totalAmount?: number | string;
   status?: string;
-
   orderTracking?: OrderTracking[];
-
   additionalPhoneNumber: number;
 }
-
 
 interface Order {
   id: string
   customerName: string
-
   additionalPhoneNumber: number;
   customerPhone: string
   orderItems: OrderItem[]
   totalAmount: number
   paymentStatus: "Paid" | "Unpaid"
   status: "Completed" | "Pending" | string
-
-  orderTracking: OrderTracking[];   // ← added
+  orderTracking: OrderTracking[];
 }
 
 interface OrderTracking {
@@ -60,7 +54,6 @@ interface OrderTracking {
   createdAt: string;
   updatedAt: string;
 }
-
 
 const queueItems = [
   { title: "New Orders", description: "Awaiting vendor acceptance", count: 23, bgColor: "bg-yellow-50", borderColor: "border-yellow-200", badgeColor: "bg-orange-500", dotColor: "bg-orange-400" },
@@ -74,8 +67,6 @@ const alerts = [
   { title: "Consultations", description: "Booked for today", count: 67, bgColor: "bg-yellow-50", borderColor: "border-yellow-200", badgeColor: "bg-orange-500", dotColor: "bg-orange-400" },
 ]
 
-
-
 export default function DashboardOverviewPage() {
   const router = useRouter()
   const { Toast, showToast } = useToast()
@@ -84,6 +75,9 @@ export default function DashboardOverviewPage() {
   const [loading, setLoading] = useState(true)
   const [recentOrders, setRecentOrders] = useState<Order[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   // Route guard
   useEffect(() => {
@@ -141,27 +135,30 @@ export default function DashboardOverviewPage() {
           headers: { "Content-Type": "application/json", "cushy-access-key": `Bearer ${token}` },
         })
         const data = await res.json()
-        if (res.ok && Array.isArray(data)) {
-          const formatted: Order[] = (data as OrderResponse[]).map((o) => ({
-            id: o.id,
-            additionalPhoneNumber: o.additionalPhoneNumber,
-            customerName: o.customer?.name || "Unknown",
-            customerPhone: o.customer?.phone || "--",
-            orderItems: (o.orderItems || []).map((item) => ({
-              name: item.name,
-              quantity: item.quantity,
-              price: item.price.toString(),
-              isAvailable: true, // ✅ correct place
-            })),
-            totalAmount: Number(o.totalAmount || 0),
-            paymentStatus: Number(o.totalAmount) > 0 ? "Paid" : "Unpaid",
-            status: o.status || "Pending",
-            orderTracking: o.orderTracking || [],
+if (res.ok && Array.isArray(data)) {
+  const formatted: Order[] = (data as OrderResponse[])
+    .map((o) => ({
+      id: o.id,
+      additionalPhoneNumber: o.additionalPhoneNumber,
+      customerName: o.customer?.name || "Unknown",
+      customerPhone: o.customer?.phone || "--",
+      orderItems: (o.orderItems || []).map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price.toString(),
+        isAvailable: true,
+      })),
+      totalAmount: Number(o.totalAmount || 0),
+      paymentStatus: (Number(o.totalAmount) > 0 ? "Paid" : "Unpaid") as "Paid" | "Unpaid",
+      status: o.status || "Pending",
+      orderTracking: o.orderTracking || [],
+    }))
+    .reverse() // latest orders first
 
-          }))
+  setRecentOrders(formatted)
+}
 
-          setRecentOrders(formatted)
-        } else {
+else {
           console.error("Unexpected response:", data)
         }
       } catch (err) {
@@ -175,10 +172,20 @@ export default function DashboardOverviewPage() {
 
   if (!authChecked) return null
 
-  const filteredOrders = recentOrders.filter(
-    (o) =>
-      o.customerName.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+// Reverse filtered orders so newest comes first
+// filteredOrders without reverse
+const filteredOrders = recentOrders.filter(o =>
+  o.customerName.toLowerCase().includes(searchQuery.toLowerCase())
+)
+
+const paginatedOrders = filteredOrders.slice(
+  (currentPage - 1) * itemsPerPage,
+  currentPage * itemsPerPage
+)
+
+
+
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
 
   const metrics = [
     { title: "GMV Today", value: "₦2.4M", change: "12.5% vs yesterday", isPositive: true, icon: TrendingUp, iconBg: "bg-green-100", iconColor: "text-green-600" },
@@ -189,6 +196,7 @@ export default function DashboardOverviewPage() {
 
   return (
     <div className="space-y-6">
+
       {/* Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {metrics.map(metric => (
@@ -248,7 +256,6 @@ export default function DashboardOverviewPage() {
 
       {/* Recent Orders */}
       <Card>
-
         <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <CardTitle>Recent Orders</CardTitle>
 
@@ -261,14 +268,11 @@ export default function DashboardOverviewPage() {
               onChange={e => setSearchQuery(e.target.value)}
             />
 
-            {/* Responsive Export Button */}
             <Button
               size="sm"
               className="bg-[#5B2C6F] hover:bg-[#4A2359] flex items-center justify-center"
             >
-              {/* Icon only on mobile */}
               <Download className="w-4 h-4 sm:mr-2" />
-              {/* Show text only on medium+ screens */}
               <span className="hidden sm:inline">Export</span>
             </Button>
           </div>
@@ -279,55 +283,37 @@ export default function DashboardOverviewPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Name of Items</th>
-                  <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Num of Items</th>
-
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
-
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Phone Number</th>
-
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr><td colSpan={10} className="py-6 text-center text-gray-500">Loading orders...</td></tr>
-                ) : filteredOrders.length === 0 ? (
+                ) : paginatedOrders.length === 0 ? (
                   <tr><td colSpan={10} className="py-6 text-center text-gray-500">No orders found.</td></tr>
-                ) : filteredOrders.map(order => (
+
+
+                ) : paginatedOrders.map(order => (
                   <tr key={order.id} className="bg-white hover:bg-gray-50 transition-colors border-b border-gray-200">
-
-
                     <td className="py-3 px-4 text-sm text-gray-700">
+
+
                       {order.orderItems.map((i, idx) => (
                         <span key={idx} className="inline-block mr-1 px-2 py-0.5 bg-purple-50 text-purple-800 text-xs rounded">
                           {i.name}
                         </span>
                       ))}
-                    </td><td className="py-3 px-4 text-sm text-gray-700 font-medium">
-                      <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-800 px-2 py-1 rounded-md">
-                        {order.orderItems.reduce((sum, i) => sum + i.quantity, 0)}
-                      </span>
                     </td>
-
+                   
                     <td className="py-3 px-4 text-sm font-bold text-green-700">
-                      <span className=" px-2 py-1 rounded-md">
-                        ₦{order.totalAmount.toLocaleString()}
-                      </span>
+                      <span className="px-2 py-1 rounded-md">₦{order.totalAmount.toLocaleString()}</span>
                     </td>
-
                     <td className="py-3 px-4 text-sm text-gray-800">
-                      <span className="inline-flex items-center gap-2  text-blue-700 px-2 py-1 rounded-md">
-                        {order.additionalPhoneNumber || "—"}
-                      </span>
+                      <span className="inline-flex items-center gap-2 text-blue-700 px-2 py-1 rounded-md">{order.additionalPhoneNumber || "—"}</span>
                     </td>
-
-
-
-
-
                     <td className="py-3 px-4 text-sm font-medium">
                       {order.orderTracking && order.orderTracking.length > 0 ? (
                         <span
@@ -337,8 +323,7 @@ export default function DashboardOverviewPage() {
                               if (status === "PENDING") return "bg-yellow-50 text-yellow-700";
                               if (status === "CANCELLED") return "bg-red-50 text-red-700";
                               return "bg-gray-50 text-gray-500";
-                            })()
-                            }`}
+                            })()}`}
                         >
                           {order.orderTracking[order.orderTracking.length - 1].orderStatus.replace("_", " ")}
                         </span>
@@ -348,22 +333,47 @@ export default function DashboardOverviewPage() {
                         </span>
                       )}
                     </td>
-
-
-                    <td className="py-3 px-4">
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="text-purple-600 hover:bg-purple-50">View</Button>
-
-                      </div>
-                    </td>
+                   
                   </tr>
-
                 ))}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          <div className="flex items-center justify-between mt-4 px-2">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+              disabled={currentPage === 1}
+              className={`px-4 py-2 rounded-md border text-sm ${currentPage === 1 ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-100"}`}
+            >
+              Previous
+            </button>
+
+            <div className="flex items-center gap-2">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-1 text-sm rounded-md border ${currentPage === page ? "bg-purple-600 text-white border-purple-600" : "hover:bg-gray-100"}`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className={`px-4 py-2 rounded-md border text-sm ${currentPage === totalPages ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-100"}`}
+            >
+              Next
+            </button>
+          </div>
         </CardContent>
       </Card>
+
+      {Toast}
     </div>
   )
 }

@@ -16,142 +16,136 @@ import {
   RefreshCcw,
   UserCheck,
 } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { API_BASE_URL } from "@/lib/apiConfig";
-
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select"
 
 import { useRouter } from "next/navigation"
+import { API_BASE_URL } from "@/lib/apiConfig"
+
+
+
+/* --------------------------------------------------------------------------
+   ✅ INTERFACES (Moved outside component)
+---------------------------------------------------------------------------*/
+
+export interface OrderItem {
+  id: string
+  name: string
+  price: string
+  quantity: number
+  storeId: string
+  isAvailable: boolean
+}
+
+export interface OrderTracking {
+  id: string
+  orderStatus: string
+  description?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Order {
+  id: string
+  type: string
+  totalItems: number
+  totalAmount: string
+  fullHouseAddress: string
+  additionalPhoneNumber: string
+  noteForVendor: string
+  noteForStore: string
+  createdAt: string
+  totalAmountBeforeCharges: number
+  Charges: number
+  orderItems: OrderItem[] | null
+  orderTracking: OrderTracking[]
+}
+
+
+
+/* --------------------------------------------------------------------------
+   ✅ MAIN COMPONENT
+---------------------------------------------------------------------------*/
 
 export default function OrdersPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-
   const router = useRouter()
+
   const [loading, setLoading] = useState(true)
   const [pendingOrders, setPendingOrders] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-
   const [orders, setOrders] = useState<Order[]>([])
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
-
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [totalOrdersToday, setTotalOrdersToday] = useState<number | null>(null)
 
+  const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+
+  const [totalOrdersToday, setTotalOrdersToday] = useState<number | null>(null)
   const [totalOrdersYesterday, setTotalOrdersYesterday] = useState<number | null>(null)
   const [percentageChange, setPercentageChange] = useState<number | null>(null)
 
 
-  interface OrderItem {
-    id: string
-    name: string
-    price: string
-    quantity: number
-    storeId: string
-    isAvailable: boolean
-  }
-
-  interface Order {
-    id: string
-    type: string
-    totalItems: number
-    totalAmount: string
-    fullHouseAddress: string
-    additionalPhoneNumber: string
-    noteForVendor: string
-    noteForStore: string
-    createdAt: string
-    totalAmountBeforeCharges: number
-    Charges: number
-    orderItems: OrderItem[] | null
-
-    orderTracking: OrderTracking[];   // ← added
-  }
-
-  interface OrderTracking {
-    id: string;
-    orderStatus: string;
-    description?: string | null;
-    createdAt: string;
-    updatedAt: string;
-  }
-
-  const handleViewDetails = (order: Order) => {
-    setSelectedOrder(order);
-    setIsModalOpen(true);
-  };
-
-
-  const closeModal = () => {
-    setSelectedOrder(null);
-    setIsModalOpen(false);
-  };
-
-
-  // ✅ Redirect if no token
+  /* ----------------------------------------------------------------------
+     🔐 CHECK AUTH TOKEN
+  -----------------------------------------------------------------------*/
   useEffect(() => {
     const token = localStorage.getItem("token")
-    if (!token) {
-      router.push("/auth/signin")
-    }
+    if (!token) router.push("/auth/signin")
   }, [router])
 
+
+
+  /* ----------------------------------------------------------------------
+     📦 FETCH ALL ORDERS + ANALYTICS
+  -----------------------------------------------------------------------*/
   useEffect(() => {
     const fetchDailyOrders = async () => {
       try {
         const token = localStorage.getItem("token")
         if (!token) return
 
-        const response = await fetch(`${API_BASE_URL}/api/v1/orders/get-all-orders`, {
+        const res = await fetch(`${API_BASE_URL}/api/v1/orders/get-all-orders`, {
           headers: {
             "Content-Type": "application/json",
             "cushy-access-key": `Bearer ${token}`,
           },
         })
 
-        const data = await response.json()
+        const data = await res.json()
 
-        if (response.ok && Array.isArray(data)) {
-          setOrders(data)
+        if (!res.ok || !Array.isArray(data)) {
+          console.error("Invalid data:", data)
+          return
+        }
 
-          // ✅ Get today and yesterday
-          const today = new Date().toISOString().split("T")[0]
-          const yesterday = new Date()
-          yesterday.setDate(yesterday.getDate() - 1)
-          const yesterdayDate = yesterday.toISOString().split("T")[0]
+        setOrders(data)
 
-          // ✅ Filter orders
-          const todayOrders = data.filter(order =>
-            order.createdAt.startsWith(today)
-          )
-          const yesterdayOrders = data.filter(order =>
-            order.createdAt.startsWith(yesterdayDate)
-          )
+        const today = new Date().toISOString().split("T")[0]
+        const yesterday = new Date()
+        yesterday.setDate(yesterday.getDate() - 1)
+        const yDay = yesterday.toISOString().split("T")[0]
 
-          // ✅ Extract item names for logging or display
-          data.forEach((order: Order) => {
-            const itemNames = order.orderItems?.map((item: OrderItem) => item.name) || []
-            console.log(`🛒 Order ${order.id} has items:`, itemNames.join(", "))
-          })
+        const todayOrders = data.filter(o => o.createdAt.startsWith(today))
+        const yesterdayOrders = data.filter(o => o.createdAt.startsWith(yDay))
 
+        setTotalOrdersToday(todayOrders.length)
+        setTotalOrdersYesterday(yesterdayOrders.length)
 
-          // ✅ Count totals
-          const todayCount = todayOrders.length
-          const yesterdayCount = yesterdayOrders.length
-
-          setTotalOrdersToday(todayCount)
-          setTotalOrdersYesterday(yesterdayCount)
-
-          // ✅ Calculate % change safely
-          if (yesterdayCount > 0) {
-            const percent = ((todayCount - yesterdayCount) / yesterdayCount) * 100
-            setPercentageChange(percent)
-          } else {
-            setPercentageChange(null)
-          }
-        } else {
-          console.error("Unexpected orders response:", data)
+        if (yesterdayOrders.length > 0) {
+          const percent =
+            ((todayOrders.length - yesterdayOrders.length) /
+              yesterdayOrders.length) *
+            100
+          setPercentageChange(percent)
         }
       } catch (err) {
         console.error("Error fetching total orders:", err)
@@ -163,20 +157,16 @@ export default function OrdersPage() {
 
 
 
-
-
-
-
-
-
-  // ✅ Fetch PENDING orders count
+  /* ----------------------------------------------------------------------
+     ⏳ FETCH PENDING ORDERS COUNT
+  -----------------------------------------------------------------------*/
   useEffect(() => {
     const fetchPendingOrders = async () => {
       try {
         const token = localStorage.getItem("token")
         if (!token) return
 
-        const response = await fetch(
+        const res = await fetch(
           `${API_BASE_URL}/api/v1/orders?filter[status]=PENDING`,
           {
             headers: {
@@ -186,17 +176,14 @@ export default function OrdersPage() {
           }
         )
 
-        const data = await response.json()
+        const data = await res.json()
 
-        // ✅ Extract count from pagination
-        if (response.ok && data?.pagination) {
+        if (res.ok && data?.pagination) {
           setPendingOrders(data.pagination.totalItems)
         } else {
-          console.error("Unexpected response format:", data)
-          setError("Unexpected response from server")
+          setError("Unexpected server response")
         }
       } catch (err) {
-        console.error("Error fetching pending orders:", err)
         setError("Failed to fetch pending orders")
       } finally {
         setLoading(false)
@@ -206,27 +193,59 @@ export default function OrdersPage() {
     fetchPendingOrders()
   }, [])
 
-  // ✅ Filter orders by search query
-  const filteredOrders = orders.filter((order) =>
+
+
+  /* ----------------------------------------------------------------------
+     🔍 SEARCH + PAGINATION
+  -----------------------------------------------------------------------*/
+  const filteredOrders = orders.filter(order =>
     order.id.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const reversedOrders = [...filteredOrders].reverse()
+
+  const itemsPerPage = 10
+  const totalPages = Math.ceil(reversedOrders.length / itemsPerPage)
+
+  const paginatedOrders = reversedOrders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   )
 
 
 
+  /* ----------------------------------------------------------------------
+     🔎 OPEN & CLOSE MODAL
+  -----------------------------------------------------------------------*/
+  const handleViewDetails = (order: Order) => {
+    setSelectedOrder(order)
+    setIsModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setSelectedOrder(null)
+  }
+
+
+
+  /* ----------------------------------------------------------------------
+     🎨 JSX RETURN
+  -----------------------------------------------------------------------*/
 
   return (
     <div className="space-y-6 px-4 sm:px-6 lg:px-8 pb-10">
 
-      {/* Metric Cards */}
+      {/* ---------------------- METRIC CARDS ---------------------- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* ... Cards (same as before) */}
-        {/* Total Orders */}
+        
+        {/* Total Orders Today */}
         <div className="bg-white rounded-lg p-6 border border-gray-200">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Orders (Today)</p>
               <h3 className="text-3xl font-bold mb-2">
-                {totalOrdersToday !== null ? totalOrdersToday : "..."}
+                {totalOrdersToday ?? "..."}
               </h3>
               <p className="text-sm text-teal-600">
                 {percentageChange !== null && totalOrdersYesterday !== null ? (
@@ -236,18 +255,16 @@ export default function OrdersPage() {
                   </>
                 ) : (
                   totalOrdersYesterday === 0
-                    ? "No orders yesterday for comparison"
+                    ? "No orders yesterday"
                     : "Fetching data..."
                 )}
               </p>
             </div>
-
             <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
               <ShoppingCart className="w-6 h-6 text-blue-500" />
             </div>
           </div>
         </div>
-
 
         {/* Pending Orders */}
         <div className="bg-white rounded-lg p-6 border border-gray-200">
@@ -258,11 +275,7 @@ export default function OrdersPage() {
                 {loading ? "..." : pendingOrders ?? "--"}
               </h3>
               <p className="text-sm text-orange-600">
-                {error
-                  ? error
-                  : pendingOrders === 0
-                    ? "No pending orders"
-                    : "Requires attention"}
+                {error ?? (pendingOrders === 0 ? "No pending orders" : "Requires attention")}
               </p>
             </div>
             <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center">
@@ -285,7 +298,7 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        {/* Revenue Today */}
+        {/* Revenue */}
         <div className="bg-white rounded-lg p-6 border border-gray-200">
           <div className="flex items-start justify-between">
             <div>
@@ -300,14 +313,16 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Filters Section */}
+
+      {/* ---------------------- FILTERS ---------------------- */}
       <div className="bg-white rounded-lg p-6 border border-gray-200">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+          
           {/* Business Type */}
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">Business Type:</label>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">Business Type</label>
             <Select defaultValue="all-types">
-              <SelectTrigger className="w-full">
+              <SelectTrigger>
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent>
@@ -321,9 +336,9 @@ export default function OrdersPage() {
 
           {/* Status */}
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">Status:</label>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">Status</label>
             <Select defaultValue="all-status">
-              <SelectTrigger className="w-full">
+              <SelectTrigger>
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
@@ -337,9 +352,9 @@ export default function OrdersPage() {
 
           {/* City */}
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">City:</label>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">City</label>
             <Select defaultValue="all-cities">
-              <SelectTrigger className="w-full">
+              <SelectTrigger>
                 <SelectValue placeholder="All Cities" />
               </SelectTrigger>
               <SelectContent>
@@ -353,175 +368,150 @@ export default function OrdersPage() {
 
           {/* Date Range From */}
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">Date Range From:</label>
-            <Input type="date" placeholder="mm/dd/yyyy" className="w-full" />
+            <label className="text-sm font-medium text-gray-700 mb-2 block">Date From</label>
+            <Input type="date" />
           </div>
 
           {/* Date Range To */}
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">Date Range To:</label>
-            <Input type="date" placeholder="mm/dd/yyyy" className="w-full" />
+            <label className="text-sm font-medium text-gray-700 mb-2 block">Date To</label>
+            <Input type="date" />
           </div>
         </div>
 
 
+        {/* Filter Buttons */}
         <div className="flex flex-wrap gap-3">
-          {/* Apply Filters */}
-          <Button className="bg-[#5B2C6F] hover:bg-[#4a2359] text-white">
-            <Filter className="w-4 h-4 mr-2" />
-            Apply Filters
+          <Button className="bg-[#5B2C6F] text-white hover:bg-[#4a2359]">
+            <Filter className="w-4 h-4 mr-2" /> Apply Filters
           </Button>
 
-          {/* Export CSV */}
           <Button variant="outline">
             <FileDown className="w-4 h-4 mr-2 text-[#5B2C6F]" />
             Export CSV
           </Button>
 
-          {/* Update Orders */}
-          <Button
-            variant="outline"
-            onClick={() => router.push("/dashboard/orders/assign-riders")}
-            className="cursor-pointer transition-transform duration-150 hover:scale-105 hover:border-[#5B2C6F]"
-          >
+          <Button variant="outline" onClick={() => router.push("/dashboard/orders/update-orders")}>
             <RefreshCcw className="w-4 h-4 mr-2 text-[#5B2C6F]" />
             Update Orders
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => router.push("/dashboard/orders/assign-rider")}
-            className="cursor-pointer transition-transform duration-150 hover:scale-105 hover:border-[#5B2C6F]"
-          >
+
+          <Button variant="outline" onClick={() => router.push("/dashboard/orders/assign-rider")}>
             <UserCheck className="w-4 h-4 mr-2 text-[#5B2C6F]" />
             Assign Rider
           </Button>
         </div>
       </div>
 
-      {/* Recent Orders Table */}
+
+      {/* ---------------------- ORDERS TABLE ---------------------- */}
       <div className="bg-white rounded-lg border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <h2 className="text-xl font-bold">Recent Orders</h2>
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <div className="relative flex-grow">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
-                  placeholder="Search orders..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-full"
-                />
-              </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                <RefreshCw className="w-4 h-4" />
-              </Button>
+        <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between gap-4">
+          <h2 className="text-xl font-bold">Recent Orders</h2>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="relative flex-grow">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Search orders..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
             </div>
+            <Button variant="ghost" size="icon">
+              <RefreshCw className="w-4 h-4" />
+            </Button>
           </div>
         </div>
 
+        {/* TABLE */}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1200px]">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50 border-b">
               <tr>
-
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name of items</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone Number</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Num of items</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
-
-
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"># Items</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-6 py-3"></th>
               </tr>
             </thead>
 
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-6 text-gray-500">
+                  <td colSpan={6} className="text-center py-6 text-gray-500">
                     Loading recent orders...
                   </td>
                 </tr>
-              ) : filteredOrders.length === 0 ? (
+              ) : paginatedOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-6 text-gray-500">
+                  <td colSpan={6} className="text-center py-6 text-gray-500">
                     No recent orders found
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((order) => (
-                  <tr key={order.fullHouseAddress} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {order.orderItems?.map(item => item.name).join(", ")}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div>
+                paginatedOrders.map(order => {
+                  const latestStatus =
+                    order.orderTracking?.[order.orderTracking.length - 1]?.orderStatus ||
+                    "UNKNOWN"
 
-                        <p className="text-sm text-gray-500">
-                          {order.additionalPhoneNumber || "--"}
-                        </p>
-                      </div>
-                    </td>
+                  const statusColor =
+                    latestStatus === "DELIVERED" || latestStatus === "PICKED_UP"
+                      ? "bg-green-50 text-green-700"
+                      : latestStatus === "PENDING"
+                      ? "bg-yellow-50 text-yellow-700"
+                      : latestStatus === "CANCELLED"
+                      ? "bg-red-50 text-red-700"
+                      : "bg-gray-100 text-gray-600"
 
+                  return (
+                    <tr key={order.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm">
+                        {order.orderItems?.map(i => i.name).join(", ") || "--"}
+                      </td>
 
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {order.totalItems}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-50 text-green-700">
-                        ₦{Number(order.totalAmount).toLocaleString()}
-                      </span>
-                    </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {order.additionalPhoneNumber || "--"}
+                      </td>
 
-                    <td className="px-6 py-4">
-                      {order.orderTracking && order.orderTracking.length > 0 ? (
-                        <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${(() => {
-                              const status = order.orderTracking[order.orderTracking.length - 1].orderStatus;
-                              if (status === "DELIVERED" || status === "PICKED_UP") return "bg-green-50 text-green-700";
-                              if (status === "PENDING") return "bg-yellow-50 text-yellow-700";
-                              if (status === "CANCELLED") return "bg-red-50 text-red-700";
-                              return "bg-gray-50 text-gray-500";
-                            })()
-                            }`}
-                        >
-                          {order.orderTracking[order.orderTracking.length - 1].orderStatus.replace("_", " ")}
+                      <td className="px-6 py-4 text-sm">{order.totalItems}</td>
+
+                      <td className="px-6 py-4">
+                        <span className="px-3 py-1 rounded-full text-sm font-semibold bg-green-50 text-green-700">
+                          ₦{Number(order.totalAmount).toLocaleString()}
                         </span>
-                      ) : (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-gray-50 text-gray-500">
-                          No status
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColor}`}>
+                          {latestStatus.replace("_", " ")}
                         </span>
-                      )}
-                    </td>
+                      </td>
 
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => handleViewDetails(order)}>
+                            <Eye className="w-4 h-4" />
+                          </Button>
 
+                          <Button variant="ghost" size="icon">
+                            <Edit className="w-4 h-4" />
+                          </Button>
 
-
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleViewDetails(order)}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-
-
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
               )}
-              {isModalOpen && selectedOrder && (
+
+                  {isModalOpen && selectedOrder && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
                   <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto p-6 md:p-8 animate-fadeIn">
 
@@ -617,11 +607,60 @@ export default function OrdersPage() {
                   </div>
                 </div>
               )}
-
             </tbody>
           </table>
+          {/* ---------------------- PAGINATION ---------------------- */}
+{totalPages > 1 && (
+  <div className="flex justify-end items-center space-x-2 mt-4">
+    {/* Previous Button */}
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+      disabled={currentPage === 1}
+    >
+      Previous
+    </Button>
+
+    {/* Page Numbers */}
+    <div className="flex space-x-1">
+      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+        <Button
+          key={page}
+          size="sm"
+          variant={page === currentPage ? "default" : "outline"}
+          onClick={() => setCurrentPage(page)}
+        >
+          {page}
+        </Button>
+      ))}
+    </div>
+
+    {/* Next Button */}
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+      disabled={currentPage === totalPages}
+    >
+      Next
+    </Button>
+  </div>
+)}
+
         </div>
       </div>
+
+
+      {/* ------------------------------------------------------------------
+         🔍 ORDER DETAILS MODAL (ADD YOUR EXISTING MODAL CODE HERE)
+      -------------------------------------------------------------------*/}
+
+      {isModalOpen && selectedOrder && (
+        <div>
+          {/* your modal code */}
+        </div>
+      )}
     </div>
   )
 }

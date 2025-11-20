@@ -1,7 +1,7 @@
 "use client"
 
-import { Search, Bell, Menu } from "lucide-react"
-import { usePathname } from "next/navigation"
+import { Search, Bell, Menu, User } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
 import { getPageTitle } from "@/lib/dashboard-routes"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useEffect, useState } from "react"
 
 type HeaderProps = {
   onMenuClick?: () => void
@@ -21,6 +22,18 @@ type HeaderProps = {
 export function Header({ onMenuClick }: HeaderProps) {
   const pathname = usePathname()
   const title = getPageTitle(pathname)
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const router = useRouter();
+
+
+  useEffect(() => {
+    const stored = localStorage.getItem("user");
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      setUserEmail(parsed.email);
+    }
+  }, []);
 
   return (
     <header className="bg-white border-b border-gray-200 px-4 py-3 md:px-6 md:py-4">
@@ -59,13 +72,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* Bottom row: search + icons + profile */}
         <div className="flex flex-wrap items-center justify-between gap-3 md:justify-end">
           {/* Search */}
-          <div className="relative flex-1 min-w-[160px] sm:min-w-[240px] md:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              placeholder="Search..."
-              className="pl-10 bg-gray-50 border-gray-200 w-full"
-            />
-          </div>
+
 
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative">
@@ -77,13 +84,49 @@ export function Header({ onMenuClick }: HeaderProps) {
 
           {/* User profile */}
           <div className="flex items-center gap-2 md:gap-3">
-            <Avatar className="w-8 h-8 md:w-9 md:h-9">
-              <AvatarImage src="/professional-woman-diverse.png" />
-              <AvatarFallback>SA</AvatarFallback>
-            </Avatar>
+            <div onClick={() => setIsModalOpen(true)} className="cursor-pointer">
+              <Avatar className="w-8 h-8 md:w-9 md:h-9">
+                <AvatarImage src="/professional-woman-diverse.png" />
+              <AvatarFallback className="bg-gray-200 flex items-center justify-center">
+    <User className="w-4 h-4 text-gray-600" />
+  </AvatarFallback>
+              </Avatar>
+            </div>
+
+            {isModalOpen && (
+              <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[9999]">
+                <div className="bg-white w-80 rounded-lg shadow-lg p-6">
+                  <h2 className="text-lg font-semibold mb-3">Account</h2>
+                  <p className="text-sm text-gray-600 mb-6">
+                    Do you want to log out?
+                  </p>
+
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => setIsModalOpen(false)}
+                      className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm"
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        localStorage.removeItem("token");
+                        router.push("auth/signin");
+                      }}
+                      className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 text-sm"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+
             <div className="hidden sm:block">
-              <p className="text-sm font-medium text-gray-900">Sarah Admin</p>
-              <p className="text-xs text-gray-500">SuperAdmin</p>
+              <p className="text-sm font-medium text-gray-900">  {userEmail ?? "Loading..."}</p>
+
             </div>
           </div>
         </div>
