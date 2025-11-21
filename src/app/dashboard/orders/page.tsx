@@ -110,50 +110,53 @@ export default function OrdersPage() {
   useEffect(() => {
     const fetchDailyOrders = async () => {
       try {
-        const token = localStorage.getItem("token")
-        if (!token) return
+        const token = localStorage.getItem("token");
+        if (!token) return;
 
         const res = await fetch(`${API_BASE_URL}/api/v1/orders/get-all-orders`, {
           headers: {
             "Content-Type": "application/json",
             "cushy-access-key": `Bearer ${token}`,
           },
-        })
+        });
 
-        const data = await res.json()
+        const data = await res.json();
 
         if (!res.ok || !Array.isArray(data)) {
-          console.error("Invalid data:", data)
-          return
+          console.error("Invalid data:", data);
+          return;
         }
 
-        setOrders(data)
+        // SORT ORDERS BY createdAt ASC (oldest first)
+        const sortedOrders = data.sort((a: Order, b: Order) => {
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        });
 
-        const today = new Date().toISOString().split("T")[0]
-        const yesterday = new Date()
-        yesterday.setDate(yesterday.getDate() - 1)
-        const yDay = yesterday.toISOString().split("T")[0]
+        setOrders(sortedOrders);
 
-        const todayOrders = data.filter(o => o.createdAt.startsWith(today))
-        const yesterdayOrders = data.filter(o => o.createdAt.startsWith(yDay))
+        // Calculate analytics
+        const today = new Date().toISOString().split("T")[0];
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yDay = yesterday.toISOString().split("T")[0];
 
-        setTotalOrdersToday(todayOrders.length)
-        setTotalOrdersYesterday(yesterdayOrders.length)
+        const todayOrders = sortedOrders.filter(o => o.createdAt.startsWith(today));
+        const yesterdayOrders = sortedOrders.filter(o => o.createdAt.startsWith(yDay));
+
+        setTotalOrdersToday(todayOrders.length);
+        setTotalOrdersYesterday(yesterdayOrders.length);
 
         if (yesterdayOrders.length > 0) {
-          const percent =
-            ((todayOrders.length - yesterdayOrders.length) /
-              yesterdayOrders.length) *
-            100
-          setPercentageChange(percent)
+          const percent = ((todayOrders.length - yesterdayOrders.length) / yesterdayOrders.length) * 100;
+          setPercentageChange(percent);
         }
       } catch (err) {
-        console.error("Error fetching total orders:", err)
+        console.error("Error fetching orders:", err);
       }
-    }
+    };
 
-    fetchDailyOrders()
-  }, [])
+    fetchDailyOrders();
+  }, []);
 
 
 
@@ -238,7 +241,7 @@ export default function OrdersPage() {
 
       {/* ---------------------- METRIC CARDS ---------------------- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        
+
         {/* Total Orders Today */}
         <div className="bg-white rounded-lg p-6 border border-gray-200">
           <div className="flex items-start justify-between">
@@ -317,7 +320,7 @@ export default function OrdersPage() {
       {/* ---------------------- FILTERS ---------------------- */}
       <div className="bg-white rounded-lg p-6 border border-gray-200">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
-          
+
           {/* Business Type */}
           <div>
             <label className="text-sm font-medium text-gray-700 mb-2 block">Business Type</label>
@@ -431,6 +434,8 @@ export default function OrdersPage() {
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
+
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created At</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"># Items</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
@@ -446,72 +451,87 @@ export default function OrdersPage() {
                     Loading recent orders...
                   </td>
                 </tr>
-              ) : paginatedOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-6 text-gray-500">
-                    No recent orders found
-                  </td>
-                </tr>
-              ) : (
-                paginatedOrders.map(order => {
-                  const latestStatus =
-                    order.orderTracking?.[order.orderTracking.length - 1]?.orderStatus ||
-                    "UNKNOWN"
+              ) :
 
-                  const statusColor =
-                    latestStatus === "DELIVERED" || latestStatus === "PICKED_UP"
-                      ? "bg-green-50 text-green-700"
-                      : latestStatus === "PENDING"
-                      ? "bg-yellow-50 text-yellow-700"
-                      : latestStatus === "CANCELLED"
-                      ? "bg-red-50 text-red-700"
-                      : "bg-gray-100 text-gray-600"
+                paginatedOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-6 text-gray-500">
+                      No recent orders found
+                    </td>
+                  </tr>
+                ) : (
 
-                  return (
-                    <tr key={order.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm">
-                        {order.orderItems?.map(i => i.name).join(", ") || "--"}
-                      </td>
 
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {order.additionalPhoneNumber || "--"}
-                      </td>
+                  paginatedOrders.map(order => {
+                    // Get the latest tracking based on createdAt
+                    const latestTracking =
+                      order.orderTracking?.reduce((latest, current) => {
+                        return new Date(current.createdAt) > new Date(latest.createdAt)
+                          ? current
+                          : latest;
+                      }, order.orderTracking[0]) || null;
 
-                      <td className="px-6 py-4 text-sm">{order.totalItems}</td>
+                    const latestStatus = latestTracking?.orderStatus || "UNKNOWN";
 
-                      <td className="px-6 py-4">
-                        <span className="px-3 py-1 rounded-full text-sm font-semibold bg-green-50 text-green-700">
-                          ₦{Number(order.totalAmount).toLocaleString()}
-                        </span>
-                      </td>
 
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColor}`}>
-                          {latestStatus.replace("_", " ")}
-                        </span>
-                      </td>
+                    const statusColor =
+                      latestStatus === "DELIVERED" || latestStatus === "PICKED_UP" || latestStatus === "ACKNOWLEDGED"
+                        ? "bg-green-50 text-green-700"
+                        : latestStatus === "PENDING"
+                          ? "bg-yellow-50 text-yellow-700"
+                          : latestStatus === "CANCELLED" || latestStatus === "REJECTED"
+                            ? "bg-red-50 text-red-700"
+                            : "bg-gray-100 text-gray-600";
 
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => handleViewDetails(order)}>
-                            <Eye className="w-4 h-4" />
-                          </Button>
+                    return (
+                      <tr key={order.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm">
+                          {order.orderItems?.map(i => i.name).join(", ") || "--"}
+                        </td>
 
-                          <Button variant="ghost" size="icon">
-                            <Edit className="w-4 h-4" />
-                          </Button>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {order.createdAt ? new Date(order.createdAt).toLocaleString() : "--"}
+                        </td>
 
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {order.additionalPhoneNumber || "--"}
+                        </td>
 
-                  {isModalOpen && selectedOrder && (
+                        <td className="px-6 py-4 text-sm">{order.totalItems}</td>
+
+                        <td className="px-6 py-4">
+                          <span className="px-3 py-1 rounded-full text-sm font-semibold bg-green-50 text-green-700">
+                            ₦{Number(order.totalAmount).toLocaleString()}
+                          </span>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColor}`}>
+                            {latestStatus.replace("_", " ")}
+                          </span>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => handleViewDetails(order)}>
+                              <Eye className="w-4 h-4" />
+                            </Button>
+
+                            <Button variant="ghost" size="icon">
+                              <Edit className="w-4 h-4" />
+                            </Button>
+
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+
+              {isModalOpen && selectedOrder && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
                   <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto p-6 md:p-8 animate-fadeIn">
 
@@ -610,43 +630,43 @@ export default function OrdersPage() {
             </tbody>
           </table>
           {/* ---------------------- PAGINATION ---------------------- */}
-{totalPages > 1 && (
-  <div className="flex justify-end items-center space-x-2 mt-4">
-    {/* Previous Button */}
-    <Button
-      size="sm"
-      variant="outline"
-      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-      disabled={currentPage === 1}
-    >
-      Previous
-    </Button>
+          {totalPages > 1 && (
+            <div className="flex justify-end items-center space-x-2 mt-4">
+              {/* Previous Button */}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
 
-    {/* Page Numbers */}
-    <div className="flex space-x-1">
-      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-        <Button
-          key={page}
-          size="sm"
-          variant={page === currentPage ? "default" : "outline"}
-          onClick={() => setCurrentPage(page)}
-        >
-          {page}
-        </Button>
-      ))}
-    </div>
+              {/* Page Numbers */}
+              <div className="flex space-x-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <Button
+                    key={page}
+                    size="sm"
+                    variant={page === currentPage ? "default" : "outline"}
+                    onClick={() => setCurrentPage(page)}
+                  >
+                    {page}
+                  </Button>
+                ))}
+              </div>
 
-    {/* Next Button */}
-    <Button
-      size="sm"
-      variant="outline"
-      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-      disabled={currentPage === totalPages}
-    >
-      Next
-    </Button>
-  </div>
-)}
+              {/* Next Button */}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
 
         </div>
       </div>

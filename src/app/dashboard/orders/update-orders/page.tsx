@@ -141,12 +141,13 @@ useEffect(() => {
             const data = await res.json();
 
             if (Array.isArray(data)) {
-                // Newest should be first → the API gives newest LAST → so reverse it
-                const reversed = [...data].reverse();
+                // Sort by createdAt DESC → latest orders first
+                const sortedOrders = data.sort(
+                    (a: Order, b: Order) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                );
 
-                setOrders(reversed);  
-                // ❌ remove default selected
-                setSelectedOrder(null);
+                setOrders(sortedOrders);
+                setSelectedOrder(null); // remove default selection
             }
         } catch (err) {
             console.error("Fetch error:", err);
@@ -157,6 +158,7 @@ useEffect(() => {
 
     fetchOrders();
 }, []);
+
 
 
     if (loading) {
@@ -227,8 +229,19 @@ useEffect(() => {
                             </tr>
                         </thead>
 
-                        <tbody>
-                            {paginatedOrders.map((order) => (
+                        <tbody> {paginatedOrders.map((order) => {
+    // Find latest tracking by createdAt
+    const latestTracking = order.orderTracking?.reduce((latest, current) => {
+      return new Date(current.createdAt) > new Date(latest.createdAt)
+        ? current
+        : latest;
+    }, order.orderTracking[0]);
+
+    const latestStatus = order.status || latestTracking?.orderStatus;
+
+    
+
+    return (
 
                                 <tr
                                     key={order.id}
@@ -279,7 +292,8 @@ useEffect(() => {
 
                                     </td>
                                 </tr>
-                            ))}
+                            );
+                        })}
                         </tbody>
                     </table>
                 </div>

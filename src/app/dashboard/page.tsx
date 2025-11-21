@@ -37,6 +37,7 @@ interface OrderResponse {
 
 interface Order {
   id: string
+  createdAt: string
   customerName: string
   additionalPhoneNumber: number;
   customerPhone: string
@@ -127,38 +128,49 @@ export default function DashboardOverviewPage() {
   // Fetch recent orders
   useEffect(() => {
     if (!authChecked) return
+
     const fetchRecentOrders = async () => {
       try {
         const token = localStorage.getItem("token")
         if (!token) return
+
         const res = await fetch(`${API_BASE_URL}/api/v1/orders/get-all-orders`, {
-          headers: { "Content-Type": "application/json", "cushy-access-key": `Bearer ${token}` },
+          headers: {
+            "Content-Type": "application/json",
+            "cushy-access-key": `Bearer ${token}`
+          },
         })
+
         const data = await res.json()
-if (res.ok && Array.isArray(data)) {
-  const formatted: Order[] = (data as OrderResponse[])
-    .map((o) => ({
-      id: o.id,
-      additionalPhoneNumber: o.additionalPhoneNumber,
-      customerName: o.customer?.name || "Unknown",
-      customerPhone: o.customer?.phone || "--",
-      orderItems: (o.orderItems || []).map((item) => ({
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price.toString(),
-        isAvailable: true,
-      })),
-      totalAmount: Number(o.totalAmount || 0),
-      paymentStatus: (Number(o.totalAmount) > 0 ? "Paid" : "Unpaid") as "Paid" | "Unpaid",
-      status: o.status || "Pending",
-      orderTracking: o.orderTracking || [],
-    }))
-    .reverse() // latest orders first
 
-  setRecentOrders(formatted)
-}
+        if (res.ok && Array.isArray(data)) {
+          const formatted: Order[] = (data as OrderResponse[])
+            .map((o) => ({
+              id: o.id,
+              additionalPhoneNumber: o.additionalPhoneNumber,
+              createdAt: o.orderTracking?.[0]?.createdAt || "",
+              customerName: o.customer?.name || "Unknown",
+              customerPhone: o.customer?.phone || "--",
+              orderItems: (o.orderItems || []).map((item) => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price.toString(),
+                isAvailable: true,
+              })),
+              totalAmount: Number(o.totalAmount || 0),
+              paymentStatus: (Number(o.totalAmount) > 0 ? "Paid" : "Unpaid") as "Paid" | "Unpaid",
+              status: o.status || "Pending",
+              orderTracking: o.orderTracking || [],
+            }))
+            // Sort orders by createdAt descending
+            .sort((a, b) => {
+              const aDate = new Date(a.orderTracking?.[0]?.createdAt || 0)
+              const bDate = new Date(b.orderTracking?.[0]?.createdAt || 0)
+              return bDate.getTime() - aDate.getTime()
+            })
 
-else {
+          setRecentOrders(formatted)
+        } else {
           console.error("Unexpected response:", data)
         }
       } catch (err) {
@@ -167,21 +179,23 @@ else {
         setLoading(false)
       }
     }
+
     fetchRecentOrders()
   }, [authChecked])
 
+
   if (!authChecked) return null
 
-// Reverse filtered orders so newest comes first
-// filteredOrders without reverse
-const filteredOrders = recentOrders.filter(o =>
-  o.customerName.toLowerCase().includes(searchQuery.toLowerCase())
-)
+  // Reverse filtered orders so newest comes first
+  // filteredOrders without reverse
+  const filteredOrders = recentOrders.filter(o =>
+    o.customerName.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
-const paginatedOrders = filteredOrders.slice(
-  (currentPage - 1) * itemsPerPage,
-  currentPage * itemsPerPage
-)
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
 
 
 
@@ -193,6 +207,7 @@ const paginatedOrders = filteredOrders.slice(
     { title: "Completion Rate", value: "94.2%", change: "2.1% vs yesterday", isPositive: false, icon: CheckCircle2, iconBg: "bg-purple-100", iconColor: "text-purple-600" },
     { title: "Avg Delivery Time", value: "28 min", change: "3 min faster", isPositive: true, icon: Clock, iconBg: "bg-orange-100", iconColor: "text-orange-600" },
   ]
+
 
   return (
     <div className="space-y-6">
@@ -284,6 +299,8 @@ const paginatedOrders = filteredOrders.slice(
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Name of Items</th>
+                  
+                  <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Created At</th>
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Phone Number</th>
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -291,52 +308,84 @@ const paginatedOrders = filteredOrders.slice(
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={10} className="py-6 text-center text-gray-500">Loading orders...</td></tr>
-                ) : paginatedOrders.length === 0 ? (
-                  <tr><td colSpan={10} className="py-6 text-center text-gray-500">No orders found.</td></tr>
-
-
-                ) : paginatedOrders.map(order => (
-                  <tr key={order.id} className="bg-white hover:bg-gray-50 transition-colors border-b border-gray-200">
-                    <td className="py-3 px-4 text-sm text-gray-700">
-
-
-                      {order.orderItems.map((i, idx) => (
-                        <span key={idx} className="inline-block mr-1 px-2 py-0.5 bg-purple-50 text-purple-800 text-xs rounded">
-                          {i.name}
-                        </span>
-                      ))}
+                  <tr>
+                    <td colSpan={10} className="py-6 text-center text-gray-500">
+                      Loading orders...
                     </td>
-                   
-                    <td className="py-3 px-4 text-sm font-bold text-green-700">
-                      <span className="px-2 py-1 rounded-md">₦{order.totalAmount.toLocaleString()}</span>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-800">
-                      <span className="inline-flex items-center gap-2 text-blue-700 px-2 py-1 rounded-md">{order.additionalPhoneNumber || "—"}</span>
-                    </td>
-                    <td className="py-3 px-4 text-sm font-medium">
-                      {order.orderTracking && order.orderTracking.length > 0 ? (
-                        <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${(() => {
-                              const status = order.orderTracking[order.orderTracking.length - 1].orderStatus;
-                              if (status === "DELIVERED" || status === "PICKED_UP") return "bg-green-50 text-green-700";
-                              if (status === "PENDING") return "bg-yellow-50 text-yellow-700";
-                              if (status === "CANCELLED") return "bg-red-50 text-red-700";
-                              return "bg-gray-50 text-gray-500";
-                            })()}`}
-                        >
-                          {order.orderTracking[order.orderTracking.length - 1].orderStatus.replace("_", " ")}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-gray-50 text-gray-500">
-                          No status
-                        </span>
-                      )}
-                    </td>
-                   
                   </tr>
-                ))}
+                ) : paginatedOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-6 text-center text-gray-500">
+                      No orders found.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedOrders.map((order) => {
+                    // Find the latest tracking based on createdAt
+                    const latestTracking =
+                      order.orderTracking?.reduce((latest, current) => {
+                        return new Date(current.createdAt) > new Date(latest.createdAt)
+                          ? current
+                          : latest;
+                      }, order.orderTracking[0]) || null;
+
+                    const currentStatus = latestTracking?.orderStatus || "No status";
+
+                    return (
+                      <tr
+                        key={order.id}
+                        className="bg-white hover:bg-gray-50 transition-colors border-b border-gray-200"
+                      >
+                        <td className="py-3 px-4 text-sm text-gray-700">
+                          {order.orderItems.map((i, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-block mr-1 px-2 py-0.5 bg-purple-50 text-purple-800 text-xs rounded"
+                            >
+                              {i.name}
+                            </span>
+                          ))}
+                        </td>
+
+                           <td className="py-3 px-4 text-sm font-bold text-green-700">
+                          <span className="px-2 py-1 rounded-md">
+                            {new Date(order.createdAt).toLocaleString()}
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-4 text-sm font-bold text-green-700">
+                          <span className="px-2 py-1 rounded-md">
+                            ₦{order.totalAmount.toLocaleString()}
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-4 text-sm text-gray-800">
+                          <span className="inline-flex items-center gap-2 text-blue-700 px-2 py-1 rounded-md">
+                            {order.additionalPhoneNumber || "—"}
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-4 text-sm font-medium">
+                         <span
+  className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${
+    currentStatus === "DELIVERED" || currentStatus === "PICKED_UP" || currentStatus === "ACKNOWLEDGED"
+      ? "bg-green-50 text-green-700"
+      : currentStatus === "PENDING"
+      ? "bg-yellow-50 text-yellow-700"
+      : currentStatus === "CANCELLED" || currentStatus === "REJECTED"
+      ? "bg-red-50 text-red-700"
+      : "bg-gray-50 text-gray-500"
+  }`}
+>
+                            {currentStatus.replace("_", " ")}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
+
             </table>
           </div>
 
