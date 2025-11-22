@@ -71,93 +71,93 @@ export default function OrderDetailsPage() {
 
 
     // ---------------- Update Order Status ----------------
- const updateOrderStatus = async () => {
-    if (!selectedOrder) return;
+    const updateOrderStatus = async () => {
+        if (!selectedOrder) return;
 
-    if (status === "CANCELLED" && reason.trim() === "") {
-        showToast("Please provide a reason for cancellation.", "error");
-        return;
-    }
-
-    const token = localStorage.getItem("token");
-    if (!token) {
-        showToast("No token found!", "error");
-        return;
-    }
-
-    // Show immediate toast
-    showToast(`Updating order status...`);
-
-    const body: UpdateOrderStatusBody = { status };
-    if (status === "CANCELLED") body.cancellationReason = reason.trim();
-
-    try {
-        const res = await fetch(
-            `${API_BASE_URL}/api/v1/orders/update-order-status?orderId=${selectedOrder.id}`,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "cushy-access-key": `Bearer ${token}`,
-                },
-                body: JSON.stringify(body),
-            }
-        );
-
-        const data = await res.json();
-
-        if (res.ok) {
-            // Update orders optimistically
-            setOrders((prev) =>
-                prev.map((o) => (o.id === selectedOrder.id ? { ...o, status } : o))
-            );
-            setShowStatusModal(false);
-
-            showToast(`Order updated to "${status}"`, "success"); // Success toast
-        } else {
-            showToast(data.message || "Failed to update", "error");
+        if (status === "CANCELLED" && reason.trim() === "") {
+            showToast("Please provide a reason for cancellation.", "error");
+            return;
         }
-    } catch (err) {
-        console.error(err);
-        showToast("Error updating order", "error");
-    }
-};
 
+        const token = localStorage.getItem("token");
+        if (!token) {
+            showToast("No token found!", "error");
+            return;
+        }
 
-    // ---------------- Fetch Orders ----------------
-useEffect(() => {
-    const fetchOrders = async () => {
+        // Show immediate toast
+        showToast(`Updating order status...`);
+
+        const body: UpdateOrderStatusBody = { status };
+        if (status === "CANCELLED") body.cancellationReason = reason.trim();
+
         try {
-            const token = localStorage.getItem("token");
-            if (!token) return;
-
-            const res = await fetch(`${API_BASE_URL}/api/v1/orders/get-all-orders`, {
-                headers: {
-                    "Content-Type": "application/json",
-                    "cushy-access-key": `Bearer ${token}`,
-                },
-            });
+            const res = await fetch(
+                `${API_BASE_URL}/api/v1/orders/update-order-status?orderId=${selectedOrder.id}`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "cushy-access-key": `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(body),
+                }
+            );
 
             const data = await res.json();
 
-            if (Array.isArray(data)) {
-                // Sort by createdAt DESC → latest orders first
-                const sortedOrders = data.sort(
-                    (a: Order, b: Order) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            if (res.ok) {
+                // Update orders optimistically
+                setOrders((prev) =>
+                    prev.map((o) => (o.id === selectedOrder.id ? { ...o, status } : o))
                 );
+                setShowStatusModal(false);
 
-                setOrders(sortedOrders);
-                setSelectedOrder(null); // remove default selection
+                showToast(`Order updated to "${status}"`, "success"); // Success toast
+            } else {
+                showToast(data.message || "Failed to update", "error");
             }
         } catch (err) {
-            console.error("Fetch error:", err);
-        } finally {
-            setLoading(false);
+            console.error(err);
+            showToast("Error updating order", "error");
         }
     };
 
-    fetchOrders();
-}, []);
+
+    // ---------------- Fetch Orders ----------------
+    useEffect(() => {
+        const fetchOrders = async () => {
+            try {
+                const token = localStorage.getItem("token");
+                if (!token) return;
+
+                const res = await fetch(`${API_BASE_URL}/api/v1/orders/get-all-orders`, {
+                    headers: {
+                        "Content-Type": "application/json",
+                        "cushy-access-key": `Bearer ${token}`,
+                    },
+                });
+
+                const data = await res.json();
+
+                if (Array.isArray(data)) {
+                    // Sort by createdAt DESC → latest orders first
+                    const sortedOrders = data.sort(
+                        (a: Order, b: Order) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                    );
+
+                    setOrders(sortedOrders);
+                    setSelectedOrder(null); // remove default selection
+                }
+            } catch (err) {
+                console.error("Fetch error:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchOrders();
+    }, []);
 
 
 
@@ -212,7 +212,7 @@ useEffect(() => {
             {/* ------------------ ORDERS TABLE ------------------ */}
             <div className="bg-white border rounded-lg shadow-sm p-6">
                 <h2 className="text-lg font-semibold mb-4">
-                   Update Orders ({orders.length})
+                    Update Orders ({orders.length})
                 </h2>
 
                 <div className="overflow-x-auto">
@@ -230,18 +230,18 @@ useEffect(() => {
                         </thead>
 
                         <tbody> {paginatedOrders.map((order) => {
-    // Find latest tracking by createdAt
-    const latestTracking = order.orderTracking?.reduce((latest, current) => {
-      return new Date(current.createdAt) > new Date(latest.createdAt)
-        ? current
-        : latest;
-    }, order.orderTracking[0]);
+                            // Find latest tracking by createdAt
+                            const latestTracking = order.orderTracking?.reduce((latest, current) => {
+                                return new Date(current.createdAt) > new Date(latest.createdAt)
+                                    ? current
+                                    : latest;
+                            }, order.orderTracking[0]);
 
-    const latestStatus = order.status || latestTracking?.orderStatus;
+                            const latestStatus = order.status || latestTracking?.orderStatus;
 
-    
 
-    return (
+
+                            return (
 
                                 <tr
                                     key={order.id}
@@ -316,8 +316,8 @@ useEffect(() => {
                             key={page}
                             onClick={() => setCurrentPage(page)}
                             className={`px-3 py-1 text-sm rounded-md border ${currentPage === page
-                                    ? "bg-purple-600 text-white border-purple-600"
-                                    : "hover:bg-gray-100"
+                                ? "bg-purple-600 text-white border-purple-600"
+                                : "hover:bg-gray-100"
                                 }`}
                         >
                             {page}
@@ -387,8 +387,8 @@ useEffect(() => {
                                 onClick={updateOrderStatus}
                                 disabled={status === "CANCELLED" && reason.trim() === ""}
                                 className={`bg-purple-700 text-white w-full py-2 rounded-md text-sm font-medium ${status === "CANCELLED" && reason.trim() === ""
-                                        ? "opacity-50 cursor-not-allowed"
-                                        : "hover:bg-purple-800"
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : "hover:bg-purple-800"
                                     }`}
                             >
                                 Update Status
