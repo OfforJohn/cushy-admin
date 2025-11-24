@@ -122,8 +122,8 @@ useEffect(() => {
       }
 
       // 2️⃣ Extract unique store IDs
-      const uniqueStoreIds = [...new Set(data.map((o: any) => o.storeId))];
-
+      const storeIds = (data as OrderResponse[]).map((o) => o.storeId);
+      const uniqueStoreIds = Array.from(new Set(storeIds));
       // 3️⃣ Fetch store names once per storeId
       const storeMap: Record<string, string | null> = {};
 
