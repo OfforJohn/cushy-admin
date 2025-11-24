@@ -45,6 +45,14 @@ export interface OrderItem {
   isAvailable: boolean
 }
 
+
+interface Store {
+  id: string;
+  name: string;
+  // add other fields as needed
+}
+
+
 export interface OrderTracking {
   id: string
   orderStatus: string
@@ -54,8 +62,10 @@ export interface OrderTracking {
 }
 
 export interface Order {
+
   id: string
   type: string
+    storeId:string
   totalItems: number
   totalAmount: string
   fullHouseAddress: string
@@ -67,6 +77,11 @@ export interface Order {
   Charges: number
   orderItems: OrderItem[] | null
   orderTracking: OrderTracking[]
+  
+  store: Store | null   // FIXED HERE
+
+  storeName: string | null
+
 }
 
 
@@ -103,60 +118,107 @@ export default function OrdersPage() {
   }, [router])
 
 
+  
 
-  /* ----------------------------------------------------------------------
-     📦 FETCH ALL ORDERS + ANALYTICS
-  -----------------------------------------------------------------------*/
-  useEffect(() => {
-    const fetchDailyOrders = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) return;
 
-        const res = await fetch(`${API_BASE_URL}/api/v1/orders/get-all-orders`, {
-          headers: {
-            "Content-Type": "application/json",
-            "cushy-access-key": `Bearer ${token}`,
-          },
-        });
+useEffect(() => {
+  const fetchDailyOrders = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
 
-        const data = await res.json();
+      // 1️⃣ Fetch all orders
+      const res = await fetch(`${API_BASE_URL}/api/v1/orders/get-all-orders`, {
+        headers: {
+          "Content-Type": "application/json",
+          "cushy-access-key": `Bearer ${token}`,
+        },
+      });
 
-        if (!res.ok || !Array.isArray(data)) {
-          console.error("Invalid data:", data);
-          return;
-        }
+      const orders: Order[] = await res.json();
 
-        // SORT ORDERS BY createdAt ASC (oldest first)
-        const sortedOrders = data.sort((a: Order, b: Order) => {
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        });
-
-        setOrders(sortedOrders);
-
-        // Calculate analytics
-        const today = new Date().toISOString().split("T")[0];
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yDay = yesterday.toISOString().split("T")[0];
-
-        const todayOrders = sortedOrders.filter(o => o.createdAt.startsWith(today));
-        const yesterdayOrders = sortedOrders.filter(o => o.createdAt.startsWith(yDay));
-
-        setTotalOrdersToday(todayOrders.length);
-        setTotalOrdersYesterday(yesterdayOrders.length);
-
-        if (yesterdayOrders.length > 0) {
-          const percent = ((todayOrders.length - yesterdayOrders.length) / yesterdayOrders.length) * 100;
-          setPercentageChange(percent);
-        }
-      } catch (err) {
-        console.error("Error fetching orders:", err);
+      if (!res.ok || !Array.isArray(orders)) {
+        console.error("Invalid order data:", orders);
+        return;
       }
-    };
 
-    fetchDailyOrders();
-  }, []);
+      // 2️⃣ Sort by createdAt
+      const sortedOrders = orders.sort((a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+
+      // 3️⃣ Extract unique store IDs
+      const uniqueStoreIds = [...new Set(sortedOrders.map(o => o.storeId))];
+
+      // 4️⃣ Fetch store names for each storeId ONLY ONCE
+      const storeMap: Record<string, string | null> = {};
+
+      await Promise.all(
+        uniqueStoreIds.map(async (id) => {
+          if (!id) return;
+          const storeName = await fetchStoreName(id, token);
+          storeMap[id] = storeName;
+        })
+      );
+
+      // 5️⃣ Attach storeName to each order
+      const processedOrders = sortedOrders.map(order => ({
+        ...order,
+        storeName: storeMap[order.storeId] || null,
+      }));
+
+      setOrders(processedOrders);
+
+      // 6️⃣ Daily analytics
+      const today = new Date().toISOString().split("T")[0];
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yDay = yesterday.toISOString().split("T")[0];
+
+      const todayOrders = processedOrders.filter(o => o.createdAt.startsWith(today));
+      const yesterdayOrders = processedOrders.filter(o => o.createdAt.startsWith(yDay));
+
+      setTotalOrdersToday(todayOrders.length);
+      setTotalOrdersYesterday(yesterdayOrders.length);
+
+      if (yesterdayOrders.length > 0) {
+        const percent = ((todayOrders.length - yesterdayOrders.length) / yesterdayOrders.length) * 100;
+        setPercentageChange(percent);
+      }
+
+    } catch (err) {
+      console.error("Error fetching orders:", err);
+    }
+  };
+
+  fetchDailyOrders();
+}, []);
+
+
+  
+
+
+
+const fetchStoreName = async (storeId: string, token: string): Promise<string | null> => {
+  if (!storeId || storeId === "null") return null;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/orders/get-orders-by-storeId/${storeId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        "cushy-access-key": `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+    console.log(storeId)
+    console.log(data);data.data.orders[0][0].store.name
+    return data.data.orders[0][0].store.name || null;
+  } catch (err) {
+    console.error("Error fetching store:", err);
+    return null;
+  }
+};
 
 
 
@@ -433,6 +495,8 @@ export default function OrdersPage() {
           <table className="w-full min-w-[1200px]">
             <thead className="bg-gray-50 border-b">
               <tr>
+                
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">StoreName</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
 
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created At</th>
@@ -485,6 +549,10 @@ export default function OrdersPage() {
 
                     return (
                       <tr key={order.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm text-gray-500">
+  {order.storeName || "--"}
+</td>
+
                         <td className="px-6 py-4 text-sm">
                           {order.orderItems?.map(i => i.name).join(", ") || "--"}
                         </td>

@@ -254,6 +254,31 @@ export default function AssignRiderPage() {
 
   if (loading) return <div className="p-6">Loading orders...</div>;
 
+  function StatusBadge({ status }: { status: string }) {
+  const currentStatus = status;
+
+  const styles =
+    currentStatus === "DELIVERED" ||
+    currentStatus === "PICKED_UP" ||
+    currentStatus === "ACKNOWLEDGED"
+      ? "bg-green-50 text-green-700"
+      : currentStatus === "PENDING"
+      ? "bg-yellow-50 text-yellow-700"
+      : currentStatus === "CANCELLED" || currentStatus === "REJECTED"
+      ? "bg-red-50 text-red-700"
+      : "bg-gray-50 text-gray-500";
+
+  return (
+    <span
+      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${styles}`}
+    >
+      {currentStatus.replace("_", " ")}
+    </span>
+  );
+}
+
+  
+
   return (
     <div className="min-h-screen p-6 space-y-6 bg-gray-50">
       {/* Header */}
@@ -299,7 +324,13 @@ export default function AssignRiderPage() {
                 <td className="px-4 py-3 font-semibold">
                   ₦{Number(order.totalAmount).toLocaleString()}
                 </td>
-                <td className="px-4 py-3">{order.status}</td>
+
+<td className="px-4 py-3">
+  <StatusBadge status={order.status} />
+</td>
+
+
+
                 <td className="px-4 py-3 text-center">
                   <button
                     onClick={(e) => {

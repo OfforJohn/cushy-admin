@@ -22,6 +22,8 @@ interface OrderItemResponse {
 }
 
 interface OrderResponse {
+  storeName?: string;
+  storeId: string;
   id: string;
   customer?: {
     name?: string;
@@ -37,6 +39,10 @@ interface OrderResponse {
 
 interface Order {
   id: string
+
+  
+  storeName?: string;
+
   createdAt: string
   customerName: string
   additionalPhoneNumber: number;
@@ -90,6 +96,103 @@ export default function DashboardOverviewPage() {
     }
     setAuthChecked(true)
   }, [router])
+
+  // Fetch recent orders with store names
+useEffect(() => {
+  if (!authChecked) return;
+
+  const fetchRecentOrders = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      // 1️⃣ Fetch all orders
+      const res = await fetch(`${API_BASE_URL}/api/v1/orders/get-all-orders`, {
+        headers: {
+          "Content-Type": "application/json",
+          "cushy-access-key": `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !Array.isArray(data)) {
+        console.error("Unexpected response:", data);
+        return;
+      }
+
+      // 2️⃣ Extract unique store IDs
+      const uniqueStoreIds = [...new Set(data.map((o: any) => o.storeId))];
+
+      // 3️⃣ Fetch store names once per storeId
+      const storeMap: Record<string, string | null> = {};
+
+      await Promise.all(
+        uniqueStoreIds.map(async (id) => {
+          if (!id) return;
+
+          try {
+            const storeRes = await fetch(
+              `${API_BASE_URL}/api/v1/orders/get-orders-by-storeId/${id}`,
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                  "cushy-access-key": `Bearer ${token}`,
+                },
+              }
+            );
+
+            const storeData = await storeRes.json();
+            const storeName =
+              storeData?.data?.orders?.[0]?.[0]?.store?.name || null;
+
+            storeMap[id] = storeName;
+          } catch (err) {
+            console.error("Failed to fetch store:", err);
+            storeMap[id] = null;
+          }
+        })
+      );
+
+      // 4️⃣ Format orders with store names
+      const formatted: Order[] = (data as OrderResponse[])
+        .map((o) => ({
+          id: o.id,
+          additionalPhoneNumber: o.additionalPhoneNumber,
+          createdAt: o.orderTracking?.[0]?.createdAt || "",
+          customerName: o.customer?.name || "Unknown",
+          customerPhone: o.customer?.phone || "--",
+          storeName: storeMap[o.storeId] || "Unknown Store", // ⭐ ADD STORE NAME HERE
+          orderItems: (o.orderItems || []).map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price.toString(),
+            isAvailable: true,
+          })),
+          totalAmount: Number(o.totalAmount || 0),
+          paymentStatus:
+            (Number(o.totalAmount) > 0 ? "Paid" : "Unpaid") as "Paid" | "Unpaid",
+          status: o.status || "Pending",
+          orderTracking: o.orderTracking || [],
+        }))
+        // 5️⃣ Sort newest first
+        .sort((a, b) => {
+          const aDate = new Date(a.createdAt);
+          const bDate = new Date(b.createdAt);
+          return bDate.getTime() - aDate.getTime();
+        });
+
+      setRecentOrders(formatted);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchRecentOrders();
+}, [authChecked]);
+
 
   // Fetch dashboard metrics
   useEffect(() => {
@@ -298,6 +401,8 @@ export default function DashboardOverviewPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
+                  <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">StoreName</th>
+
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Name of Items</th>
                   
                   <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase">Created At</th>
@@ -336,6 +441,11 @@ export default function DashboardOverviewPage() {
                         key={order.id}
                         className="bg-white hover:bg-gray-50 transition-colors border-b border-gray-200"
                       >
+
+                        <td className="py-3 px-4 text-sm text-gray-800">
+  {order.storeName || "Unknown Store"}
+</td>
+
                         <td className="py-3 px-4 text-sm text-gray-700">
                           {order.orderItems.map((i, idx) => (
                             <span
