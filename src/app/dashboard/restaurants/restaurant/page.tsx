@@ -36,83 +36,83 @@ export default function RestaurantsDashboard() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
 
-const [stats, setStats] = useState({
-  total: 0,
-  verified: 0,
-  pending: 0,
-  suspended: 0,
-  inactive: 0,
-});
+  const [stats, setStats] = useState({
+    total: 0,
+    verified: 0,
+    pending: 0,
+    suspended: 0,
+    inactive: 0,
+  });
 
 
 
-useEffect(() => {
-  const fetchStores = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) return;
+  useEffect(() => {
+    const fetchStores = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
 
-      const res = await fetch(`${API_BASE_URL}/api/v1/stores`, {
-        headers: {
-          "Content-Type": "application/json",
-          "cushy-access-key": `Bearer ${token}`,
-        },
-      });
+        const res = await fetch(`${API_BASE_URL}/api/v1/stores`, {
+          headers: {
+            "Content-Type": "application/json",
+            "cushy-access-key": `Bearer ${token}`,
+          },
+        });
 
-      const json = await res.json();
+        const json = await res.json();
 
-      if (!json.data || !Array.isArray(json.data)) return;
+        if (!json.data || !Array.isArray(json.data)) return;
 
-      // Filter restaurants ONLY
-   type StoreApiResponse = {
-  id: string;
-  name: string;
-  coverImage?: string;
-  location?: string;
-  category: string;
-  ownerName?: string;
-  branchesCount?: number;
-  productCount?: number;
-  status?: string;
-};
+        // Filter restaurants ONLY
+        type StoreApiResponse = {
+          id: string;
+          name: string;
+          coverImage?: string;
+          location?: string;
+          category: string;
+          ownerName?: string;
+          branchesCount?: number;
+          productCount?: number;
+          status?: string;
+        };
 
-// cast json.data as this type
-const restaurantList = (json.data as StoreApiResponse[]).filter(
-  (s) => s.category === "restaurant"
-);
-
-
-      // ✅ Set total restaurants dynamically
-      setStats((prev) => ({
-        ...prev,
-        total: restaurantList.length,
-        verified: restaurantList.length
-      }));
-
-      // Format for UI
-  const formatted: Restaurant[] = restaurantList.map((s) => ({
-  id: s.id,
-  name: s.name,
-  image: s.coverImage,
-  location: s.location,
-  city: s.location?.split(",")[0] || "",
-  owner: s.ownerName || "Not Provided", // <-- required field
-         // optional
-  branches: s.branchesCount || 1,
-  products: s.productCount || 0,
-}));
+        // cast json.data as this type
+        const restaurantList = (json.data as StoreApiResponse[]).filter(
+          (s) => s.category === "restaurant"
+        );
 
 
-      setRestaurants(formatted);
-    } catch (err) {
-      console.error("ERROR:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+        // ✅ Set total restaurants dynamically
+        setStats((prev) => ({
+          ...prev,
+          total: restaurantList.length,
+          verified: restaurantList.length
+        }));
 
-  fetchStores();
-}, []);
+        // Format for UI
+        const formatted: Restaurant[] = restaurantList.map((s) => ({
+          id: s.id,
+          name: s.name,
+          image: s.coverImage,
+          location: s.location,
+          city: s.location?.split(",")[0] || "",
+          owner: s.ownerName || "Not Provided", // <-- required field
+          // optional
+          branches: s.branchesCount || 1,
+          products: s.productCount || 0,
+        }));
+
+
+        setRestaurants(formatted);
+      } catch (err) {
+        console.error("ERROR:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStores();
+  }, []);
 
 
   if (loading) {
@@ -127,7 +127,7 @@ const restaurantList = (json.data as StoreApiResponse[]).filter(
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
 
       {/* TOP BAR */}
-    
+
 
       {/* STATS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
@@ -139,45 +139,45 @@ const restaurantList = (json.data as StoreApiResponse[]).filter(
       </div>
 
       {/* FILTERS */}
-    <div className="bg-white rounded-xl border p-4 mb-6">
-  <div className="flex items-center justify-between">
-    <h2 className="font-semibold text-lg">Filters</h2>
-    <button className="text-sm text-purple-700">Clear All</button>
-  </div>
+      <div className="bg-white rounded-xl border p-4 mb-6">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-lg">Filters</h2>
+          <button className="text-sm text-purple-700">Clear All</button>
+        </div>
 
-  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1"></label>
-   <SelectFilter label="Status" placeholder="All Statuses" />
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1"></label>
+            <SelectFilter label="Status" placeholder="All Statuses" />
 
-    </div>
+          </div>
 
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1"></label>
-      <SelectFilter label="Rating" placeholder="All Ratings" />
-    </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1"></label>
+            <SelectFilter label="Rating" placeholder="All Ratings" />
+          </div>
 
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1"></label>
-      <SelectFilter label="Branches" placeholder="Any" />
-    </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1"></label>
+            <SelectFilter label="Branches" placeholder="Any" />
+          </div>
 
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1"></label>
-      <SelectFilter label="Date Joined" placeholder="All Time" />
-    </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1"></label>
+            <SelectFilter label="Date Joined" placeholder="All Time" />
+          </div>
 
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1"></label>
-      <SelectFilter label="Wallet Balance" placeholder="Any Amount" />
-    </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1"></label>
+            <SelectFilter label="Wallet Balance" placeholder="Any Amount" />
+          </div>
 
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1"></label>
-      <SelectFilter label="Sort By" placeholder="Newest First" />
-    </div>
-  </div>
-</div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1"></label>
+            <SelectFilter label="Sort By" placeholder="Newest First" />
+          </div>
+        </div>
+      </div>
 
 
       {/* HEADER BAR */}
@@ -203,78 +203,72 @@ const restaurantList = (json.data as StoreApiResponse[]).filter(
 
       {/* RESPONSIVE TABLE */}
       {/* Responsive Restaurants Table */}
-    {/* RESPONSIVE TABLE */}
-<div className="bg-white rounded-xl border overflow-hidden mt-6">
-  <div className="w-full overflow-x-auto">
-    <table className="w-full table-auto text-sm">
-      <thead className="bg-gray-50 border-b">
-        <tr className="text-gray-600 text-xs">
-          <th className="px-3 py-3 w-10">
-            <input type="checkbox" className="rounded" />
-          </th>
-          <th className="px-3 py-3 font-medium text-left">RESTAURANT</th>
-         
-          <th className="px-3 py-3 font-medium text-left">LOCATION</th>
-        </tr>
-      </thead>
+      {/* RESPONSIVE TABLE */}
+      <div className="bg-white rounded-xl border overflow-hidden mt-6">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full table-auto text-sm">
+            <thead className="bg-gray-50 border-b">
+              <tr className="text-gray-600 text-xs">
+                <th className="px-3 py-3 w-10">
+                  <input type="checkbox" className="rounded" />
+                </th>
+                <th className="px-3 py-3 font-medium text-left">RESTAURANT</th>
 
-   <tbody>
-  {restaurants.map((r) => (
-    <tr key={r.id} className="border-b hover:bg-gray-50 transition">
-      
-      {/* Checkbox */}
-      <td className="px-3 py-3 align-top">
-        <input type="checkbox" className="rounded" />
-      </td>
+                <th className="px-3 py-3 font-medium text-left">LOCATION</th>
+              </tr>
+            </thead>
 
-      {/* Restaurant */}
-      <td className="px-3 py-3 align-top">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg overflow-hidden flex-shrink-0">
-            <Image
-              src={r.image ?? "/rest-thumb-1.png"}
-              alt={r.name}
-              width={48}
-              height={48}
-              className="object-cover"
-            />
-          </div>
-          <div>
-            <div className="font-medium text-sm md:text-base">{r.name}</div>
-            <div className="text-xs text-gray-400">#{r.id.toUpperCase()}</div>
-          </div>
+            <tbody>
+              {restaurants.map((r) => (
+                <tr key={r.id} className="border-b hover:bg-gray-50 transition">
+
+                  {/* Checkbox */}
+                  <td className="px-3 py-3 align-top">
+                    <input type="checkbox" className="rounded" />
+                  </td>
+
+                  {/* Restaurant */}
+                  <td className="px-3 py-3 align-top">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg overflow-hidden flex-shrink-0">
+                        <Image
+                          src={r.image ?? "/rest-thumb-1.png"}
+                          alt={r.name}
+                          width={48}
+                          height={48}
+                          className="object-cover"
+                        />
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm md:text-base">{r.name}</div>
+                        <div className="text-xs text-gray-400">#{r.id.toUpperCase()}</div>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Owner */}
+
+
+                  {/* Location */}
+                  <td className="px-3 py-3 align-top">
+                    <div className="font-medium">{r.city ?? "N/A"}</div>
+                    <div className="text-xs text-gray-400">{r.location ?? "N/A"}</div>
+                  </td>
+
+                  {/* Status */}
+                  <td className="px-3 py-3 align-top text-right">
+                    <span className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                      ✓ Verified
+                    </span>
+                  </td>
+
+                </tr>
+              ))}
+            </tbody>
+
+          </table>
         </div>
-      </td>
-
-      {/* Owner */}
-   
-
-      {/* Location */}
-      <td className="px-3 py-3 align-top">
-        <div className="font-medium">{r.city ?? "N/A"}</div>
-        <div className="text-xs text-gray-400">{r.location ?? "N/A"}</div>
-      </td>
-
-      {/* Contact */}
- 
-
-      {/* Branches */}
-  
-
-      {/* Status */}
-      <td className="px-3 py-3 align-top text-right">
-        <span className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-          ✓ Verified
-        </span>
-      </td>
-
-    </tr>
-  ))}
-</tbody>
-
-    </table>
-  </div>
-</div>
+      </div>
 
 
 

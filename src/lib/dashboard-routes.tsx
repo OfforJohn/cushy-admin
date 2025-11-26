@@ -4,7 +4,7 @@ import {
   Utensils,
   Pill,
   ShoppingBasket,
-  BadgeQuestionMark ,
+  BadgeQuestionMark,
   Heart,
   Truck,
   Users,
@@ -12,12 +12,13 @@ import {
   HelpCircle,
   Settings,
 } from "lucide-react"
+import { Children } from "react";
 
 
 const pendingVendors = 3; // fetched from API
 export const dashboardRoutes = [
 
-  
+
   {
     label: "Overview",
     icon: TrendingUp,
@@ -33,10 +34,10 @@ export const dashboardRoutes = [
     icon: Utensils,
     href: "/dashboard/restaurants",
     children: [
-    { label: "Orders", href: "#", key: "orders" },
-{ label: "Products", href: "#", key: "products" },
-{ label: "Restaurants", href: "/dashboard/restaurants/restaurant", key: "restaurants" },
-{ label: "Branches", href: "#", key: "branches" },
+      { label: "Orders", href: "#", key: "orders" },
+      { label: "Products", href: "#", key: "products" },
+      { label: "Restaurants", href: "/dashboard/restaurants/restaurant", key: "restaurants" },
+      { label: "Branches", href: "#", key: "branches" },
 
     ],
   },
@@ -44,24 +45,36 @@ export const dashboardRoutes = [
     label: "Pharmacy",
     icon: Pill,
     href: "/dashboard/pharmacy",
+
+    children: [
+      { label: "Pharmacies", href: "/dashboard/pharmacy/pharmacies", key: "pharmacies" },
+  
+    ],
   },
+
+
+
   {
     label: "Groceries",
     icon: ShoppingBasket,
     href: "/dashboard/groceries",
+
+    children: [
+      { label: "Groceries", href: "/dashboard/groceries/groceries", key: "groceries" },
+    ],
   },
-   {
+  {
     label: "Vendor Approval",
-   
-  icon: () => (
-    <div className="relative">
-      <BadgeQuestionMark className={pendingVendors > 0 ? "animate-pulse text-red-500" : ""} />
-      {pendingVendors > 0 && (
-        <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full animate-ping" />
-      )}
-    </div>
-  ),
-  href: "/dashboard/vendor-approval",
+
+    icon: () => (
+      <div className="relative">
+        <BadgeQuestionMark className={pendingVendors > 0 ? "animate-pulse text-red-500" : ""} />
+        {pendingVendors > 0 && (
+          <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full animate-ping" />
+        )}
+      </div>
+    ),
+    href: "/dashboard/vendor-approval",
   },
   {
     label: "Health",
