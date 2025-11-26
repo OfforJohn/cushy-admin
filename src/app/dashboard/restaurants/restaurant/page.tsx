@@ -19,7 +19,7 @@ type Restaurant = {
   id: string;
   name: string;
   slug?: string;
-  owner: string;
+  owner: string;          // ✅ required
   ownerAvatar?: string;
   phone?: string;
   email?: string;
@@ -28,8 +28,8 @@ type Restaurant = {
   branches?: number;
   products?: number;
   image?: string;
-  
 };
+
 
 export default function RestaurantsDashboard() {
   const router = useRouter();
@@ -64,9 +64,23 @@ useEffect(() => {
       if (!json.data || !Array.isArray(json.data)) return;
 
       // Filter restaurants ONLY
-      const restaurantList = json.data.filter(
-        (s: any) => s.category === "restaurant"
-      );
+   type StoreApiResponse = {
+  id: string;
+  name: string;
+  coverImage?: string;
+  location?: string;
+  category: string;
+  ownerName?: string;
+  branchesCount?: number;
+  productCount?: number;
+  status?: string;
+};
+
+// cast json.data as this type
+const restaurantList = (json.data as StoreApiResponse[]).filter(
+  (s) => s.category === "restaurant"
+);
+
 
       // ✅ Set total restaurants dynamically
       setStats((prev) => ({
@@ -76,16 +90,18 @@ useEffect(() => {
       }));
 
       // Format for UI
-      const formatted = restaurantList.map((s: any) => ({
-        id: s.id,
-        name: s.name,
-        image: s.coverImage,
-        location: s.location,
-        city: s.location?.split(",")[0] || "",
-        branches: 1,
-        products: 0,
-        status: "Verified",
-      }));
+  const formatted: Restaurant[] = restaurantList.map((s) => ({
+  id: s.id,
+  name: s.name,
+  image: s.coverImage,
+  location: s.location,
+  city: s.location?.split(",")[0] || "",
+  owner: s.ownerName || "Not Provided", // <-- required field
+         // optional
+  branches: s.branchesCount || 1,
+  products: s.productCount || 0,
+}));
+
 
       setRestaurants(formatted);
     } catch (err) {
