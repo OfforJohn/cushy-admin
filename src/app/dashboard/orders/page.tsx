@@ -49,7 +49,21 @@ export interface OrderItem {
 interface Store {
   id: string;
   name: string;
-  // add other fields as needed
+  // add other fields as n
+  // eeded
+}
+
+interface User{
+  firstName:string;
+  lastName:string;
+}
+
+interface dropOffLocation {
+  address: string;
+}
+
+interface pickUpLocation {
+  address: string;
 }
 
 
@@ -65,7 +79,7 @@ export interface Order {
 
   id: string
   type: string
-    storeId:string
+  storeId: string
   totalItems: number
   totalAmount: string
   fullHouseAddress: string
@@ -77,10 +91,22 @@ export interface Order {
   Charges: number
   orderItems: OrderItem[] | null
   orderTracking: OrderTracking[]
-  
+
   store: Store | null   // FIXED HERE
+  dropOffLocation: dropOffLocation | null
+  pickUpLocation: pickUpLocation | null
+  user: User | null
 
   storeName: string | null
+
+  dropOffLo?: string | null
+
+  pickUpLo?: string | null
+
+  firstName?: string | null
+  lastName?: string | null
+
+
 
 }
 
@@ -118,107 +144,165 @@ export default function OrdersPage() {
   }, [router])
 
 
-  
 
 
-useEffect(() => {
-  const fetchDailyOrders = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) return;
 
-      // 1️⃣ Fetch all orders
-      const res = await fetch(`${API_BASE_URL}/api/v1/orders/get-all-orders`, {
+  useEffect(() => {
+    const fetchDailyOrders = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        // 1️⃣ Fetch all orders
+        const res = await fetch(`${API_BASE_URL}/api/v1/orders/get-all-orders`, {
+          headers: {
+            "Content-Type": "application/json",
+            "cushy-access-key": `Bearer ${token}`,
+          },
+        });
+
+        const orders: Order[] = await res.json();
+
+        if (!res.ok || !Array.isArray(orders)) {
+          console.error("Invalid order data:", orders);
+          return;
+        }
+
+        // 2️⃣ Sort by createdAt
+        const sortedOrders = orders.sort((a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+
+        // 3️⃣ Extract unique store IDs
+        const uniqueStoreIds = [...new Set(sortedOrders.map(o => o.storeId))];
+
+        // 4️⃣ Fetch store names for each storeId ONLY ONCE
+
+        const storeMap: Record<
+          string,
+          { storeName: string | null; dropOffAddress: string | null; pickUpAddress: string | null; user: User | null; firstName:string | null; lastName:string | null }
+        > = {};
+
+
+
+
+
+
+        await Promise.all(
+          uniqueStoreIds.map(async (id) => {
+            if (!id) return;
+            const result = await fetchStoreName(id, token); // returns 3 values
+            storeMap[id] = result;
+          })
+        );
+
+
+        // 5️⃣ Attach storeName to each order
+        const processedOrders = sortedOrders.map(order => ({
+          ...order,
+          storeName: storeMap[order.storeId]?.storeName ?? null,
+          dropOffLo: storeMap[order.storeId]?.dropOffAddress ?? null,
+          pickUpLo: storeMap[order.storeId]?.pickUpAddress ?? null,
+          user: storeMap[order.storeId]?.user ?? null,
+          firstName: storeMap[order.storeId]?.firstName ?? null,  
+          lastName: storeMap[order.storeId]?.lastName ?? null,
+        }));
+
+
+        setOrders(processedOrders);
+
+
+        // 6️⃣ Daily analytics
+        const today = new Date().toISOString().split("T")[0];
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yDay = yesterday.toISOString().split("T")[0];
+
+        const todayOrders = processedOrders.filter(o => o.createdAt.startsWith(today));
+        const yesterdayOrders = processedOrders.filter(o => o.createdAt.startsWith(yDay));
+
+        setTotalOrdersToday(todayOrders.length);
+        setTotalOrdersYesterday(yesterdayOrders.length);
+
+        if (yesterdayOrders.length > 0) {
+          const percent = ((todayOrders.length - yesterdayOrders.length) / yesterdayOrders.length) * 100;
+          setPercentageChange(percent);
+        }
+
+      } catch (err) {
+        console.error("Error fetching orders:", err);
+      }
+    };
+
+    fetchDailyOrders();
+  }, []);
+
+
+
+
+
+
+const fetchStoreName = async (
+  storeId: string,
+  token: string
+): Promise<{
+  storeName: string | null;
+  dropOffAddress: string | null;
+  pickUpAddress: string | null;
+  user: User | null;
+  firstName: string | null;
+  lastName: string | null;
+}> => {
+  if (!storeId || storeId === "null") {
+    return {
+      storeName: null,
+      dropOffAddress: null,
+      pickUpAddress: null,
+      user: null,
+      firstName: null,
+      lastName: null,
+    };
+  }
+
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/api/v1/orders/get-orders-by-storeId/${storeId}`,
+      {
         headers: {
           "Content-Type": "application/json",
           "cushy-access-key": `Bearer ${token}`,
         },
-      });
-
-      const orders: Order[] = await res.json();
-
-      if (!res.ok || !Array.isArray(orders)) {
-        console.error("Invalid order data:", orders);
-        return;
       }
-
-      // 2️⃣ Sort by createdAt
-      const sortedOrders = orders.sort((a, b) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-
-      // 3️⃣ Extract unique store IDs
-      const uniqueStoreIds = [...new Set(sortedOrders.map(o => o.storeId))];
-
-      // 4️⃣ Fetch store names for each storeId ONLY ONCE
-      const storeMap: Record<string, string | null> = {};
-
-      await Promise.all(
-        uniqueStoreIds.map(async (id) => {
-          if (!id) return;
-          const storeName = await fetchStoreName(id, token);
-          storeMap[id] = storeName;
-        })
-      );
-
-      // 5️⃣ Attach storeName to each order
-      const processedOrders = sortedOrders.map(order => ({
-        ...order,
-        storeName: storeMap[order.storeId] || null,
-      }));
-
-      setOrders(processedOrders);
-
-      // 6️⃣ Daily analytics
-      const today = new Date().toISOString().split("T")[0];
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yDay = yesterday.toISOString().split("T")[0];
-
-      const todayOrders = processedOrders.filter(o => o.createdAt.startsWith(today));
-      const yesterdayOrders = processedOrders.filter(o => o.createdAt.startsWith(yDay));
-
-      setTotalOrdersToday(todayOrders.length);
-      setTotalOrdersYesterday(yesterdayOrders.length);
-
-      if (yesterdayOrders.length > 0) {
-        const percent = ((todayOrders.length - yesterdayOrders.length) / yesterdayOrders.length) * 100;
-        setPercentageChange(percent);
-      }
-
-    } catch (err) {
-      console.error("Error fetching orders:", err);
-    }
-  };
-
-  fetchDailyOrders();
-}, []);
-
-
-  
-
-
-
-const fetchStoreName = async (storeId: string, token: string): Promise<string | null> => {
-  if (!storeId || storeId === "null") return null;
-
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/v1/orders/get-orders-by-storeId/${storeId}`, {
-      headers: {
-        "Content-Type": "application/json",
-        "cushy-access-key": `Bearer ${token}`,
-      },
-    });
+    );
 
     const data = await res.json();
-    console.log(storeId)
-    console.log(data);data.data.orders[0][0].store.name
-    return data.data.orders[0][0].store.name || null;
+    const order = data?.data?.orders?.[0]?.[0];
+
+    return {
+      storeName: order?.store?.name ?? null,
+      dropOffAddress: order?.dropOffLocation?.address ?? null,
+      pickUpAddress: order?.pickUpLocation?.address ?? null,
+      user: order?.user ? { firstName: order.user.firstName, lastName: order.user.lastName } : null,
+      firstName: order?.userDetails?.firstName ?? null,
+      lastName: order?.userDetails?.lastName ?? null,
+    };
   } catch (err) {
     console.error("Error fetching store:", err);
-    return null;
+
+    return {
+      storeName: null,
+      dropOffAddress: null,
+      pickUpAddress: null,
+      user: null,
+      firstName: null,
+      lastName: null,
+    };
   }
 };
+
+
+
+
 
 
 
@@ -495,7 +579,7 @@ const fetchStoreName = async (storeId: string, token: string): Promise<string | 
           <table className="w-full min-w-[1200px]">
             <thead className="bg-gray-50 border-b">
               <tr>
-                
+
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">StoreName</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
 
@@ -504,6 +588,9 @@ const fetchStoreName = async (storeId: string, token: string): Promise<string | 
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"># Items</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 <th className="px-6 py-3"></th>
               </tr>
             </thead>
@@ -549,9 +636,12 @@ const fetchStoreName = async (storeId: string, token: string): Promise<string | 
 
                     return (
                       <tr key={order.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm text-gray-500">
-  {order.storeName || "--"}
-</td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {order.storeName || "--"}
+                        </td>
+
+
+
 
                         <td className="px-6 py-4 text-sm">
                           {order.orderItems?.map(i => i.name).join(", ") || "--"}
@@ -573,11 +663,29 @@ const fetchStoreName = async (storeId: string, token: string): Promise<string | 
                           </span>
                         </td>
 
+                        
+
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColor}`}>
                             {latestStatus.replace("_", " ")}
                           </span>
                         </td>
+
+
+                        
+<td className="py-3">
+  <div className="flex items-center gap-3">
+ 
+
+    <div className="flex flex-col leading-tight">
+      <span className="font-medium text-gray-900">
+        {order.user?.firstName} {order.user?.lastName}
+      </span>
+     
+    </div>
+  </div>
+</td>
+
 
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
@@ -633,6 +741,13 @@ const fetchStoreName = async (storeId: string, token: string): Promise<string | 
                       <h3 className="font-semibold text-gray-800 mb-2">Notes</h3>
                       <p><span className="font-semibold">Note for Vendor:</span> {selectedOrder.noteForVendor || "—"}</p>
                       <p><span className="font-semibold">Note for Store:</span> {selectedOrder.noteForStore || "—"}</p>
+                    </div>
+
+                         {/* Adresses */}
+                    <div className="mt-4 p-4 bg-gray-50 rounded-md border">
+                      <h3 className="font-semibold text-gray-800 mb-2">Address</h3>
+                      <p><span className="font-semibold">Drop Of Location:</span> {selectedOrder.dropOffLo || "—"}</p>
+                      <p><span className="font-semibold">Pick Of Location:</span> {selectedOrder.pickUpLo || "—"}</p>
                     </div>
 
                     {/* Items */}

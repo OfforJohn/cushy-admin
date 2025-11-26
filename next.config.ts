@@ -2,9 +2,19 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    domains: ['picsum.photos'], // ✅ domain allowed
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "cushyaccess-app-bucket.s3.eu-west-1.amazonaws.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "picsum.photos",
+        pathname: "/**",
+      },
+    ],
   },
-  // ✅ Add other config options here if needed
 };
 
 export default nextConfig;

@@ -33,10 +33,11 @@ export const dashboardRoutes = [
     icon: Utensils,
     href: "/dashboard/restaurants",
     children: [
-      { label: "Orders", href: "/dashboard/restaurants/orders" },
-      { label: "Products", href: "/dashboard/restaurants/products" },
-      { label: "Restaurants", href: "/dashboard/restaurants/restaurants" },
-      { label: "Branches", href: "/dashboard/restaurants/branches" },
+    { label: "Orders", href: "#", key: "orders" },
+{ label: "Products", href: "#", key: "products" },
+{ label: "Restaurants", href: "/dashboard/restaurants/restaurant", key: "restaurants" },
+{ label: "Branches", href: "#", key: "branches" },
+
     ],
   },
   {
