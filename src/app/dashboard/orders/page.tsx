@@ -49,6 +49,7 @@ export interface OrderItem {
 interface Store {
   id: string;
   name: string;
+  mobile: string;
   // add other fields as n
   // eeded
 }
@@ -98,7 +99,7 @@ export interface Order {
   user: User | null
 
   storeName: string | null
-
+ storeMobile?: string | null
   dropOffLo?: string | null
 
   pickUpLo?: string | null
@@ -180,7 +181,7 @@ export default function OrdersPage() {
 
         const storeMap: Record<
           string,
-          { storeName: string | null; dropOffAddress: string | null; pickUpAddress: string | null; user: User | null; firstName:string | null; lastName:string | null }
+          { storeName: string | null; dropOffAddress: string | null; pickUpAddress: string | null; user: User | null; firstName:string | null; lastName:string | null; storeMobile?: string | null }
         > = {};
 
 
@@ -205,6 +206,8 @@ export default function OrdersPage() {
           pickUpLo: storeMap[order.storeId]?.pickUpAddress ?? null,
           user: storeMap[order.storeId]?.user ?? null,
           firstName: storeMap[order.storeId]?.firstName ?? null,  
+          
+  storeMobile: storeMap[order.storeId]?.storeMobile ?? null, // <--- add this
           lastName: storeMap[order.storeId]?.lastName ?? null,
         }));
 
@@ -249,6 +252,7 @@ const fetchStoreName = async (
   storeName: string | null;
   dropOffAddress: string | null;
   pickUpAddress: string | null;
+  storeMobile?: string | null;
   user: User | null;
   firstName: string | null;
   lastName: string | null;
@@ -281,6 +285,8 @@ const fetchStoreName = async (
     return {
       storeName: order?.store?.name ?? null,
       dropOffAddress: order?.dropOffLocation?.address ?? null,
+
+  storeMobile: order?.store?.mobile ?? null, // <--- add this
       pickUpAddress: order?.pickUpLocation?.address ?? null,
       user: order?.user ? { firstName: order.user.firstName, lastName: order.user.lastName } : null,
       firstName: order?.userDetails?.firstName ?? null,
@@ -582,6 +588,8 @@ const fetchStoreName = async (
 
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">StoreName</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
+                
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Store Number</th>
 
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created At</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
@@ -642,9 +650,14 @@ const fetchStoreName = async (
 
 
 
+<td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
 
-                        <td className="px-6 py-4 text-sm">
                           {order.orderItems?.map(i => i.name).join(", ") || "--"}
+                        </td>
+
+                        <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
+
+                          {order.storeMobile || "--"}
                         </td>
 
                         <td className="px-6 py-4 text-sm text-gray-500">
