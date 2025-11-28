@@ -1,6 +1,25 @@
 "use client"
 
 import { useState } from "react"
+import {
+  Edit,
+  Plus,
+  MoreVertical,
+  Search,
+  User,
+  ShoppingCart,
+  Tag,
+  Percent,
+  Clock,
+  CheckCircle,
+  Bell,
+  CreditCard,
+  Database,
+  List,
+  ShoppingBasket,
+  Utensils,
+  Truck,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,321 +31,403 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Edit, Plus, MoreVertical } from "lucide-react"
 
 export default function SettingsPage() {
   const [maintenanceMode, setMaintenanceMode] = useState(false)
+  const [freeDeliveryEnabled, setFreeDeliveryEnabled] = useState(true)
+  
+const [activeTab, setActiveTab] = useState("All Coupons");
+
+  const users = [
+    { name: "John Doe", email: "john@example.com", avatarBg: "bg-indigo-600" },
+    { name: "Sarah Ahmed", email: "sarah@example.com", avatarBg: "bg-emerald-600" },
+    { name: "Michael Bello", email: "michael@example.com", avatarBg: "bg-rose-500" },
+  ]
+
+  const tabs = [
+  "All Coupons",
+  "Site-Wide",
+  "Merchant-Specific",
+  "Active",
+  "Expired",
+];
+
+
+
 
   return (
-    <div className="space-y-6 px-4 sm:px-6 md:px-8 py-6 max-w-7xl mx-auto">
+    <div className="px-4 sm:px-6 md:px-8 py-6 max-w-7xl mx-auto space-y-6">
       {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 border-b border-gray-200 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
-        {/* Wrapping tabs with min-width to avoid squishing */}
-        <button className="min-w-[100px] flex-shrink-0 px-4 py-2 text-sm font-medium text-white bg-[#5B2C6F] rounded-sm whitespace-nowrap">
-          General
-        </button>
-        <button className="min-w-[100px] flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 whitespace-nowrap">
-          Locations
-        </button>
-        <button className="min-w-[100px] flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 whitespace-nowrap">
-          Fees
-        </button>
-        <button className="min-w-[100px] flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 whitespace-nowrap">
-          RBAC
-        </button>
-        <button className="min-w-[100px] flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 whitespace-nowrap">
-          Integrations
-        </button>
-        <button className="min-w-[100px] flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 whitespace-nowrap">
-          AI Controls
-        </button>
+      <div className="bg-white p-3 rounded border border-gray-200">
+        <div className="flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300">
+          <button className="px-3 py-1 rounded bg-[#5B2C6F] text-white text-sm font-medium">General</button>
+          <button className="px-3 py-1 rounded text-sm font-medium text-gray-600">Locations</button>
+          <button className="px-3 py-1 rounded text-sm font-medium text-gray-600">Fees</button>
+          <button className="px-3 py-1 rounded text-sm font-medium text-gray-600">RBAC</button>
+          <button className="px-3 py-1 rounded text-sm font-medium text-gray-600">Integrations</button>
+          <button className="px-3 py-1 rounded text-sm font-medium text-gray-600">AI Controls</button>
+        </div>
       </div>
 
-      {/* Main grid - 1 column on small screens, 2 on lg */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Platform Configuration */}
-        <div className="bg-white rounded-lg p-4 sm:p-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <h2 className="text-lg font-bold">Platform Configuration</h2>
-            <Button variant="ghost" size="icon">
-              <Edit className="w-4 h-4" />
-            </Button>
+      {/* Row 1: See Users Cart (left) + Service Areas (right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* See Users Cart */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-start justify-between">
+            <h3 className="text-sm font-semibold">See Users Cart</h3>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" className="px-2 py-1">
+                <Search className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <Label
-                htmlFor="platform-name"
-                className="text-sm font-medium text-[#5B2C6F] mb-1 sm:mb-2"
-              >
-                Platform Name
-              </Label>
-              <Input id="platform-name" defaultValue="Cushy Access" />
-            </div>
+          <div className="mt-3">
+            <Input placeholder="Enter user ID, phone or email..." />
+          </div>
 
-            <div>
-              <Label
-                htmlFor="timezone"
-                className="text-sm font-medium text-[#5B2C6F] mb-1 sm:mb-2"
-              >
-                Default Timezone
-              </Label>
-              <Select defaultValue="africa-lagos">
-                <SelectTrigger id="timezone">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="africa-lagos">Africa/Lagos</SelectItem>
-                  <SelectItem value="africa-abuja">Africa/Abuja</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="mt-4">
+            <p className="text-xs text-gray-500 font-medium mb-2">Quick Access</p>
+            <div className="space-y-2">
+              {users.map((u) => (
+                <div key={u.email} className="flex items-center justify-between p-2 rounded border border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${u.avatarBg}`}>
+                      <User className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{u.name}</p>
+                      <p className="text-xs text-gray-500">{u.email}</p>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500">2 items in cart</div>
+                </div>
+              ))}
             </div>
+          </div>
 
-            <div>
-              <Label
-                htmlFor="currency"
-                className="text-sm font-medium text-[#5B2C6F] mb-1 sm:mb-2"
-              >
-                Default Currency
-              </Label>
-              <Select defaultValue="ngn">
-                <SelectTrigger id="currency">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ngn">NGN (₦)</SelectItem>
-                  <SelectItem value="usd">USD ($)</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="bg-gray-50 rounded p-3 text-center">
+              <p className="text-xs text-gray-500">Active Carts</p>
+              <p className="text-2xl font-bold text-[#5B2C6F]">847</p>
             </div>
-
-            <div className="flex items-center justify-between pt-2">
-              <Label
-                htmlFor="maintenance"
-                className="text-sm font-medium text-[#5B2C6F]"
-              >
-                Maintenance Mode
-              </Label>
-              <Switch
-                id="maintenance"
-                checked={maintenanceMode}
-                onCheckedChange={setMaintenanceMode}
-              />
+            <div className="bg-gray-50 rounded p-3 text-center">
+              <p className="text-xs text-gray-500">Abandoned</p>
+              <p className="text-2xl font-bold text-amber-500">234</p>
             </div>
           </div>
         </div>
 
         {/* Service Areas */}
-        <div className="bg-white rounded-lg p-4 sm:p-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <h2 className="text-lg font-bold">Service Areas</h2>
-            <Button className="bg-[#5B2C6F] hover:bg-[#4a2359] text-white text-sm whitespace-nowrap flex items-center gap-2 py-2 px-3 sm:px-4 rounded">
-              <Plus className="w-4 h-4" />
-              Add City
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">Service Areas</h3>
+            <Button className="bg-[#5B2C6F] hover:bg-[#4A2359] text-white flex items-center gap-2 py-1 px-3 text-sm">
+              <Plus className="w-4 h-4" /> Add City
             </Button>
           </div>
 
-          <div className="space-y-3">
-            {/* Minna */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border border-gray-200 rounded-lg">
-              <div className="flex items-center gap-3 mb-3 sm:mb-0">
-                <div className="w-10 h-10 rounded-full bg-teal-500 flex items-center justify-center">
-                  <svg
-                    className="w-5 h-5 text-white"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Minna</p>
-                  <p className="text-xs text-gray-500">Niger State</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-700">
-                  Active
-                </span>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Abuja */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border border-gray-200 rounded-lg">
-              <div className="flex items-center gap-3 mb-3 sm:mb-0">
-                <div className="w-10 h-10 rounded-full bg-teal-500 flex items-center justify-center">
-                  <svg
-                    className="w-5 h-5 text-white"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Abuja</p>
-                  <p className="text-xs text-gray-500">FCT</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-700">
-                  Active
-                </span>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Lagos */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border border-gray-200 rounded-lg">
-              <div className="flex items-center gap-3 mb-3 sm:mb-0">
-                <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold">
-                  !
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Lagos</p>
-                  <p className="text-xs text-gray-500">Lagos State</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-700">
-                  Pending
-                </span>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Fee Structure */}
-        <div className="bg-white rounded-lg p-4 sm:p-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <h2 className="text-lg font-bold">Fee Structure</h2>
-            <Button variant="ghost" size="icon">
-              <Edit className="w-4 h-4" />
-            </Button>
-          </div>
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label
-                  htmlFor="service-fee"
-                  className="text-sm font-medium text-[#5B2C6F] mb-1 sm:mb-2"
-                >
-                  Service Fee (%)
-                </Label>
-                <Input id="service-fee" type="number" defaultValue="3" />
-              </div>
-              <div>
-                <Label
-                  htmlFor="packaging-fee"
-                  className="text-sm font-medium text-[#5B2C6F] mb-1 sm:mb-2"
-                >
-                  Packaging Fee (₦)
-                </Label>
-                <Input id="packaging-fee" type="number" defaultValue="50" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label
-                  htmlFor="express-multiplier"
-                  className="text-sm font-medium text-[#5B2C6F] mb-1 sm:mb-2"
-                >
-                  Express Multiplier
-                </Label>
-                <Input id="express-multiplier" type="number" defaultValue="1.5" step="0.1" />
-              </div>
-              <div>
-                <Label
-                  htmlFor="health-commission"
-                  className="text-sm font-medium text-[#5B2C6F] mb-1 sm:mb-2"
-                >
-                  Health Commission (%)
-                </Label>
-                <Input id="health-commission" type="number" defaultValue="20" />
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium text-[#5B2C6F] mb-3 block">
-                Category-Specific Fees
-              </Label>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-[#5B2C6F]">Restaurant Packaging</span>
-                  <span className="text-sm font-medium">₦75</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-[#5B2C6F]">Grocery Packaging</span>
-                  <span className="text-sm font-medium">₦50</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-[#5B2C6F]">Pharmacy Packaging</span>
-                  <span className="text-sm font-medium">₦25</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* System Status */}
-        <div className="bg-white rounded-lg p-4 sm:p-6 border border-gray-200">
-          <div className="mb-4 sm:mb-6">
-            <h2 className="text-lg font-bold">System Status</h2>
-          </div>
-
-          <div className="space-y-3">
+          <div className="mt-4 space-y-3">
             {[
-              { name: "Database", status: "Operational", color: "teal" },
-              { name: "Payment Gateway", status: "Operational", color: "teal" },
-              { name: "Email Service", status: "Degraded", color: "orange" },
-              { name: "Push Notifications", status: "Operational", color: "teal" },
-              { name: "AI Assistant", status: "Operational", color: "teal" },
-            ].map(({ name, status, color }) => (
-              <div
-                key={name}
-                className="flex items-center justify-between"
-              >
+              { city: "Minna", region: "Niger State", status: "Active", color: "teal" },
+              { city: "Abuja", region: "FCT", status: "Active", color: "teal" },
+              { city: "Lagos", region: "Lagos State", status: "Pending", color: "orange" },
+            ].map((c) => (
+              <div key={c.city} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg">
                 <div className="flex items-center gap-3">
-                  <div
-                    className={`w-2 h-2 rounded-full bg-${color}-500`}
-                  ></div>
-                  <span className="text-sm text-gray-900">{name}</span>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${c.color === "teal" ? "bg-emerald-500" : "bg-orange-500"} text-white font-bold`}>
+                    {c.status === "Pending" ? "!" : <CheckCircle className="w-5 h-5" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{c.city}</p>
+                    <p className="text-xs text-gray-500">{c.region}</p>
+                  </div>
                 </div>
-                <span
-                  className={`text-sm font-medium text-${color}-600`}
-                >
-                  {status}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${c.color === "teal" ? "bg-emerald-50 text-emerald-700" : "bg-orange-50 text-orange-700"}`}>
+                    {c.status}
+                  </span>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreVertical className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             ))}
-
-            <div className="pt-4 mt-4 border-t border-gray-200">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Last System Check</span>
-                <span className="text-gray-900">2 minutes ago</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
+
+      {/* Coupon Management - full width */}
+   <div className="bg-white rounded-lg border border-gray-200 p-6">
+
+  {/* Header */}
+  <div className="flex items-start justify-between mb-6">
+    <div>
+      <h3 className="text-lg font-semibold text-gray-900">Coupon Management</h3>
+      <p className="text-sm text-gray-500">
+        Create and manage site-wide and merchant-specific coupons
+      </p>
+    </div>
+
+    <Button className="bg-[#5B2C6F] hover:bg-[#4A2359] text-white flex items-center gap-2 px-4 py-2 text-sm rounded-md">
+      <Plus className="w-4 h-4" /> Create Coupon
+    </Button>
+  </div>
+
+  {/* Tabs */}
+
+  <div className="flex items-center gap-6 border-b border-gray-200 text-sm">
+    {tabs.map((tab) => (
+      <button
+        key={tab}
+        onClick={() => setActiveTab(tab)}
+        className={`pb-3 text-gray-700 hover:text-[#5B2C6F] relative group`}
+      >
+        {tab}
+
+        {/* ACTIVE underline */}
+        {activeTab === tab && (
+          <span className="absolute left-0 -bottom-[1px] w-full h-[2px] bg-black"></span>
+        )}
+
+        {/* HOVER underline */}
+        {activeTab !== tab && (
+          <span className="absolute left-0 -bottom-[1px] w-full h-[2px] bg-[#5B2C6F] scale-x-0 group-hover:scale-x-100 transition-transform"></span>
+        )}
+      </button>
+    ))}
+  </div>
+
+  {/* Coupon List */}
+  <div className="mt-4 space-y-4">
+
+    {/* Coupon Item */}
+    <div className="border border-gray-200 rounded-lg p-4 flex items-start justify-between hover:shadow-sm transition">
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center">
+          <Tag className="w-5 h-5 text-yellow-600" />
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2">
+            <p className="font-semibold text-sm">WELCOME50</p>
+            <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded">
+              Site-Wide
+            </span>
+          </div>
+
+          <p className="text-sm text-gray-600">50% off first order • Min ₦1,000</p>
+
+          <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+            <span>Valid until Dec 31, 2024</span>
+            <span>•</span>
+            <span>234 uses</span>
+            <span className="text-green-600 font-medium">• Active</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="icon">
+          <Edit className="w-4 h-4 text-gray-600" />
+        </Button>
+        <Button variant="ghost" size="icon">
+          <MoreVertical className="w-4 h-4 text-gray-600" />
+        </Button>
+      </div>
+    </div>
+
+    {/* Second Coupon */}
+    <div className="border border-gray-200 rounded-lg p-4 flex items-start justify-between hover:shadow-sm transition">
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
+          <ShoppingCart className="w-5 h-5 text-emerald-600" />
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2">
+            <p className="font-semibold text-sm">FREEDEL</p>
+            <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded">
+              Site-Wide
+            </span>
+          </div>
+
+          <p className="text-sm text-gray-600">Free delivery on all orders</p>
+
+          <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+            <span>Valid until Jan 15, 2025</span>
+            <span>•</span>
+            <span>1,456 uses</span>
+            <span className="text-green-600 font-medium">• Active</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="icon">
+          <Edit className="w-4 h-4 text-gray-600" />
+        </Button>
+        <Button variant="ghost" size="icon">
+          <MoreVertical className="w-4 h-4 text-gray-600" />
+        </Button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+      {/* Row 3: Fee Structure (left) + System Status (right) */}
+    <div className="min-h-screen bg-gray-50 p-6 space-y-6">
+
+  {/* 2-column layout */}
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    {/* Fee Structure */}
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold">Fee Structure</h3>
+        <Button variant="ghost" size="icon">
+          <Edit className="w-4 h-4" />
+        </Button>
+      </div>
+
+      <div className="space-y-6">
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <Label className="text-sm font-medium text-[#5B2C6F]">Service Fee (%)</Label>
+            <Input type="number" defaultValue={3} />
+          </div>
+          <div>
+            <Label className="text-sm font-medium text-[#5B2C6F]">Delivery fee per mile (₦)</Label>
+            <Input type="number" defaultValue={50} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <Label className="text-sm font-medium text-[#5B2C6F]">Restaurant Packaging Fee (₦)</Label>
+            <Input type="number" defaultValue={50} />
+          </div>
+          <div>
+            <Label className="text-sm font-medium text-[#5B2C6F]">Groceries Packaging Fee (₦)</Label>
+            <Input type="number" defaultValue={50} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <Label className="text-sm font-medium text-[#5B2C6F]">Pharma Packaging Fee (₦)</Label>
+            <Input type="number" defaultValue={1.5} />
+          </div>
+          <div>
+            <Label className="text-sm font-medium text-[#5B2C6F]">Health Commission (%)</Label>
+            <Input type="number" defaultValue={20} />
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    {/* System Status */}
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+      <h3 className="text-sm font-semibold mb-4">System Status</h3>
+
+      <div className="space-y-4">
+
+        {[
+          { name: "Database", status: "Operational", badge: "green" },
+          { name: "Payment Gateway", status: "Operational", badge: "green" },
+          { name: "API Services", status: "Operational", badge: "green" },
+          { name: "SMS Service", status: "Degraded", badge: "orange" },
+          { name: "Email Service", status: "Operational", badge: "green" },
+          { name: "Push Notifications", status: "Operational", badge: "green" }
+        ].map((s) => (
+          <div key={s.name} className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-2 h-2 rounded-full ${
+                s.badge === "green" ? "bg-emerald-500" : "bg-orange-500"
+              }`}></div>
+              <span className="text-sm text-gray-900">{s.name}</span>
+            </div>
+            <span className={`text-sm font-medium ${
+              s.badge === "green" ? "text-emerald-600" : "text-orange-600"
+            }`}>
+              {s.status}
+            </span>
+          </div>
+        ))}
+
+        <div className="pt-4 mt-4 border-t border-gray-100 flex justify-between text-sm">
+          <span className="text-gray-500">Last System Check</span>
+          <span className="text-gray-900">2 minutes ago</span>
+        </div>
+
+      </div>
+    </div>
+
+    
+<div className="bg-emerald-400 rounded-xl p-6 text-white shadow-sm">
+
+  {/* TOP ROW */}
+  <div className="flex items-start justify-between">
+    <div>
+      <h4 className="text-lg font-semibold">Free Delivery Mode</h4>
+      <p className="text-sm opacity-90">
+        Enable site-wide free delivery for all orders
+      </p>
+    </div>
+
+    <Switch checked={freeDeliveryEnabled} onCheckedChange={setFreeDeliveryEnabled} />
+  </div>
+
+  {/* THREE LARGE BUTTONS */}
+  <div className="flex items-center gap-6 mt-5">
+
+    {/* All Orders */}
+    <div className="w-36 bg-emerald-300/40 rounded-lg p-4 flex flex-col items-center justify-center">
+      <Truck className="w-8 h-8 text-white mb-1" />
+      <span className="text-sm font-semibold">All Orders</span>
+    </div>
+
+    {/* Restaurants */}
+    <div className="w-36 bg-emerald-300/40 rounded-lg p-4 flex flex-col items-center justify-center">
+      <Utensils className="w-8 h-8 text-white mb-1" />
+      <span className="text-sm font-semibold">Restaurants</span>
+    </div>
+
+    {/* Groceries */}
+    <div className="w-36 bg-emerald-300/40 rounded-lg p-4 flex flex-col items-center justify-center">
+      <ShoppingBasket className="w-8 h-8 text-white mb-1" />
+      <span className="text-sm font-semibold">Groceries</span>
+    </div>
+
+  </div>
+
+  {/* IMPACT ROW */}
+  <div className="flex items-center justify-between mt-6">
+    <p className="text-sm opacity-90">Impact Estimate:</p>
+    <p className="text-sm font-semibold">+45% Order Volume</p>
+  </div>
+
+</div>
+
+  
+  </div>
+    <p className="mt-3 text-xs text-black opacity-80">
+            Last updated: Today at 10:45 AM • Updated by Divine-Favour
+          </p>
+            <Button className="bg-[#5B2C6F] hover:bg-[#4A2359] text-white flex items-center gap-2 px-4 py-2 text-sm rounded-md">
+     Save Changes
+    </Button>
+          
+
+  {/* Free Delivery Mode */}
+
+</div>
+
+
     </div>
   )
 }

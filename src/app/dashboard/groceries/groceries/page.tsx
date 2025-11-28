@@ -165,7 +165,7 @@ export default function GroceriesDashboard() {
             </div>
 
             {/* TABLE */}
-            <div className="bg-white rounded-xl border overflow-x-auto hidden md:block">
+            <div className="bg-white rounded-xl border overflow-x-auto ">
                 <table className="min-w-[900px] w-full table-auto text-sm">
                     <thead className="bg-gray-50 border-b">
                         <tr className="text-gray-600 text-xs">
