@@ -152,7 +152,7 @@ useEffect(() => {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Avg Delivery Time</p>
-              <h3 className="text-3xl font-bold">24min</h3>
+              <h3 className="text-3xl font-bold">0min</h3>
             </div>
             <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
               <Clock className="w-6 h-6 text-blue-500" />
@@ -165,7 +165,7 @@ useEffect(() => {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Active Jobs</p>
-              <h3 className="text-3xl font-bold">89</h3>
+              <h3 className="text-3xl font-bold">0</h3>
             </div>
             <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center">
               <Package className="w-6 h-6 text-orange-500" />
@@ -177,7 +177,7 @@ useEffect(() => {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Success Rate</p>
-              <h3 className="text-3xl font-bold">94.2%</h3>
+              <h3 className="text-3xl font-bold">0%</h3>
             </div>
             <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-purple-600" />

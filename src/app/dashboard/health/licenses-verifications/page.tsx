@@ -42,59 +42,16 @@ import {
 } from "lucide-react"
 
 // --- Mock data (match screenshot's counts/text) ---
-const initialVerifications = [
-  {
-    id: 1,
-    professional: "Dr. Ahmed Hassan",
-    avatarInitials: "AH",
-    licenseType: "Medical Practitioner",
-    licenseNumber: "MDCN-45678",
-    submittedDate: "Jan 15, 2024",
-    status: "Pending Review",
-    priority: "Urgent",
-    documents: 3,
-    overdueText: "5 days overdue",
-  },
-  {
-    id: 2,
-    professional: "Nurse Kate Obi",
-    avatarInitials: "KO",
-    licenseType: "Registered Nurse",
-    licenseNumber: "NMCN-11234",
-    submittedDate: "Oct 11, 2025",
-    status: "Verified",
-    priority: "Normal",
-    documents: 2,
-  },
-  {
-    id: 3,
-    professional: "Pharm. Peter Udo",
-    avatarInitials: "PU",
-    licenseType: "Pharmacist",
-    licenseNumber: "PCN-98576",
-    submittedDate: "Oct 10, 2025",
-    status: "Rejected",
-    priority: "Low",
-    documents: 1,
-  },
-  {
-    id: 4,
-    professional: "Dr. Mary Okafor",
-    avatarInitials: "MO",
-    licenseType: "Medical Practitioner",
-    licenseNumber: "MDCN-23490",
-    submittedDate: "Oct 9, 2025",
-    status: "Pending Review",
-    priority: "Normal",
-    documents: 4,
-  },
+const initialVerifications: any[] = [
+
+
 ]
 
 // metric cards (numbers match screenshot / example)
 const metricCards = [
   {
     title: "Pending Verification",
-    value: 23,
+    value: 0,
     subtext: "Avg 2.3 days",
     colorClass: "text-amber-700",
     iconColor: "text-amber-600",
@@ -103,7 +60,7 @@ const metricCards = [
   },
   {
     title: "Verified Today",
-    value: 8,
+    value: 0,
     subtext: "12 approved this week",
     colorClass: "text-emerald-700",
     iconColor: "text-emerald-600",
@@ -112,7 +69,7 @@ const metricCards = [
   },
   {
     title: "Rejected This Week",
-    value: 3,
+    value: 0,
     subtext: "Most: Invalid docs",
     colorClass: "text-rose-700",
     iconColor: "text-rose-600",
@@ -121,7 +78,7 @@ const metricCards = [
   },
   {
     title: "Expiring Soon",
-    value: 12,
+    value: 0,
     subtext: "Next 30 days",
     colorClass: "text-orange-700",
     iconColor: "text-orange-600",
@@ -197,7 +154,7 @@ export default function LicensesVerificationsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex flex-wrap gap-2 items-center">
           <Button className="flex items-center gap-2 bg-purple-700 hover:bg-purple-800 text-white">
-            <CheckCircle2 className="w-4 h-4" /> Bulk Approve (3)
+            <CheckCircle2 className="w-4 h-4" /> Bulk Approve ()
           </Button>
 
           <Button variant="outline" className="flex items-center gap-2">
@@ -276,7 +233,7 @@ export default function LicensesVerificationsPage() {
         <CardHeader className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-0">
           <div>
             <CardTitle className="text-lg">Verification Queue</CardTitle>
-            <div className="text-sm text-gray-500">23 pending verifications</div>
+            <div className="text-sm text-gray-500">0 pending verifications</div>
           </div>
 
           <div className="flex items-center gap-2">

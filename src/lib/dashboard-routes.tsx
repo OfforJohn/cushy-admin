@@ -99,7 +99,7 @@ export const dashboardRoutes = [
   {
     label: "Marketing",
     icon: Megaphone,
-    href: "/dashboard/marketing",
+    href: "#",
   },
   {
     label: "Analytics",

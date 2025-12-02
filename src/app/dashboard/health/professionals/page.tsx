@@ -52,53 +52,13 @@ import {
  * - Responsive and pixel-conscious spacing
  */
 
-const professionalsMock = [
-  {
-    id: "PRO-2024-001",
-    name: "Dr. Sarah Johnson",
-    avatarInitials: "SJ",
-    specialty: "General Medicine",
-    license: "MDCN-12345",
-    location: "Lagos, Nigeria",
-    fee: "₦5,000",
-    status: "Verified",
-    rating: 4.9,
-    reviews: 127,
-    availability: "Available",
-  },
-  {
-    id: "PRO-2024-002",
-    name: "Dr. Michael Chen",
-    avatarInitials: "MC",
-    specialty: "Cardiology",
-    license: "MDCN-54321",
-    location: "Abuja, Nigeria",
-    fee: "₦8,000",
-    status: "Pending",
-    rating: 4.6,
-    reviews: 86,
-    availability: "Unavailable",
-  },
-  {
-    id: "PRO-2024-003",
-    name: "Nurse Kate Obi",
-    avatarInitials: "KO",
-    specialty: "Nursing",
-    license: "NMCN-11234",
-    location: "Lagos, Nigeria",
-    fee: "₦2,500",
-    status: "Verified",
-    rating: 4.7,
-    reviews: 54,
-    availability: "Available",
-  },
-]
+
 
 const metrics = [
   {
     title: "Total Professionals",
-    value: 247,
-    subtext: "↑ 12 new this week",
+    value: 0,
+    subtext: "↑ 0 new this week",
     icon: <User2 className="w-5 h-5" />,
     bg: "bg-sky-50",
     iconColor: "text-sky-600",
@@ -106,7 +66,7 @@ const metrics = [
   },
   {
     title: "Verification Pending",
-    value: 23,
+    value: 0,
     subtext: "Avg 2.3 days",
     icon: <Hourglass className="w-5 h-5" />,
     bg: "bg-amber-50",
@@ -115,7 +75,7 @@ const metrics = [
   },
   {
     title: "Active Today",
-    value: 156,
+    value:0,
     subtext: "↑ 89% availability",
     icon: <CheckCircle2 className="w-5 h-5" />,
     bg: "bg-emerald-50",
@@ -124,7 +84,7 @@ const metrics = [
   },
   {
     title: "Avg Rating",
-    value: 4.8,
+    value: 0,
     subtext: "Based on 1,247 reviews",
     icon: <Star className="w-5 h-5" />,
     bg: "bg-purple-50",
@@ -147,22 +107,7 @@ export default function HealthProfessionalsPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return professionalsMock.filter((p) => {
-      if (city !== "All Cities" && !p.location.includes(city)) return false
-      if (specialty !== "All Specialties" && p.specialty !== specialty) return false
-      if (status !== "All Status") {
-        if (status === "Verified" && p.status !== "Verified") return false
-        if (status === "Pending" && p.status !== "Pending") return false
-      }
-      if (q) {
-        return (
-          p.name.toLowerCase().includes(q) ||
-          p.license.toLowerCase().includes(q) ||
-          p.specialty.toLowerCase().includes(q)
-        )
-      }
-      return true
-    })
+   
   }, [city, specialty, status, search])
 
   return (
@@ -271,7 +216,6 @@ export default function HealthProfessionalsPage() {
         <CardHeader className="flex items-start justify-between">
           <div>
             <CardTitle className="text-lg">Health Professionals</CardTitle>
-            <div className="text-sm text-gray-500">{professionalsMock.length} professionals</div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -298,55 +242,9 @@ export default function HealthProfessionalsPage() {
             </TableHeader>
 
             <TableBody>
-              {filtered.map((p) => (
-                <TableRow key={p.id} className="align-top">
-                  <TableCell className="flex items-center gap-3">
-                    <Avatar initials={p.avatarInitials} />
-                    <div>
-                      <div className="font-medium">{p.name}</div>
-                      <div className="text-xs text-gray-500">ID: {p.id}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-sky-50 text-sky-700">{p.specialty}</span>
-                  </TableCell>
-                  <TableCell className="text-sm">{p.license}</TableCell>
-                  <TableCell className="text-sm">{p.location}</TableCell>
-                  <TableCell className="text-sm font-medium">{p.fee}</TableCell>
-                  <TableCell>
-                    <Badge className={cn(
-                      "capitalize",
-                      p.status === "Verified" && "bg-emerald-50 text-emerald-700",
-                      p.status === "Pending" && "bg-amber-50 text-amber-700"
-                    )}>{p.status}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-500" />
-                      <div className="text-sm font-medium">{p.rating}</div>
-                      <div className="text-xs text-gray-500">({p.reviews})</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className={cn("inline-flex items-center px-2 py-0.5 text-xs rounded", p.availability === "Available" ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-600")}>{p.availability}</div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" className="p-1"><Eye className="w-4 h-4" /></Button>
-                      <Button variant="ghost" className="p-1" title="Approve"><Check className="w-4 h-4 text-emerald-600" /></Button>
-                      <Button variant="ghost" className="p-1" title="Remove"><X className="w-4 h-4 text-rose-600" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+          
 
-              {filtered.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center text-gray-500 py-8">
-                    No professionals found.
-                  </TableCell>
-                </TableRow>
-              )}
+        
             </TableBody>
           </Table>
         </CardContent>

@@ -305,10 +305,10 @@ useEffect(() => {
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
 
   const metrics = [
-    { title: "GMV Today", value: "₦2.4M", change: "12.5% vs yesterday", isPositive: true, icon: TrendingUp, iconBg: "bg-green-100", iconColor: "text-green-600" },
+    { title: "GMV Today", value: "₦0M", change: "0% vs yesterday", isPositive: true, icon: TrendingUp, iconBg: "bg-green-100", iconColor: "text-green-600" },
     { title: "Admin Orders", value: loading ? "Loading..." : ordersCount?.toLocaleString() || "0", isPositive: true, icon: ShoppingCart, iconBg: "bg-blue-100", iconColor: "text-blue-600" },
-    { title: "Completion Rate", value: "94.2%", change: "2.1% vs yesterday", isPositive: false, icon: CheckCircle2, iconBg: "bg-purple-100", iconColor: "text-purple-600" },
-    { title: "Avg Delivery Time", value: "28 min", change: "3 min faster", isPositive: true, icon: Clock, iconBg: "bg-orange-100", iconColor: "text-orange-600" },
+    { title: "Completion Rate", value: "0%", change: "0% vs yesterday", isPositive: false, icon: CheckCircle2, iconBg: "bg-purple-100", iconColor: "text-purple-600" },
+    { title: "Avg Delivery Time", value: "0 min", change: "3 min faster", isPositive: true, icon: Clock, iconBg: "bg-orange-100", iconColor: "text-orange-600" },
   ]
 
 

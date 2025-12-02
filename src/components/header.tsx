@@ -24,6 +24,8 @@ export function Header({ onMenuClick }: HeaderProps) {
   const title = getPageTitle(pathname)
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  
   const router = useRouter();
 
 

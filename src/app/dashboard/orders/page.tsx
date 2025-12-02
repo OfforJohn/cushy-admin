@@ -444,8 +444,8 @@ const fetchStoreName = async (
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Completed</p>
-              <h3 className="text-3xl font-bold mb-2">2,543</h3>
-              <p className="text-sm text-teal-600">89.3% completion rate</p>
+              <h3 className="text-3xl font-bold mb-2">0</h3>
+              <p className="text-sm text-teal-600">0% completion rate</p>
             </div>
             <div className="w-12 h-12 rounded-full bg-teal-50 flex items-center justify-center">
               <CheckCircle2 className="w-6 h-6 text-teal-500" />
@@ -458,8 +458,8 @@ const fetchStoreName = async (
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Revenue Today</p>
-              <h3 className="text-3xl font-bold mb-2">₦487K</h3>
-              <p className="text-sm text-teal-600">+8% from yesterday</p>
+              <h3 className="text-3xl font-bold mb-2">₦0K</h3>
+              <p className="text-sm text-teal-600">+0% from yesterday</p>
             </div>
             <div className="w-12 h-12 rounded-full bg-yellow-50 flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-yellow-600" />

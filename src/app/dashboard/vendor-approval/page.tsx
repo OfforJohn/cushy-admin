@@ -16,32 +16,7 @@ import {
 } from "lucide-react";
 
 /* ---------- Sample data ---------- */
-const VENDORS = [
-  {
-    vendor: "Mama Cass Kitchen",
-    id: "VEN-2024-078",
-    type: "Restaurant",
-    cac: "RC-1234567",
-    nin: "12345678901",
-    submitted: "Jan 20, 2024",
-    overdue: "7 days overdue",
-    status: "Pending Review",
-    priority: "Urgent",
-    kycFlags: ["docs", "missing_photo"],
-  },
-  {
-    vendor: "HealthPlus Pharmacy",
-    id: "VEN-2024-079",
-    type: "Pharmacy",
-    cac: "RC-2345678",
-    nin: "PCN-123456",
-    submitted: "Jan 22, 2024",
-    overdue: "2 days ago",
-    status: "Under Review",
-    priority: "High",
-    kycFlags: ["docs"],
-  },
-];
+
 
 /* ---------- Component ---------- */
 export default function VendorApprovalPage() {
@@ -101,26 +76,26 @@ const openView = (row: Vendor) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Pending Review"
-          value="31"
+          value="0"
           subtitle="Avg 3.2 days"
           icon={<Hourglass className="w-5 h-5 text-yellow-500" />}
         />
         <StatCard
           title="Approved Today"
-          value="12"
-          subtitle={<span className="text-emerald-600 text-sm">↑ 47 this week</span>}
+          value="0"
+          subtitle={<span className="text-emerald-600 text-sm">↑ 0 this week</span>}
           icon={<CheckCircle2 className="w-5 h-5 text-emerald-500" />}
         />
         <StatCard
           title="Rejected This Week"
-          value="8"
+          value="0"
           subtitle="× Invalid KYC docs"
           icon={<XCircle className="w-5 h-5 text-red-500" />}
         />
         <StatCard
           title="Total Active Vendors"
-          value="1,247"
-          subtitle={<span className="text-emerald-600 text-sm">↑ 23 this month</span>}
+          value="0"
+          subtitle={<span className="text-emerald-600 text-sm">↑ 0 this month</span>}
           icon={<ArrowUpRight className="w-5 h-5 text-sky-500" />}
         />
       </div>
@@ -164,7 +139,7 @@ const openView = (row: Vendor) => {
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-5 py-4 border-b gap-2">
           <div className="text-sm font-medium">Vendor Approval Queue</div>
-          <div className="text-sm text-gray-500">31 pending approvals</div>
+          <div className="text-sm text-gray-500">0 pending approvals</div>
         </div>
 
         <div className="overflow-x-auto">
@@ -183,94 +158,7 @@ const openView = (row: Vendor) => {
               </tr>
             </thead>
 
-            <tbody>
-              {VENDORS.map((v) => (
-                <tr key={v.id} className="border-b hover:bg-gray-50">
-                  <td className="p-3">
-                    <input
-                      type="checkbox"
-                      checked={!!selectedRows[v.id]}
-                      onChange={() => toggleRow(v.id)}
-                    />
-                  </td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 font-semibold text-sm">
-                        🍽
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-800">{v.vendor}</div>
-                        <div className="text-[12px] text-gray-500">ID: {v.id}</div>
-                      </div>
-                    </div>
-                  </td>
-
-                  <td className="p-3">
-                    <span className="text-[12px] bg-orange-100 text-orange-600 px-3 py-1 rounded-full">{v.type}</span>
-                  </td>
-
-                  <td className="p-3 text-[13px] text-gray-700">
-                    <div>CAC: {v.cac}</div>
-                    <div className="text-xs text-gray-400">NIN: {v.nin}</div>
-                  </td>
-
-                  <td className="p-3 text-[13px]">
-                    <div>{v.submitted}</div>
-                    <div className="text-xs text-red-500">{v.overdue}</div>
-                  </td>
-
-                  <td className="p-3">
-                    {v.status === "Pending Review" ? (
-                      <span className="bg-yellow-100 text-yellow-700 text-[12px] px-3 py-1 rounded-full">Pending Review</span>
-                    ) : (
-                      <span className="bg-blue-100 text-blue-700 text-[12px] px-3 py-1 rounded-full">Under Review</span>
-                    )}
-                  </td>
-
-                  <td className="p-3">
-                    {v.priority === "Urgent" ? (
-                      <span className="bg-red-100 text-red-700 text-[12px] px-3 py-1 rounded-full">Urgent</span>
-                    ) : (
-                      <span className="bg-blue-100 text-blue-700 text-[12px] px-3 py-1 rounded-full">High</span>
-                    )}
-                  </td>
-
-                  <td className="p-3">
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <FileText className="w-4 h-4 text-gray-500" />
-                      <AlertTriangle className="w-4 h-4 text-orange-500" />
-                      <MoreHorizontal className="w-4 h-4 text-gray-500" />
-                    </div>
-                  </td>
-
-                  <td className="p-3 text-right">
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <button
-                        onClick={() => openApprove(v)}
-                        className="bg-emerald-600 text-white text-sm px-3 py-1 rounded-md flex items-center gap-2"
-                      >
-                        <Check className="w-4 h-4" />
-                        Approve
-                      </button>
-
-                      <button
-                        onClick={() => openReject(v)}
-                        className="bg-red-600 text-white text-sm px-3 py-1 rounded-md"
-                      >
-                        Reject
-                      </button>
-
-                      <button
-                        onClick={() => openView(v)}
-                        className="bg-white border border-gray-200 text-sm px-3 py-1 rounded-md"
-                      >
-                        <Eye className="w-4 h-4 inline-block mr-1" /> View
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+           
           </table>
         </div>
 

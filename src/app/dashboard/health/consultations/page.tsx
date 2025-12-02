@@ -52,8 +52,8 @@ const metrics = [
   {
     id: "total",
     title: "Total Consultations",
-    value: "1,247",
-    sub: "+23 today",
+    value: "0",
+    sub: "0 today",
     iconBg: "bg-indigo-50",
     iconColor: "text-indigo-600",
     icon: <CheckCircle2 className="w-5 h-5" />,
@@ -61,7 +61,7 @@ const metrics = [
   {
     id: "ongoing",
     title: "Ongoing",
-    value: 18,
+    value: 0,
     sub: "Live sessions",
     iconBg: "bg-emerald-50",
     iconColor: "text-emerald-600",
@@ -70,7 +70,7 @@ const metrics = [
   {
     id: "awaiting",
     title: "Awaiting",
-    value: 45,
+    value: 0,
     sub: "Avg 12 min wait",
     iconBg: "bg-amber-50",
     iconColor: "text-amber-600",
@@ -79,7 +79,7 @@ const metrics = [
   {
     id: "completion",
     title: "Completion Rate",
-    value: "94.2%",
+    value: "0%",
     sub: "This week",
     iconBg: "bg-violet-50",
     iconColor: "text-violet-600",
@@ -88,7 +88,7 @@ const metrics = [
   {
     id: "disputed",
     title: "Disputed",
-    value: 7,
+    value: "0",
     sub: "Needs review",
     iconBg: "bg-rose-50",
     iconColor: "text-rose-600",
@@ -96,83 +96,7 @@ const metrics = [
   },
 ]
 
-const consultationsMock = [
-  {
-    id: "CONS-2024-1247",
-    date: "Jan 15, 2024",
-    user: {
-      id: 1,
-      name: "John Doe",
-      phone: "+234 801 234 5678",
-      initials: "JD",
-      gender: "male",
-      avatarUrl: "",
-    },
-    professional: {
-      id: 101,
-      name: "Dr. Sarah Johnson",
-      speciality: "General Medicine",
-      initials: "SJ",
-      gender: "female",
-      avatarUrl: "",
-    },
-    mode: "Video",
-    time: "2:30 PM • 30 min",
-    fee: "₦5,000",
-    status: "Ongoing",
-    prescription: false,
-  },
-  {
-    id: "CONS-2024-1246",
-    date: "Jan 14, 2024",
-    user: {
-      id: 2,
-      name: "Jane Smith",
-      phone: "+234 802 555 1234",
-      initials: "JS",
-      gender: "female",
-      avatarUrl: "",
-    },
-    professional: {
-      id: 102,
-      name: "Dr. Kemi Ade",
-      speciality: "Paediatrics",
-      initials: "KA",
-      gender: "female",
-      avatarUrl: "",
-    },
-    mode: "Chat",
-    time: "11:00 AM • 20 min",
-    fee: "₦2,500",
-    status: "Completed",
-    prescription: true,
-  },
-  {
-    id: "CONS-2024-1245",
-    date: "Jan 13, 2024",
-    user: {
-      id: 3,
-      name: "Michael Obi",
-      phone: "+234 803 999 2020",
-      initials: "MO",
-      gender: "male",
-      avatarUrl: "",
-    },
-    professional: {
-      id: 103,
-      name: "Dr. Chike Nwosu",
-      speciality: "Dermatology",
-      initials: "CN",
-      gender: "male",
-      avatarUrl: "",
-    },
-    mode: "Audio",
-    time: "9:00 AM • 15 min",
-    fee: "₦3,000",
-    status: "Awaiting",
-    prescription: false,
-  },
-]
+
 
 
 // ----------------- small avatar helper -----------------
@@ -193,30 +117,11 @@ export default function ConsultationsDashboardPage() {
   const [page, setPage] = useState(1)
 
   const perPage = 10
-  const total = consultationsMock.length
-  const totalPages = Math.max(1, Math.ceil(total / perPage))
 
   const filtered = useMemo(() => {
-    return consultationsMock.filter((c) => {
-      if (status !== "All" && c.status !== status) return false
-      if (mode !== "All" && c.mode !== mode) return false
-      if (specialty !== "All" && c.professional.speciality !== specialty) return false
-      if (city !== "All") {
-        // static mock has no city field — keep it as placeholder
-      }
-      if (q.trim() !== "") {
-        const s = q.toLowerCase()
-        return (
-          c.id.toLowerCase().includes(s) ||
-          c.user.name.toLowerCase().includes(s) ||
-          c.professional.name.toLowerCase().includes(s)
-        )
-      }
-      return true
-    })
+  
   }, [status, mode, specialty, city, q])
 
-  const pageData = filtered.slice((page - 1) * perPage, page * perPage)
 
   return (
     <div className="space-y-6 p-6">
@@ -309,7 +214,7 @@ export default function ConsultationsDashboardPage() {
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Button variant="ghost" className="flex items-center gap-2">
             
-            <div className="text-sm text-gray-500">1,247 consultations</div>
+            <div className="text-sm text-gray-500">0 consultations</div>
             </Button>
           </div>
         </CardHeader>
@@ -329,129 +234,10 @@ export default function ConsultationsDashboardPage() {
               </TableRow>
             </TableHeader>
 
-            <TableBody>
-              {pageData.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell>
-                    <div className="text-xs text-gray-500">{r.id}</div>
-                    <div className="text-sm text-gray-700">{r.date}</div>
-                  </TableCell>
-<TableCell>
-  <div className="flex items-center gap-3">
-    <img
-      src={
-        r.user.avatarUrl ||
-        `https://randomuser.me/api/portraits/${
-          r.user.gender === "female" ? "women" : "men"
-        }/${r.user.id || Math.floor(Math.random() * 80)}.jpg`
-      }
-      alt={r.user.name}
-      className="w-8 h-8 rounded-full object-cover"
-    />
-    <div>
-      <div className="font-medium">{r.user.name}</div>
-      <div className="text-xs text-gray-500">{r.user.phone}</div>
-    </div>
-  </div>
-</TableCell>
-
-<TableCell>
-  <div className="flex items-center gap-3">
-    <img
-      src={
-        r.professional.avatarUrl ||
-        `https://randomuser.me/api/portraits/${
-          r.professional.gender === "female" ? "women" : "men"
-        }/${r.professional.id || Math.floor(Math.random() * 80)}.jpg`
-      }
-      alt={r.professional.name}
-      className="w-8 h-8 rounded-full object-cover"
-    />
-    <div>
-      <div className="font-medium">{r.professional.name}</div>
-      <div className="text-xs text-gray-500">{r.professional.speciality}</div>
-    </div>
-  </div>
-</TableCell>
-
-
-                  <TableCell>
-                    <div className="inline-flex items-center gap-2 text-sm text-gray-600">
-                      {r.mode === "Video" && <Video className="w-4 h-4 text-sky-600" />}
-                      {r.mode === "Chat" && <MessageSquare className="w-4 h-4 text-sky-600" />}
-                      {r.mode === "Audio" && <Phone className="w-4 h-4 text-sky-600" />}
-                      <span>{r.mode}</span>
-                    </div>
-                  </TableCell>
-
-                  <TableCell>
-                    <div className="text-sm">{r.time}</div>
-                  </TableCell>
-
-                  <TableCell className="font-medium">{r.fee}</TableCell>
-
-                  <TableCell>
-                    <Badge
-                      className={cn(
-                        "capitalize",
-                        r.status === "Ongoing" && "bg-emerald-100 text-emerald-700",
-                        r.status === "Awaiting" && "bg-amber-100 text-amber-700",
-                        r.status === "Completed" && "bg-sky-100 text-sky-700",
-                        r.status === "Disputed" && "bg-rose-100 text-rose-700"
-                      )}
-                    >
-                      {r.status}
-                    </Badge>
-                  </TableCell>
-
-                  <TableCell>
-                    {r.prescription ? (
-                      <Badge className="bg-emerald-50 text-emerald-700">Yes</Badge>
-                    ) : (
-                      <Badge className="bg-gray-50 text-gray-600">No</Badge>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-
-              {pageData.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center text-gray-500 py-6">
-                    No consultations found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
           </Table>
 
           {/* pagination */}
-          <div className="flex items-center justify-between mt-4">
-            <div className="text-sm text-gray-500">Showing {pageData.length} of {filtered.length} results</div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                &lt;
-              </Button>
-
-              <div className="px-3 py-1 text-sm bg-gray-50 border rounded-md">
-                {page} / {totalPages}
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-              >
-                &gt;
-              </Button>
-            </div>
-          </div>
+    
         </CardContent>
       </Card>
     </div>

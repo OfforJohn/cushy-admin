@@ -54,9 +54,9 @@ export default function OrdersPage() {
           >
             Today
           </Button>
-          <Button variant="outline">7 Days</Button>
-          <Button variant="outline">30 Days</Button>
-          <Button variant="outline">90 Days</Button>
+          <Button variant="outline">0 Days</Button>
+          <Button variant="outline">0 Days</Button>
+          <Button variant="outline">0 Days</Button>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
@@ -83,28 +83,28 @@ export default function OrdersPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 gap-y-8">
         <MetricCard
           title="Total GMV"
-          value="₦2.4M"
-          change="+12.5%"
+          value="₦0M"
+          change="0"
           positive
           icon={<CircleDollarSign className="w-6 h-6 text-emerald-500" />}
         />
         <MetricCard
           title="Total Orders"
-          value="1,247"
-          change="+8.2%"
+          value="0"
+          change="0%"
           positive
           icon={<ShoppingBag className="w-6 h-6 text-purple-500" />}
         />
         <MetricCard
           title="Avg Order Value"
-          value="₦1,925"
+          value="₦0"
           change="-2.1%"
           icon={<TrendingUp className="w-6 h-6 text-amber-500" />}
         />
         <MetricCard
           title="Take Rate"
-          value="3.2%"
-          change="+0.3%"
+          value="0%"
+          change="0%"
           positive
           icon={<Percent className="w-6 h-6 text-teal-500" />}
         />
@@ -199,15 +199,15 @@ export default function OrdersPage() {
             <div className="flex items-center justify-between bg-emerald-50 p-3 rounded-lg">
               <p className="text-sm text-gray-700">Consultations</p>
               <div className="text-right">
-                <p className="font-semibold text-emerald-600 text-lg">142</p>
-                <p className="text-xs text-emerald-500">+23% from last week</p>
+                <p className="font-semibold text-emerald-600 text-lg">0</p>
+                <p className="text-xs text-emerald-500">+0% from last week</p>
               </div>
             </div>
 
             <div className="bg-purple-50 p-3 rounded-lg">
               <div className="flex justify-between items-center">
                 <p className="text-sm text-gray-700">Completion Rate</p>
-                <p className="text-sm font-semibold text-purple-700">89%</p>
+                <p className="text-sm font-semibold text-purple-700">0%</p>
               </div>
               <p className="text-xs text-gray-500 mt-1">Average wait: 8 mins</p>
             </div>
@@ -215,7 +215,7 @@ export default function OrdersPage() {
             <div className="bg-amber-50 p-3 rounded-lg">
               <div className="flex justify-between items-center">
                 <p className="text-sm text-gray-700">Rx → Purchase</p>
-                <p className="text-sm font-semibold text-amber-500">67%</p>
+                <p className="text-sm font-semibold text-amber-500">0%</p>
               </div>
               <p className="text-xs text-gray-500 mt-1">Conversion rate</p>
             </div>
@@ -247,19 +247,19 @@ export default function OrdersPage() {
                   image="/mamas-kitchen.png"
                   name="Mama’s Kitchen"
                   category="Restaurant"
-                  orders={342}
-                  revenue="₦428,500"
+                  orders={0}
+                  revenue="0"
                   rating={4.8}
-                  avgTime="22 mins"
+                  avgTime="0 mins"
                 />
                 <VendorRow
                   image="/medplus.png"
                   name="MedPlus Pharmacy"
                   category="Pharmacy"
-                  orders={187}
-                  revenue="₦156,800"
+                  orders={0}
+                  revenue="0"
                   rating={4.5}
-                  avgTime="19 mins"
+                  avgTime="0 mins"
                 />
               </tbody>
             </table>
