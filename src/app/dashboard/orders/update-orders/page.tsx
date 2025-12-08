@@ -279,18 +279,18 @@ export default function OrderDetailsPage() {
                                     </td>
 
                                     {/* -------- ACTION BUTTON -------- */}
-                                    <td className="px-4 py-3 text-center">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                openStatusModal(order);
-                                            }}
-                                            className="p-2 rounded-full hover:bg-gray-100"
-                                        >
-                                            <UserCog className="w-5 h-5 text-purple-700" />
-                                        </button>
+                                  <td className="px-4 py-3 text-center">
+    <button
+        onClick={(e) => {
+            e.stopPropagation();
+            openStatusModal(order);
+        }}
+        className="p-2 rounded-full hover:bg-gray-100 cursor-pointer"
+    >
+        <UserCog className="w-5 h-5 text-purple-700" />
+    </button>
+</td>
 
-                                    </td>
                                 </tr>
                             );
                         })}
@@ -382,25 +382,27 @@ export default function OrderDetailsPage() {
                             </div>
                         )}
 
-                        <div className="flex gap-3 pt-2">
-                            <button
-                                onClick={updateOrderStatus}
-                                disabled={status === "CANCELLED" && reason.trim() === ""}
-                                className={`bg-purple-700 text-white w-full py-2 rounded-md text-sm font-medium ${status === "CANCELLED" && reason.trim() === ""
-                                    ? "opacity-50 cursor-not-allowed"
-                                    : "hover:bg-purple-800"
-                                    }`}
-                            >
-                                Update Status
-                            </button>
+                      <div className="flex gap-3 pt-2">
+    <button
+        onClick={updateOrderStatus}
+        disabled={status === "CANCELLED" && reason.trim() === ""}
+        className={`bg-purple-700 text-white w-full py-2 rounded-md text-sm font-medium ${
+            status === "CANCELLED" && reason.trim() === ""
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:bg-purple-800 cursor-pointer"
+        }`}
+    >
+        Update Status
+    </button>
 
-                            <button
-                                onClick={() => setShowStatusModal(false)}
-                                className="border border-gray-300 w-full py-2 rounded-md text-sm text-gray-700 hover:bg-gray-50"
-                            >
-                                Close
-                            </button>
-                        </div>
+    <button
+        onClick={() => setShowStatusModal(false)}
+        className="border border-gray-300 w-full py-2 rounded-md text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+    >
+        Close
+    </button>
+</div>
+
 
                         {Toast}
                     </div>

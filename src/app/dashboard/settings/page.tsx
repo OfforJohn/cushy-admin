@@ -19,13 +19,44 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/components/ui/toast-provider"
+import { API_BASE_URL } from "@/lib/apiConfig"
+import CreateCouponModal from "@/components/CreateCouponModal"
+
+
+type Coupon = {
+  id: string;
+  code: string;
+  type: "PERCENT" | "FIXED";
+  value: number;
+  appliesTo: "SITE" | "MERCHANT" | "PRODUCT";
+  startDate: string;
+  endDate: string;
+  usageLimit: number;
+  timesUsed: number;
+  status: "ACTIVE" | "EXPIRED" | "DISABLED";
+};
+
+
+
 
 export default function SettingsPage() {
-  const [maintenanceMode, setMaintenanceMode] = useState(false)
 
   const [activeTab, setActiveTab] = useState("All Coupons");
 
   const [loadingToggle, setLoadingToggle] = useState(false);
+
+  const [backendStatus, setBackendStatus] = useState<"Enabled" | "Disabled">("Disabled");
+  const [backendAdmin, setBackendAdmin] = useState("-");
+  const [backendTime, setBackendTime] = useState("-");
+
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+
+
+  const [loadingCoupons, setLoadingCoupons] = useState(false);
+
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+
 
 
 
@@ -42,9 +73,6 @@ export default function SettingsPage() {
 
 
 
-  const handleSwitchChange = (value: boolean) => {
-    setPendingFreeDelivery(value); // update local "pending" state only
-  };
 
 
 
@@ -55,6 +83,75 @@ export default function SettingsPage() {
       setUserEmail(parsed.name || parsed.email); // use name if available, else email
     }
   }, []);
+
+
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const token = localStorage.getItem("token");
+
+        const res = await fetch(
+          `${API_BASE_URL}/api/v1/admin/get-global-free-delivery-status`,
+          {
+            headers: {
+              "cushy-access-key": `Bearer ${token}`,
+            },
+          }
+        );
+
+        const json = await res.json();
+
+        if (!json.data) return;
+
+        const isEnabled = json.data.value === "true";
+
+        // SET EVERYTHING DIRECTLY FROM BACKEND
+        setBackendStatus(isEnabled ? "Enabled" : "Disabled");
+        setBackendAdmin(json.data.createdBy || "-");
+        setBackendTime(new Date().toLocaleString("en-US", { hour12: true }));
+      } catch (e) {
+        console.log("Error fetching:", e);
+      }
+    };
+
+    fetchStatus();
+  }, []);
+
+  const deactivateCoupon = async (couponId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE_URL}/api/v1/promo-code/deactivate/${couponId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "cushy-access-key": `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast(data.message || "Failed to deactivate coupon", "error");
+        return;
+      }
+
+      // Update the coupon in state
+      setCoupons((prev) =>
+        prev.map((c) =>
+          c.id === couponId ? { ...c, status: "INACTIVE" as Coupon["status"] } : c
+        )
+      );
+
+      showToast(`Coupon deactivated successfully`, "success");
+    } catch (err) {
+      showToast("An error occurred. Please try again.", "error");
+    }
+  };
+
+
 
 
 
@@ -122,7 +219,7 @@ export default function SettingsPage() {
       setLoadingToggle(true);
 
       const res = await fetch(
-        `https://cushy-access-backend-f3ab.onrender.com/api/v1/admin/toggle-global-free-delivery`,
+        `${API_BASE_URL}/api/v1/admin/toggle-global-free-delivery`,
         {
           method: "PATCH",
           headers: {
@@ -156,6 +253,47 @@ export default function SettingsPage() {
       setLoadingToggle(false);
     }
   };
+
+
+  useEffect(() => {
+    const fetchCoupons = async () => {
+      try {
+        setLoadingCoupons(true);
+        const token = localStorage.getItem("token");
+
+        const res = await fetch(`${API_BASE_URL}/api/v1/promo-code/get-all-coupon`, {
+          headers: {
+            "cushy-access-key": `Bearer ${token}`,
+          },
+        });
+
+        const json = await res.json();
+
+        if (!res.ok) {
+          showToast(json.message || "Failed to fetch coupons", "error");
+          return;
+        }
+
+        setCoupons(json.data);
+      } catch (err) {
+        showToast("Network error. Try again.", "error");
+      } finally {
+        setLoadingCoupons(false);
+      }
+    };
+
+    fetchCoupons();
+  }, []);
+
+  const filteredCoupons = coupons.filter((c) => {
+    if (activeTab === "All Coupons") return true;
+    if (activeTab === "Site-Wide") return c.appliesTo === "SITE";
+    if (activeTab === "Merchant-Specific") return c.appliesTo === "MERCHANT";
+    if (activeTab === "Active") return c.status === "ACTIVE";
+    if (activeTab === "Expired") return c.status === "EXPIRED";
+    return true;
+  });
+
 
 
 
@@ -215,11 +353,11 @@ export default function SettingsPage() {
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="bg-gray-50 rounded p-3 text-center">
               <p className="text-xs text-gray-500">Active Carts</p>
-              <p className="text-2xl font-bold text-[#5B2C6F]">847</p>
+              <p className="text-2xl font-bold text-[#5B2C6F]">0</p>
             </div>
             <div className="bg-gray-50 rounded p-3 text-center">
               <p className="text-xs text-gray-500">Abandoned</p>
-              <p className="text-2xl font-bold text-amber-500">234</p>
+              <p className="text-2xl font-bold text-amber-500">0</p>
             </div>
           </div>
         </div>
@@ -275,9 +413,10 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          <Button className="bg-[#5B2C6F] hover:bg-[#4A2359] text-white flex items-center gap-2 px-4 py-2 text-sm rounded-md">
-            <Plus className="w-4 h-4" /> Create Coupon
-          </Button>
+
+          <CreateCouponModal />
+
+
         </div>
 
         {/* Tabs */}
@@ -307,79 +446,97 @@ export default function SettingsPage() {
         {/* Coupon List */}
         <div className="mt-4 space-y-4">
 
-          {/* Coupon Item */}
-          <div className="border border-gray-200 rounded-lg p-4 flex items-start justify-between hover:shadow-sm transition">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center">
-                <Tag className="w-5 h-5 text-yellow-600" />
-              </div>
+          {loadingCoupons && <p className="text-sm text-gray-500">Loading coupons...</p>}
 
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-sm">WELCOME50</p>
-                  <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded">
-                    Site-Wide
-                  </span>
+          {!loadingCoupons && filteredCoupons.length === 0 && (
+            <p className="text-sm text-gray-500">No coupons found.</p>
+          )}
+          {!loadingCoupons &&
+            filteredCoupons.slice().reverse().map((coupon) => (
+              <div
+                key={coupon.id}
+                className="border border-gray-200 rounded-lg p-4 flex items-start justify-between hover:shadow-sm transition"
+              >
+                <div className="flex items-start gap-3">
+
+                  <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center">
+                    <Tag className="w-5 h-5 text-yellow-600" />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-sm">{coupon.code}</p>
+
+                      <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded">
+                        {coupon.appliesTo === "SITE" ? "Site-Wide" : "Merchant"}
+                      </span>
+                    </div>
+
+                    <p className="text-sm text-gray-600">
+                      {coupon.value}{coupon.type === "PERCENT" ? "%" : "₦"} discount
+                    </p>
+
+                    <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+
+                      {coupon.endDate && (
+                        <span>
+                          Valid until {new Date(coupon.endDate).toLocaleDateString()}
+                        </span>
+                      )}
+
+                      <span>•</span>
+                      <span>{coupon.timesUsed} uses</span>
+
+                      <span
+                        className={
+                          coupon.status === "ACTIVE"
+                            ? "text-green-600 font-medium"
+                            : "text-red-600 font-medium"
+                        }
+                      >
+                        • {coupon.status}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
-                <p className="text-sm text-gray-600">50% off first order • Min ₦1,000</p>
+             <div className="relative flex items-center gap-2">
+  <Button variant="ghost" size="icon" className="cursor-pointer">
+    <Edit className="w-4 h-4 text-gray-600" />
+  </Button>
 
-                <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
-                  <span>Valid until Dec 31, 2024</span>
-                  <span>•</span>
-                  <span>234 uses</span>
-                  <span className="text-green-600 font-medium">• Active</span>
-                </div>
+  <Button
+    variant="ghost"
+    size="icon"
+    className="cursor-pointer"
+    onClick={() =>
+      setOpenMenuId(openMenuId === coupon.id ? null : coupon.id)
+    }
+  >
+    <MoreVertical className="w-4 h-4 text-gray-600" />
+  </Button>
+
+  {/* Dropdown menu */}
+  {openMenuId === coupon.id && (
+    <div className="absolute top-8 right-0 bg-white border border-gray-200 rounded shadow-md w-32 z-10">
+      <button
+        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 cursor-pointer"
+        onClick={() => {
+          deactivateCoupon(coupon.id);
+          setOpenMenuId(null);
+        }}
+      >
+        Deactivate
+      </button>
+    </div>
+  )}
+</div>
+
+
               </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon">
-                <Edit className="w-4 h-4 text-gray-600" />
-              </Button>
-              <Button variant="ghost" size="icon">
-                <MoreVertical className="w-4 h-4 text-gray-600" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Second Coupon */}
-          <div className="border border-gray-200 rounded-lg p-4 flex items-start justify-between hover:shadow-sm transition">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <ShoppingCart className="w-5 h-5 text-emerald-600" />
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-sm">FREEDEL</p>
-                  <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded">
-                    Site-Wide
-                  </span>
-                </div>
-
-                <p className="text-sm text-gray-600">Free delivery on all orders</p>
-
-                <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
-                  <span>Valid until Jan 15, 2025</span>
-                  <span>•</span>
-                  <span>1,456 uses</span>
-                  <span className="text-green-600 font-medium">• Active</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon">
-                <Edit className="w-4 h-4 text-gray-600" />
-              </Button>
-              <Button variant="ghost" size="icon">
-                <MoreVertical className="w-4 h-4 text-gray-600" />
-              </Button>
-            </div>
-          </div>
-
+            ))}
         </div>
+
       </div>
 
 
@@ -403,33 +560,33 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <Label className="text-sm font-medium text-[#5B2C6F]">Service Fee (%)</Label>
-                  <Input type="number" defaultValue={3} />
+                  <Input type="number" defaultValue={0} />
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-[#5B2C6F]">Delivery fee per mile (₦)</Label>
-                  <Input type="number" defaultValue={50} />
+                  <Input type="number" defaultValue={0} />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <Label className="text-sm font-medium text-[#5B2C6F]">Restaurant Packaging Fee (₦)</Label>
-                  <Input type="number" defaultValue={50} />
+                  <Input type="number" defaultValue={0} />
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-[#5B2C6F]">Groceries Packaging Fee (₦)</Label>
-                  <Input type="number" defaultValue={50} />
+                  <Input type="number" defaultValue={0} />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <Label className="text-sm font-medium text-[#5B2C6F]">Pharma Packaging Fee (₦)</Label>
-                  <Input type="number" defaultValue={1.5} />
+                  <Input type="number" defaultValue={0} />
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-[#5B2C6F]">Health Commission (%)</Label>
-                  <Input type="number" defaultValue={20} />
+                  <Input type="number" defaultValue={0} />
                 </div>
               </div>
 
@@ -525,21 +682,24 @@ export default function SettingsPage() {
 
 
         </div>
-   <p className="mt-3 text-xs opacity-80">
-  Last updated: {lastUpdated ? lastUpdated.time : "Not updated yet"} • 
-  Updated by {lastUpdated ? lastUpdated.admin : "-"} • 
-  Status:{" "}
-  <span className={freeDeliveryEnabled ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold"}>
-    {freeDeliveryEnabled ? "Enabled" : "Disabled"}
-  </span>
-</p>
+
+
+        <p className="mt-3 text-xs opacity-80">
+          Last updated: {backendTime} •
+          Updated by {backendAdmin} •
+          Status:{" "}
+          <span className={freeDeliveryEnabled ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold"}>
+            {freeDeliveryEnabled ? "Enabled" : "Disabled"}
+          </span>
+        </p>
+
 
 
 
 
         <Button
           onClick={handleSaveChanges}
-          className="bg-[#5B2C6F] hover:bg-[#4A2359] text-white flex items-center gap-2 px-4 py-2 text-sm rounded-md"
+          className="bg-[#5B2C6F] hover:bg-[#4A2359] text-white flex items-center gap-2 px-4 py-2 text-sm rounded-md cursor-pointer"
         >
           Save Changes
         </Button>

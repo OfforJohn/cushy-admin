@@ -536,26 +536,35 @@ const fetchStoreName = async (
 
 
         {/* Filter Buttons */}
-        <div className="flex flex-wrap gap-3">
-          <Button className="bg-[#5B2C6F] text-white hover:bg-[#4a2359]">
-            <Filter className="w-4 h-4 mr-2" /> Apply Filters
-          </Button>
+     <div className="flex flex-wrap gap-3">
+  <Button className="bg-[#5B2C6F] text-white hover:bg-[#4a2359] cursor-pointer">
+    <Filter className="w-4 h-4 mr-2" /> Apply Filters
+  </Button>
 
-          <Button variant="outline">
-            <FileDown className="w-4 h-4 mr-2 text-[#5B2C6F]" />
-            Export CSV
-          </Button>
+  <Button variant="outline" className="cursor-pointer">
+    <FileDown className="w-4 h-4 mr-2 text-[#5B2C6F]" />
+    Export CSV
+  </Button>
 
-          <Button variant="outline" onClick={() => router.push("/dashboard/orders/update-orders")}>
-            <RefreshCcw className="w-4 h-4 mr-2 text-[#5B2C6F]" />
-            Update Orders
-          </Button>
+  <Button
+    variant="outline"
+    onClick={() => router.push("/dashboard/orders/update-orders")}
+    className="cursor-pointer"
+  >
+    <RefreshCcw className="w-4 h-4 mr-2 text-[#5B2C6F]" />
+    Update Orders
+  </Button>
 
-          <Button variant="outline" onClick={() => router.push("/dashboard/orders/assign-rider")}>
-            <UserCheck className="w-4 h-4 mr-2 text-[#5B2C6F]" />
-            Assign Rider
-          </Button>
-        </div>
+  <Button
+    variant="outline"
+    onClick={() => router.push("/dashboard/orders/assign-rider")}
+    className="cursor-pointer"
+  >
+    <UserCheck className="w-4 h-4 mr-2 text-[#5B2C6F]" />
+    Assign Rider
+  </Button>
+</div>
+
       </div>
 
 
@@ -700,21 +709,35 @@ const fetchStoreName = async (
 </td>
 
 
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleViewDetails(order)}>
-                              <Eye className="w-4 h-4" />
-                            </Button>
+                      <td className="px-6 py-4">
+  <div className="flex items-center gap-2">
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={() => handleViewDetails(order)}
+      className="cursor-pointer"
+    >
+      <Eye className="w-4 h-4" />
+    </Button>
 
-                            <Button variant="ghost" size="icon">
-                              <Edit className="w-4 h-4" />
-                            </Button>
+    <Button
+      variant="ghost"
+      size="icon"
+      className="cursor-pointer"
+    >
+      <Edit className="w-4 h-4" />
+    </Button>
 
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </td>
+    <Button
+      variant="ghost"
+      size="icon"
+      className="cursor-pointer"
+    >
+      <MoreVertical className="w-4 h-4" />
+    </Button>
+  </div>
+</td>
+
                       </tr>
                     )
                   })

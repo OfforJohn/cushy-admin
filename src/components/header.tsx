@@ -1,11 +1,10 @@
 "use client"
 
-import { Search, Bell, Menu, User } from "lucide-react"
+import { Bell, Menu, User } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import { getPageTitle } from "@/lib/dashboard-routes"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -33,7 +32,7 @@ export function Header({ onMenuClick }: HeaderProps) {
     const stored = localStorage.getItem("user");
     if (stored) {
       const parsed = JSON.parse(stored);
-      setUserEmail(parsed.email);
+      setUserEmail(parsed.firstName);
     }
   }, []);
 
