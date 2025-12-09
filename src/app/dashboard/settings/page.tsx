@@ -500,37 +500,37 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-             <div className="relative flex items-center gap-2">
-  <Button variant="ghost" size="icon" className="cursor-pointer">
-    <Edit className="w-4 h-4 text-gray-600" />
-  </Button>
+                <div className="relative flex items-center gap-2">
+                  <Button variant="ghost" size="icon" className="cursor-pointer">
+                    <Edit className="w-4 h-4 text-gray-600" />
+                  </Button>
 
-  <Button
-    variant="ghost"
-    size="icon"
-    className="cursor-pointer"
-    onClick={() =>
-      setOpenMenuId(openMenuId === coupon.id ? null : coupon.id)
-    }
-  >
-    <MoreVertical className="w-4 h-4 text-gray-600" />
-  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="cursor-pointer"
+                    onClick={() =>
+                      setOpenMenuId(openMenuId === coupon.id ? null : coupon.id)
+                    }
+                  >
+                    <MoreVertical className="w-4 h-4 text-gray-600" />
+                  </Button>
 
-  {/* Dropdown menu */}
-  {openMenuId === coupon.id && (
-    <div className="absolute top-8 right-0 bg-white border border-gray-200 rounded shadow-md w-32 z-10">
-      <button
-        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 cursor-pointer"
-        onClick={() => {
-          deactivateCoupon(coupon.id);
-          setOpenMenuId(null);
-        }}
-      >
-        Deactivate
-      </button>
-    </div>
-  )}
-</div>
+                  {/* Dropdown menu */}
+                  {openMenuId === coupon.id && (
+                    <div className="absolute top-8 right-0 bg-white border border-gray-200 rounded shadow-md w-32 z-10">
+                      <button
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 cursor-pointer"
+                        onClick={() => {
+                          deactivateCoupon(coupon.id);
+                          setOpenMenuId(null);
+                        }}
+                      >
+                        Deactivate
+                      </button>
+                    </div>
+                  )}
+                </div>
 
 
               </div>

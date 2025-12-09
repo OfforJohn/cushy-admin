@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,15 +11,18 @@ import { API_BASE_URL } from "@/lib/apiConfig";
 export default function CreateCouponModal() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  
-  
-    const { Toast, showToast } = useToast();
+
+  const { Toast, showToast } = useToast();
+
+  const [merchants, setMerchants] = useState<any[]>([]);
+  const [loadingMerchants, setLoadingMerchants] = useState(false);
 
   const [formData, setFormData] = useState({
     code: "",
     type: "PERCENT",
     value: "",
     appliesTo: "SITE",
+    merchantId: "",
     startDate: "",
     endDate: "",
     usageLimit: ""
@@ -31,57 +34,90 @@ export default function CreateCouponModal() {
       [e.target.name]: e.target.value,
     });
   };
-const handleSubmit = async () => {
-  setLoading(true);
-  try {
-    
-      const token = localStorage.getItem("token");
-    const res = await fetch(`${API_BASE_URL}/api/v1/promo-code/create-coupon`, {
-      method: "POST",
 
-            headers: {
-            "Content-Type": "application/json",
-            "cushy-access-key": `Bearer ${token}`,
-          },
-      body: JSON.stringify({
+  // Fetch merchants when modal opens and appliesTo = MERCHANT
+  useEffect(() => {
+    if (open && formData.appliesTo === "MERCHANT") {
+      fetchMerchants();
+    }
+  }, [open, formData.appliesTo]);
+
+  const fetchMerchants = async () => {
+    try {
+      setLoadingMerchants(true);
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(`${API_BASE_URL}/api/v1/stores/`, {
+        headers: {
+          "Content-Type": "application/json",
+          "cushy-access-key": `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setMerchants(data?.data || []);
+      } else {
+        showToast("Failed to load merchants");
+      }
+    } catch (error) {
+      showToast("Error loading merchants");
+    } finally {
+      setLoadingMerchants(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+
+      const payload = {
         code: formData.code,
         type: formData.type,
         value: Number(formData.value),
-        appliesTo: formData.appliesTo,
+        appliesTo:
+          formData.appliesTo === "SITE"
+            ? "SITE"
+            : formData.merchantId, // Merchant ID sent directly
         startDate: formData.startDate,
         endDate: formData.endDate,
         usageLimit: Number(formData.usageLimit),
-      }),
-    });
+      };
 
-    const data = await res.json();
+      const res = await fetch(`${API_BASE_URL}/api/v1/promo-code/create-coupon`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "cushy-access-key": `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
 
-    if (!res.ok) {
-        showToast("Error creating post")
-      return;
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast(data?.message || "Error creating coupon");
+        return;
+      }
+
+      showToast("Coupon created successfully");
+      setOpen(false);
+    } catch (error) {
+      showToast("Error creating coupon");
     }
-showToast("Coupon created")
-    setOpen(false);
-
-  } catch (error) {
-    console.error(error);
-   showToast("Error creating coupon");
-  }
-  setLoading(false);
-};
-
+    setLoading(false);
+  };
 
   return (
     <>
-      {/* CREATE BUTTON */}
       <Button
         onClick={() => setOpen(true)}
-        className="bg-[#5B2C6F] hover:bg-[#4A2359] text-white flex items-center gap-2 px-4 py-2 text-sm rounded-md cursor-pointer"
+        className="bg-[#5B2C6F] hover:bg-[#4A2359] text-white px-4 py-2 cursor-pointer"
       >
         Create Coupon
       </Button>
 
-      {/* MODAL */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -121,9 +157,34 @@ showToast("Coupon created")
                 onChange={handleChange}
               >
                 <option value="SITE">SITE</option>
-                <option value="PRODUCT">PRODUCT</option>
+                <option value="MERCHANT">MERCHANT</option>
               </select>
             </div>
+
+            {formData.appliesTo === "MERCHANT" && (
+              <div>
+                <Label>Select Merchant</Label>
+
+                <select
+                  name="merchantId"
+                  className="w-full border rounded-md p-2"
+                  value={formData.merchantId}
+                  onChange={handleChange}
+                >
+                  <option value="">-- Select Merchant --</option>
+
+                  {loadingMerchants ? (
+                    <option>Loading...</option>
+                  ) : (
+                    merchants.map((merchant) => (
+                      <option key={merchant.id} value={merchant.id}>
+                        {merchant.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            )}
 
             <div>
               <Label>Start Date</Label>
@@ -146,11 +207,10 @@ showToast("Coupon created")
             </div>
           </div>
 
-          
-
           {Toast}
 
-        <DialogFooter>
+          <DialogFooter>
+          <DialogFooter>
   <Button
     onClick={() => setOpen(false)}
     variant="ghost"
@@ -168,6 +228,8 @@ showToast("Coupon created")
   </Button>
 </DialogFooter>
 
+
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
