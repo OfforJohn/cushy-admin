@@ -53,7 +53,9 @@ export interface UserSummaryItem {
     lastName: string;
     email: string;
     mobile: string;
-    role: string;
+    userRole: string;
+    isVerified: boolean;
+    createdAt: string;
     ordersCount: number;
     walletBalance: number;
     lastActive: string;
