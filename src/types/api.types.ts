@@ -1,3 +1,5 @@
+import { UserRoles } from './user.types';
+
 export interface StandardResponse<T = unknown> {
     error: boolean;
     message: string;
@@ -53,7 +55,7 @@ export interface UserSummaryItem {
     lastName: string;
     email: string;
     mobile: string;
-    userRole: string;
+    userRole: UserRoles;
     isVerified: boolean;
     createdAt: string;
     ordersCount: number;
