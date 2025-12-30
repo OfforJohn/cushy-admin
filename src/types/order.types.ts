@@ -33,8 +33,10 @@ export interface OrderCharges {
 export interface OrderTracking {
     id: string;
     status: OrderStatus;
+    orderStatus?: string;
     note?: string;
     timestamp: string;
+    createdAt?: string;
 }
 
 export interface Order {

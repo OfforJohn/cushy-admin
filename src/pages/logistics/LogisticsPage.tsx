@@ -97,7 +97,7 @@ export const LogisticsPage: React.FC = () => {
     const orders = ordersData?.data || [];
 
     // Extract riders - handle different response formats from external TrackThatRide API
-    const ridersRaw = ridersData?.data;
+    const ridersRaw = ridersData?.data as any;
     const riders = Array.isArray(ridersRaw)
         ? ridersRaw
         : (ridersRaw?.drivers || ridersRaw?.data || []);

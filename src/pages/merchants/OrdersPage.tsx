@@ -204,7 +204,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
     }));
 
     // Extract riders - handle TrackThatRide API response format
-    const ridersRaw = ridersData?.data;
+    const ridersRaw = ridersData?.data as any;
     const riders = Array.isArray(ridersRaw)
         ? ridersRaw
         : (ridersRaw?.drivers || ridersRaw?.data || []);

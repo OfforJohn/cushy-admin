@@ -83,8 +83,8 @@ export const MerchantApprovalPage: React.FC = () => {
         queryKey: ['vendorApproval', page, statusFilter],
         queryFn: () => adminApi.getVendorList({
             page,
-            size: pageSize,
-            status: statusFilter === 'all' ? undefined : statusFilter.toUpperCase()
+            limit: pageSize,
+            isVerified: statusFilter === 'all' ? undefined : statusFilter === 'verified'
         }),
         retry: false,
         staleTime: 30000,
@@ -130,8 +130,9 @@ export const MerchantApprovalPage: React.FC = () => {
         },
     });
 
-    const vendors: Vendor[] = Array.isArray(vendorsData?.data?.vendorList) ? vendorsData.data.vendorList : [];
-    const pagination = vendorsData?.data?.pagination || { total: 0, page: 1, pageCount: 1 };
+    const vendorsRaw = vendorsData?.data;
+    const vendors: Vendor[] = Array.isArray(vendorsRaw) ? vendorsRaw : (vendorsRaw as any)?.vendorList || [];
+    const pagination = (vendorsRaw as any)?.pagination || { total: vendors.length, page: 1, pageCount: 1 };
 
     // Calculate stats
     const pendingCount = vendors.filter(v => !v.isVerified).length;
@@ -243,7 +244,7 @@ export const MerchantApprovalPage: React.FC = () => {
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
                     <CardBody>
                         <HStack spacing={3}>
-                            <Box p={2} bg="orange.500" bg="rgba(251, 191, 36, 0.1)" borderRadius="lg">
+                            <Box p={2} bg="rgba(251, 191, 36, 0.1)" borderRadius="lg">
                                 <Icon as={Clock} color="orange.400" boxSize={5} />
                             </Box>
                             <Box>
