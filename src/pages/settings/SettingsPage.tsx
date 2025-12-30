@@ -80,6 +80,8 @@ export const SettingsPage: React.FC = () => {
     const toast = useToast();
     const queryClient = useQueryClient();
     const { isOpen: isCouponModalOpen, onOpen: onCouponModalOpen, onClose: onCouponModalClose } = useDisclosure();
+    const { isOpen: isEditModalOpen, onOpen: onEditModalOpen, onClose: onEditModalClose } = useDisclosure();
+    const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
 
     const [freeDeliveryEnabled, setFreeDeliveryEnabled] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState<string[]>(['all']);
@@ -513,23 +515,42 @@ export const SettingsPage: React.FC = () => {
                                                             icon={<Edit size={14} />}
                                                             variant="ghost"
                                                             size="sm"
+                                                            onClick={() => {
+                                                                setEditingCoupon(coupon);
+                                                                onEditModalOpen();
+                                                            }}
                                                         />
                                                         <Menu>
                                                             <MenuButton as={IconButton} icon={<MoreVertical size={14} />} variant="ghost" size="sm" />
                                                             <MenuList bg="gray.800" borderColor="gray.700">
-                                                                <MenuItem
-                                                                    bg="gray.800"
-                                                                    _hover={{ bg: 'gray.700' }}
-                                                                    onClick={() => deactivateCouponMutation.mutate(coupon.id)}
-                                                                >
-                                                                    {coupon.isActive ? 'Deactivate' : 'Activate'}
-                                                                </MenuItem>
+                                                                {coupon.isActive && (
+                                                                    <MenuItem
+                                                                        bg="gray.800"
+                                                                        _hover={{ bg: 'gray.700' }}
+                                                                        color="orange.400"
+                                                                        onClick={() => deactivateCouponMutation.mutate(coupon.id)}
+                                                                        isDisabled={deactivateCouponMutation.isPending}
+                                                                    >
+                                                                        Deactivate Coupon
+                                                                    </MenuItem>
+                                                                )}
+                                                                {!coupon.isActive && (
+                                                                    <MenuItem
+                                                                        bg="gray.800"
+                                                                        _hover={{ bg: 'gray.700' }}
+                                                                        color="gray.500"
+                                                                        isDisabled
+                                                                    >
+                                                                        Activate (Not available)
+                                                                    </MenuItem>
+                                                                )}
                                                                 <MenuItem
                                                                     bg="gray.800"
                                                                     _hover={{ bg: 'gray.700' }}
                                                                     color="red.400"
                                                                     icon={<Trash2 size={14} />}
                                                                     onClick={() => deleteCouponMutation.mutate(coupon.id)}
+                                                                    isDisabled={deleteCouponMutation.isPending}
                                                                 >
                                                                     Delete
                                                                 </MenuItem>
@@ -798,6 +819,106 @@ export const SettingsPage: React.FC = () => {
                             isLoading={createCouponMutation.isPending}
                         >
                             Create
+                        </Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
+
+            {/* Edit Coupon Modal (Read-only view since backend has no update endpoint) */}
+            <Modal isOpen={isEditModalOpen} onClose={onEditModalClose} size="md">
+                <ModalOverlay />
+                <ModalContent bg="gray.900">
+                    <ModalHeader>Coupon Details</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        {editingCoupon && (
+                            <VStack spacing={4} align="stretch">
+                                <Box>
+                                    <Text fontSize="xs" color="gray.500" mb={1}>Coupon Code</Text>
+                                    <Text fontSize="lg" fontWeight="bold" color="purple.400">{editingCoupon.code}</Text>
+                                </Box>
+
+                                <SimpleGrid columns={2} spacing={4}>
+                                    <Box>
+                                        <Text fontSize="xs" color="gray.500" mb={1}>Type</Text>
+                                        <Badge colorScheme={editingCoupon.type === 'PERCENT' ? 'blue' : 'green'}>
+                                            {editingCoupon.type === 'PERCENT' ? 'Percentage' : 'Fixed Amount'}
+                                        </Badge>
+                                    </Box>
+                                    <Box>
+                                        <Text fontSize="xs" color="gray.500" mb={1}>Value</Text>
+                                        <Text fontWeight="500">
+                                            {editingCoupon.type === 'PERCENT' ? `${editingCoupon.value}%` : `₦${editingCoupon.value.toLocaleString()}`}
+                                        </Text>
+                                    </Box>
+                                </SimpleGrid>
+
+                                <SimpleGrid columns={2} spacing={4}>
+                                    <Box>
+                                        <Text fontSize="xs" color="gray.500" mb={1}>Status</Text>
+                                        <Badge colorScheme={editingCoupon.isActive ? 'green' : 'red'}>
+                                            {editingCoupon.isActive ? 'Active' : 'Inactive'}
+                                        </Badge>
+                                    </Box>
+                                    <Box>
+                                        <Text fontSize="xs" color="gray.500" mb={1}>Applies To</Text>
+                                        <Text>{editingCoupon.appliesTo === 'SITE' ? 'Site-Wide' : 'Merchant Specific'}</Text>
+                                    </Box>
+                                </SimpleGrid>
+
+                                <SimpleGrid columns={2} spacing={4}>
+                                    <Box>
+                                        <Text fontSize="xs" color="gray.500" mb={1}>Start Date</Text>
+                                        <Text>{editingCoupon.startDate ? new Date(editingCoupon.startDate).toLocaleDateString() : 'No start date'}</Text>
+                                    </Box>
+                                    <Box>
+                                        <Text fontSize="xs" color="gray.500" mb={1}>End Date</Text>
+                                        <Text>{editingCoupon.endDate ? new Date(editingCoupon.endDate).toLocaleDateString() : 'No end date'}</Text>
+                                    </Box>
+                                </SimpleGrid>
+
+                                <SimpleGrid columns={2} spacing={4}>
+                                    <Box>
+                                        <Text fontSize="xs" color="gray.500" mb={1}>Usage Limit</Text>
+                                        <Text>{editingCoupon.usageLimit || 'Unlimited'}</Text>
+                                    </Box>
+                                    <Box>
+                                        <Text fontSize="xs" color="gray.500" mb={1}>Times Used</Text>
+                                        <Text fontWeight="500">{editingCoupon.usedCount || 0}</Text>
+                                    </Box>
+                                </SimpleGrid>
+
+                                <Box>
+                                    <Text fontSize="xs" color="gray.500" mb={1}>Created At</Text>
+                                    <Text>{new Date(editingCoupon.createdAt).toLocaleString()}</Text>
+                                </Box>
+
+                                <Box bg="gray.800" p={3} borderRadius="md" mt={2}>
+                                    <Text fontSize="xs" color="orange.400">
+                                        ⚠️ Editing coupons is not currently supported by the backend API.
+                                        To make changes, please deactivate this coupon and create a new one.
+                                    </Text>
+                                </Box>
+                            </VStack>
+                        )}
+                    </ModalBody>
+                    <ModalFooter>
+                        {editingCoupon?.isActive && (
+                            <Button
+                                colorScheme="orange"
+                                variant="outline"
+                                mr={3}
+                                onClick={() => {
+                                    deactivateCouponMutation.mutate(editingCoupon.id);
+                                    onEditModalClose();
+                                }}
+                                isLoading={deactivateCouponMutation.isPending}
+                            >
+                                Deactivate
+                            </Button>
+                        )}
+                        <Button variant="ghost" onClick={onEditModalClose}>
+                            Close
                         </Button>
                     </ModalFooter>
                 </ModalContent>

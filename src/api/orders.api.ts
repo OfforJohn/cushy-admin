@@ -5,33 +5,43 @@ import { Order, OrderFilters, OrderStatus } from '../types/order.types';
 export const ordersApi = {
     // Get ALL orders (admin endpoint)
     getAllOrders: async (filters?: OrderFilters): Promise<StandardResponse<Order[]>> => {
-        const response = await api.get('/api/v1/orders/get-all-orders');
-        let orders = response.data || [];
+        try {
+            const response = await api.get('/api/v1/orders/get-all-orders');
+            console.log('RAW Orders API Response:', response.data);
+            let orders = response.data || [];
 
-        // Handle if response is wrapped in data property
-        if (response.data?.data) {
-            orders = response.data.data;
+            // Handle if response is wrapped in data property
+            if (response.data?.data) {
+                orders = response.data.data;
+            }
+
+            // Apply category filter if provided
+            if (filters?.storeCategory && Array.isArray(orders)) {
+                orders = orders.filter((order: Order) =>
+                    order.store?.category?.toLowerCase() === filters.storeCategory?.toLowerCase()
+                );
+            }
+
+            // Sort by createdAt desc
+            if (Array.isArray(orders)) {
+                orders.sort((a: Order, b: Order) =>
+                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                );
+            }
+
+            return {
+                error: false,
+                message: 'ORDERS_FETCHED',
+                data: orders,
+            };
+        } catch (error: any) {
+            console.error('Error fetching orders:', error);
+            return {
+                error: true,
+                message: error.message || 'Failed to fetch orders',
+                data: [],
+            };
         }
-
-        // Apply category filter if provided
-        if (filters?.storeCategory && Array.isArray(orders)) {
-            orders = orders.filter((order: Order) =>
-                order.store?.category?.toLowerCase() === filters.storeCategory?.toLowerCase()
-            );
-        }
-
-        // Sort by createdAt desc
-        if (Array.isArray(orders)) {
-            orders.sort((a: Order, b: Order) =>
-                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            );
-        }
-
-        return {
-            error: false,
-            message: 'ORDERS_FETCHED',
-            data: orders,
-        };
     },
 
     // Get orders by status (user endpoint with pagination)

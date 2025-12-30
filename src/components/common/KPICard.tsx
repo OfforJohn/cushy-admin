@@ -13,7 +13,7 @@ interface KPICardProps {
     trend?: 'up' | 'down' | 'neutral';
     trendValue?: number;
     isLoading?: boolean;
-    subtitle?: string;
+    subtitle?: React.ReactNode;
 }
 
 export const KPICard: React.FC<KPICardProps> = ({

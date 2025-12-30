@@ -193,15 +193,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed = false }) => {
                     <Box
                         w={8}
                         h={8}
-                        bg="brand.primary.500"
                         borderRadius="lg"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
+                        overflow="hidden"
                     >
-                        <Text color="white" fontWeight="bold" fontSize="lg">
-                            C
-                        </Text>
+                        <img
+                            src="/assets/logo.png"
+                            alt="Cushy Access Logo"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
                     </Box>
                     {!isCollapsed && (
                         <Box>

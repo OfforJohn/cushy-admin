@@ -92,7 +92,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
             setUser(userData);
         } catch (error: any) {
-            throw new Error(error.message || 'Login failed');
+            // The error message should already be user-friendly from the API layer
+            // Just re-throw it as-is
+            const errorMessage = error.message || 'Login failed. Please try again.';
+            throw new Error(errorMessage);
         } finally {
             setIsLoading(false);
         }

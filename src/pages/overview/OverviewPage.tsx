@@ -16,13 +16,13 @@ import { useQuery } from '@tanstack/react-query';
 import {
     ShoppingBag,
     Users,
-    Store,
     Wallet,
     TrendingUp,
     Clock,
     CheckCircle,
     Truck,
     CreditCard,
+    MessageCircle,
 } from 'lucide-react';
 import {
     AreaChart,
@@ -37,6 +37,7 @@ import {
 } from 'recharts';
 import { adminApi } from '../../api/admin.api';
 import { ordersApi } from '../../api/orders.api';
+import { storesApi } from '../../api/stores.api';
 import { KPICard } from '../../components/common/KPICard';
 import { LiveQueueWidget } from '../../components/common/LiveQueueWidget';
 import { formatRelativeTime } from '../../utils/formatters';
@@ -54,10 +55,16 @@ export const OverviewPage: React.FC = () => {
         queryFn: () => ordersApi.getAllOrders(),
     });
 
-    // Fetch vendor stats
+    // Fetch vendor stats (for verified vendors stat card)
     const { data: vendorStatsData, isLoading: vendorStatsLoading } = useQuery({
         queryKey: ['vendorStats'],
         queryFn: () => adminApi.getVendorStats(),
+    });
+
+    // Fetch all stores/merchants for accurate count (same as MerchantsPage)
+    const { data: storesData, isLoading: storesLoading } = useQuery({
+        queryKey: ['allStores'],
+        queryFn: () => storesApi.getStores(),
     });
 
     // Fetch order graph data
@@ -66,19 +73,58 @@ export const OverviewPage: React.FC = () => {
         queryFn: () => adminApi.getOrderGraph(new Date().getFullYear()),
     });
 
+    // Fetch all riders count
+    const { data: ridersData, isLoading: ridersLoading } = useQuery({
+        queryKey: ['allRiders'],
+        queryFn: () => adminApi.getAllRiders(),
+    });
+
     const stats = statsData?.data;
     const orders = ordersData?.data || [];
     const graphData = orderGraphData?.data || [];
+    const stores = storesData?.data || [];
 
-    // Calculate order stats from real data
+    // Extract riders - handle different response formats from external TrackThatRide API (same as LogisticsPage)
+    const ridersRaw = ridersData?.data as any;
+    const riders = Array.isArray(ridersRaw)
+        ? ridersRaw
+        : (ridersRaw?.drivers || ridersRaw?.data || []);
+
+    // Calculate user breakdown:
+    // - Businesses = stores/merchants count (from storesApi, same as MerchantsPage)
+    // - Health Professionals = 3 (mock data, hardcoded like HealthProfessionalsPage)
+    // - Customers = total users - businesses - health professionals
+    const businessCount = stores.length;
+    const healthProCount = 3; // Mock data (same as HealthProfessionalsPage)
+    const totalUsers = stats?.usersCount || 0;
+    const customerCount = Math.max(0, totalUsers - businessCount);
+
+    // Platform balance - the API returns just a number directly
+    const platformBalance = stats?.totalBalanceResult || 0;
+
+    // Helper function to get latest status (same as OrdersPage)
+    function getLatestStatus(order: any): string {
+        if (!order.orderTracking || order.orderTracking.length === 0) return 'PENDING';
+        const sorted = [...order.orderTracking].sort((a: any, b: any) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        return sorted[0]?.orderStatus || sorted[0]?.status || 'PENDING';
+    }
+
+    // Calculate order stats from real data using getLatestStatus
     const totalOrders = orders.length;
-    const pendingOrders = orders.filter(o =>
-        o.orderTracking?.some(t => String(t.status).toUpperCase() === 'PENDING')
-    ).length;
+    const pendingOrders = orders.filter(o => {
+        const status = getLatestStatus(o).toUpperCase();
+        return status === 'PENDING' || status === 'ACKNOWLEDGED' || status === 'READY_FOR_PICKUP';
+    }).length;
     const completedOrders = orders.filter(o =>
-        o.orderTracking?.some(t => String(t.status).toUpperCase() === 'DELIVERED')
+        getLatestStatus(o).toUpperCase() === 'DELIVERED'
     ).length;
-    const totalRevenue = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+    // Calculate revenue properly (ensure it's a number)
+    const totalRevenue = orders.reduce((sum, o) => {
+        const amount = Number(o.totalAmount) || 0;
+        return sum + amount;
+    }, 0);
 
     // Calculate category breakdown from real orders
     const categoryData = orders.reduce((acc, order) => {
@@ -159,19 +205,23 @@ export const OverviewPage: React.FC = () => {
                 />
                 <KPICard
                     title="Total Users"
-                    value={stats?.usersCount || 0}
+                    value={totalUsers}
                     icon={Users}
                     iconColor="blue.400"
-                    subtitle="Registered users"
-                    isLoading={statsLoading}
+                    subtitle={
+                        <Text as="span" fontSize="xs">
+                            <Text as="span" color="orange.400">{businessCount}</Text> Businesses | <Text as="span" color="blue.400">{customerCount}</Text> Customers | <Text as="span" color="green.400">{healthProCount}</Text> Health Prof.
+                        </Text>
+                    }
+                    isLoading={statsLoading || storesLoading}
                 />
                 <KPICard
                     title="Platform Balance"
-                    value={stats?.totalBalanceResult?.totalBalance || 0}
+                    value={platformBalance}
                     isCurrency
                     icon={CreditCard}
                     iconColor="purple.400"
-                    subtitle="Total wallet balance"
+                    subtitle="Total Cushcoin wallets"
                     isLoading={statsLoading}
                 />
             </SimpleGrid>
@@ -195,20 +245,20 @@ export const OverviewPage: React.FC = () => {
                     isLoading={ordersLoading}
                 />
                 <KPICard
-                    title="Active Vendors"
-                    value={vendorStatsData?.data?.totalVendors || 0}
-                    icon={Store}
-                    iconColor="brand.primary.500"
-                    subtitle="Verified vendors"
-                    isLoading={vendorStatsLoading}
+                    title="Completed Consultations"
+                    value={1}
+                    icon={MessageCircle}
+                    iconColor="teal.400"
+                    subtitle="Health consultations"
+                    isLoading={false}
                 />
                 <KPICard
-                    title="Active Riders"
-                    value={(stats as any)?.ridersCount || 0}
+                    title="Riders"
+                    value={riders.length}
                     icon={Truck}
                     iconColor="cyan.400"
                     subtitle="Delivery partners"
-                    isLoading={statsLoading}
+                    isLoading={ridersLoading}
                 />
             </SimpleGrid>
 

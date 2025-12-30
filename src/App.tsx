@@ -9,10 +9,11 @@ import theme from './theme';
 // Pages
 import { LoginPage } from './pages/auth/LoginPage';
 import { OverviewPage } from './pages/overview/OverviewPage';
-import { OrdersPage } from './pages/orders/OrdersPage';
-import { VendorsPage } from './pages/restaurants/RestaurantsPage';
+import { MerchantsPage, ProductsPage, OrdersPage, MerchantApprovalPage } from './pages/merchants';
 import { UsersPage } from './pages/users/UsersPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
+import { HealthProfessionalsPage, ConsultationsPage, LicensesVerificationsPage } from './pages/health';
+import { LogisticsPage } from './pages/logistics/LogisticsPage';
 
 // Placeholder pages - will be implemented incrementally
 const PlaceholderPage: React.FC<{ title: string }> = ({ title }) => (
@@ -77,24 +78,23 @@ const AppRoutes: React.FC = () => {
         <Route index element={<OverviewPage />} />
 
         {/* Merchants */}
-        <Route path="merchants" element={<VendorsPage />} />
+        <Route path="merchants" element={<MerchantsPage />} />
+        <Route path="merchants/merchant-approval" element={<MerchantApprovalPage />} />
         <Route path="merchants/orders" element={<OrdersPage title="Merchant Orders" />} />
-        <Route path="merchants/products" element={<PlaceholderPage title="Products" />} />
+        <Route path="merchants/products" element={<ProductsPage />} />
 
         {/* Legacy routes (redirect) */}
-        <Route path="restaurants" element={<VendorsPage />} />
-        <Route path="restaurants/*" element={<VendorsPage />} />
+        <Route path="restaurants" element={<MerchantsPage />} />
+        <Route path="restaurants/*" element={<MerchantsPage />} />
         <Route path="orders" element={<OrdersPage title="All Orders" />} />
 
         {/* Health */}
-        <Route path="health/professionals" element={<PlaceholderPage title="Health Professionals" />} />
-        <Route path="health/consultations" element={<PlaceholderPage title="Consultations" />} />
-        <Route path="health/licenses" element={<PlaceholderPage title="Licenses & Verification" />} />
+        <Route path="health/professionals" element={<HealthProfessionalsPage />} />
+        <Route path="health/consultations" element={<ConsultationsPage />} />
+        <Route path="health/licenses" element={<LicensesVerificationsPage />} />
 
-        {/* Logistics */}
-        <Route path="logistics/riders" element={<PlaceholderPage title="Riders" />} />
-        <Route path="logistics/jobs" element={<PlaceholderPage title="Delivery Jobs" />} />
-        <Route path="logistics/zones" element={<PlaceholderPage title="Zones & SLAs" />} />
+        {/* Logistics - Single page with tabs */}
+        <Route path="logistics" element={<LogisticsPage />} />
 
         {/* Users & Wallet */}
         <Route path="users" element={<UsersPage />} />

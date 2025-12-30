@@ -83,6 +83,7 @@ export const NAV_ITEMS = [
         icon: 'Store',
         children: [
             { label: 'All Merchants', path: '/merchants' },
+            { label: 'Merchant Approval', path: '/merchants/merchant-approval' },
             { label: 'Orders', path: '/merchants/orders' },
             { label: 'Products', path: '/merchants/products' },
         ],
@@ -99,11 +100,7 @@ export const NAV_ITEMS = [
     {
         label: 'Logistics',
         icon: 'Truck',
-        children: [
-            { label: 'Riders', path: '/logistics/riders' },
-            { label: 'Delivery Jobs', path: '/logistics/jobs' },
-            { label: 'Zones', path: '/logistics/zones' },
-        ],
+        path: '/logistics',
     },
     {
         label: 'Users & Wallet',

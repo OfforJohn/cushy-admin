@@ -23,9 +23,7 @@ export interface PaginationRequest {
 
 export interface DashboardStats {
     usersCount: number;
-    totalBalanceResult: {
-        totalBalance: number;
-    };
+    totalBalanceResult: number; // API returns just a number, not an object
     activeUsersResult: {
         activeUsers: number;
         period: string;
