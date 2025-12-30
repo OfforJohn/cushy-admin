@@ -65,6 +65,7 @@ export interface Order {
         id: string;
         name: string;
         category: string;
+        mobile?: string;
     };
     scheduleDelivery: boolean;
     scheduleDeliveryDate?: string;

@@ -101,11 +101,11 @@ export const ProductsPage: React.FC = () => {
         if (searchQuery) {
             const searchLower = searchQuery.toLowerCase();
             const matchesSearch =
-                product.name?.toLowerCase().includes(searchLower) ||
-                product.description?.toLowerCase().includes(searchLower) ||
-                product.store?.name?.toLowerCase().includes(searchLower) ||
-                product.menuCategory?.name?.toLowerCase().includes(searchLower) ||
-                product.id?.toLowerCase().includes(searchLower);
+                product.name?.toLowerCase()?.includes(searchLower) ||
+                product.description?.toLowerCase()?.includes(searchLower) ||
+                product.store?.name?.toLowerCase()?.includes(searchLower) ||
+                product.menuCategory?.name?.toLowerCase()?.includes(searchLower) ||
+                product.id?.toLowerCase()?.includes(searchLower);
             if (!matchesSearch) return false;
         }
 
@@ -150,9 +150,9 @@ export const ProductsPage: React.FC = () => {
     const sortedProducts = [...filteredProducts].sort((a, b) => {
         switch (sortBy) {
             case 'newest':
-                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
             case 'oldest':
-                return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+                return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
             case 'price-low':
                 return a.price - b.price;
             case 'price-high':

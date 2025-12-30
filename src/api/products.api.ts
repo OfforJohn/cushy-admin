@@ -28,6 +28,7 @@ export interface Product {
     };
     createdAt?: string;
     updatedAt?: string;
+    rating?: number;
 }
 
 export interface MenuCategory {

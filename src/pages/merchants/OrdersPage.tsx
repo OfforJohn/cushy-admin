@@ -230,14 +230,14 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
         // Enhanced search across all table fields
         const searchLower = searchQuery.toLowerCase();
         const matchesSearch = !searchQuery ||
-            order.id?.toLowerCase().includes(searchLower) ||
-            order.fullHouseAddress?.toLowerCase().includes(searchLower) ||
-            order.dropOffLocationAddress?.toLowerCase().includes(searchLower) ||
-            order.store?.name?.toLowerCase().includes(searchLower) ||
-            order.store?.mobile?.toLowerCase().includes(searchLower) ||
-            order.user?.mobile?.toLowerCase().includes(searchLower) ||
-            order.user?.firstName?.toLowerCase().includes(searchLower) ||
-            order.user?.lastName?.toLowerCase().includes(searchLower);
+            order.id?.toLowerCase()?.includes(searchLower) ||
+            order.fullHouseAddress?.toLowerCase()?.includes(searchLower) ||
+            order.dropOffLocationAddress?.toLowerCase()?.includes(searchLower) ||
+            order.store?.name?.toLowerCase()?.includes(searchLower) ||
+            order.store?.mobile?.toLowerCase()?.includes(searchLower) ||
+            order.user?.mobile?.toLowerCase()?.includes(searchLower) ||
+            order.user?.firstName?.toLowerCase()?.includes(searchLower) ||
+            order.user?.lastName?.toLowerCase()?.includes(searchLower);
 
         return matchesStatus && matchesBusinessType && matchesCity && matchesDateFrom && matchesDateTo && matchesSearch;
     });

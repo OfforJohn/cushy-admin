@@ -111,11 +111,11 @@ export const MerchantsPage: React.FC = () => {
             (verificationFilter === 'verified' && vendor.isVerified) ||
             (verificationFilter === 'pending' && !vendor.isVerified);
         const matchesSearch = !searchQuery ||
-            vendor.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            vendor.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            vendor.mobile?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            vendor.address?.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            vendor.address?.address?.toLowerCase().includes(searchQuery.toLowerCase());
+            vendor.name?.toLowerCase()?.includes(searchQuery.toLowerCase()) ||
+            vendor.email?.toLowerCase()?.includes(searchQuery.toLowerCase()) ||
+            vendor.mobile?.toLowerCase()?.includes(searchQuery.toLowerCase()) ||
+            vendor.address?.city?.toLowerCase()?.includes(searchQuery.toLowerCase()) ||
+            vendor.address?.address?.toLowerCase()?.includes(searchQuery.toLowerCase());
 
         // Date filter - filter by createdAt if available (using store creation or fallback to always match)
         let matchesDate = true;
