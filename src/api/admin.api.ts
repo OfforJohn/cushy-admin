@@ -99,10 +99,11 @@ export const adminApi = {
     },
 
     assignRiderToOrder: async (orderId: string, riderId: number): Promise<StandardResponse<any>> => {
-        const response = await api.post('/api/v1/admin/assign-rider-to-order', null, {
+        const response = await api.post('/api/v1/admin/assign-rider-to-order', {}, {
             params: { orderId, riderId },
         });
-        return response.data;
+        // Handle null response from server
+        return response.data || { success: true, message: 'Rider assigned' };
     },
 
     // Free Delivery Toggle

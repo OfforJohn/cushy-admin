@@ -1,17 +1,21 @@
+// Transaction categories from backend
 export enum TransactionCategory {
-    DEPOSIT = 'DEPOSIT',
-    WITHDRAWAL = 'WITHDRAWAL',
-    TRANSFER = 'TRANSFER',
-    PAYMENT = 'PAYMENT',
-    REFUND = 'REFUND',
-    PAYOUT = 'PAYOUT',
+    CREDIT = 'CREDIT',
+    LOGISTICS = 'LOGISTICS',
+    Q_COMMERCE = 'Q_COMMERCE',
+    ORDER = 'ORDER',
+    DEBIT = 'DEBIT',
+    FUND_WALLET = 'FUND_WALLET',
+    ORDER_REFUND = 'ORDER_REFUND',
 }
 
+// Transaction statuses from backend
 export enum TransactionStatus {
-    PENDING = 'PENDING',
-    COMPLETED = 'COMPLETED',
-    FAILED = 'FAILED',
-    CANCELLED = 'CANCELLED',
+    PENDING = 'pending',
+    COMPLETED = 'completed',
+    AWAITING_DELIVERY = 'await_delivery',
+    FAILED = 'failed',
+    REVERSED = 'reversed',
 }
 
 export enum PayoutStatus {

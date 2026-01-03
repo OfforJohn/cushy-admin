@@ -41,6 +41,7 @@ import { storesApi } from '../../api/stores.api';
 import { KPICard } from '../../components/common/KPICard';
 import { LiveQueueWidget } from '../../components/common/LiveQueueWidget';
 import { formatRelativeTime } from '../../utils/formatters';
+import { useNavigate } from 'react-router-dom';
 
 export const OverviewPage: React.FC = () => {
     // Fetch dashboard stats
@@ -48,6 +49,8 @@ export const OverviewPage: React.FC = () => {
         queryKey: ['dashboardStats'],
         queryFn: () => adminApi.getDashboardStats('7d'),
     });
+
+    const navigate = useNavigate();
 
     // Fetch orders
     const { data: ordersData, isLoading: ordersLoading } = useQuery({
@@ -126,38 +129,84 @@ export const OverviewPage: React.FC = () => {
         return sum + amount;
     }, 0);
 
-    // Calculate category breakdown from real orders
-    const categoryData = orders.reduce((acc, order) => {
-        const category = order.store?.category || 'other';
-        const existing = acc.find(c => c.category === category);
-        if (existing) {
-            existing.orders += 1;
-        } else {
-            acc.push({ category: category.replace('_', ' '), orders: 1 });
+    // Create a store lookup map for quick access
+    const storesMap = new Map(stores.map((s: any) => [s.id, s]));
+
+    // Calculate category breakdown from real orders - group by store type (division)
+    const categoryData = (() => {
+        const divisions = {
+            'Restaurants': 0,
+            'Groceries': 0,
+            'Pharmacy': 0,
+            'Other': 0
+        };
+
+        orders.forEach(order => {
+            // Try to get category from embedded store or from storesMap using storeId or store.id
+            const storeId = order.storeId || order.store?.id;
+            const storeFromMap = storesMap.get(storeId) as any;
+            const category = (order.store?.category || storeFromMap?.category || 'other').toLowerCase();
+
+            if (category.includes('restaurant') || category.includes('food') || category === 'local_food') {
+                divisions['Restaurants'] += 1;
+            } else if (category.includes('grocery') || category.includes('super_market') || category === 'supermarket') {
+                divisions['Groceries'] += 1;
+            } else if (category.includes('pharm') || category.includes('med') || category === 'med_tech') {
+                divisions['Pharmacy'] += 1;
+            } else {
+                divisions['Other'] += 1;
+            }
+        });
+
+        return Object.entries(divisions)
+            .filter(([_, count]) => count > 0)
+            .map(([category, orders]) => ({ category, orders }));
+    })();
+
+    // Helper to get store name from order
+    const getStoreName = (order: any): string => {
+        // Try embedded store first
+        if (order.store?.name) return order.store.name;
+
+        // Try storesMap lookup using storeId or store.id
+        const storeId = order.storeId || order.store?.id;
+        const storeFromMap = storesMap.get(storeId) as any;
+        if (storeFromMap?.name) return storeFromMap.name;
+
+        // Fallback to pickup address first part
+        if (order.pickUpLocationAddress) {
+            const addressPart = order.pickUpLocationAddress.split(',')[0]?.trim();
+            if (addressPart && addressPart.length > 2) return addressPart;
         }
-        return acc;
-    }, [] as { category: string; orders: number }[]);
 
-    // Recent orders for queue
-    const recentOrders = orders.slice(0, 5).map(order => ({
-        id: order.id,
-        title: `Order ${order.id?.slice(-8) || 'Unknown'}`,
-        subtitle: order.store?.name || 'Unknown Store',
-        status: String(order.orderTracking?.[0]?.status).toUpperCase() === 'PENDING' ? 'pending' as const : 'completed' as const,
-        time: formatRelativeTime(order.createdAt),
-    }));
+        // Last resort - show partial order ID
+        return `Order #${order.id?.slice(-6)?.toUpperCase() || 'N/A'}`;
+    };
 
-    // Pending orders for queue
-    const pendingOrdersList = orders
-        .filter(o => o.orderTracking?.some(t => {
-            const status = String(t.status).toUpperCase();
-            return status === 'PENDING' || status === 'ACKNOWLEDGED';
-        }))
+    // Recent orders for queue - sort by date and take latest 5
+    const recentOrders = [...orders]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 5)
         .map(order => ({
             id: order.id,
-            title: `Order ${order.id?.slice(-8) || 'Unknown'}`,
-            subtitle: order.store?.name || 'Unknown Store',
+            title: `Order ${order.id?.slice(-8)?.toUpperCase() || 'Unknown'}`,
+            subtitle: getStoreName(order),
+            status: getLatestStatus(order).toUpperCase() === 'DELIVERED' ? 'completed' as const : 'pending' as const,
+            time: formatRelativeTime(order.createdAt),
+        }));
+
+    // Pending orders for queue - use getLatestStatus for accurate filtering
+    const pendingOrdersList = orders
+        .filter(o => {
+            const status = getLatestStatus(o).toUpperCase();
+            return status === 'PENDING' || status === 'ACKNOWLEDGED' || status === 'READY_FOR_PICKUP';
+        })
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 5)
+        .map(order => ({
+            id: order.id,
+            title: `Order ${order.id?.slice(-8)?.toUpperCase() || 'Unknown'}`,
+            subtitle: getStoreName(order),
             status: 'pending' as const,
             time: formatRelativeTime(order.createdAt),
         }));
@@ -278,10 +327,10 @@ export const OverviewPage: React.FC = () => {
                             <Flex justify="space-between" align="center" mb={4}>
                                 <Box>
                                     <Text fontWeight="600" color="gray.100">
-                                        Orders Trend
+                                        Revenue Trend
                                     </Text>
                                     <Text fontSize="sm" color="gray.500">
-                                        Monthly order volume
+                                        Monthly revenue
                                     </Text>
                                 </Box>
                                 <Icon as={TrendingUp} color="green.400" boxSize={5} />
@@ -323,7 +372,7 @@ export const OverviewPage: React.FC = () => {
                                             />
                                             <Area
                                                 type="monotone"
-                                                dataKey="count"
+                                                dataKey="totalRevenue"
                                                 stroke="#4E1E58"
                                                 strokeWidth={2}
                                                 fillOpacity={1}
@@ -407,6 +456,7 @@ export const OverviewPage: React.FC = () => {
                             items={recentOrders}
                             icon={ShoppingBag}
                             isLoading={ordersLoading}
+                            onViewAll={() => navigate('/merchants/orders')}
                         />
 
                         <LiveQueueWidget
@@ -414,6 +464,7 @@ export const OverviewPage: React.FC = () => {
                             items={pendingOrdersList}
                             icon={Clock}
                             isLoading={ordersLoading}
+                            onViewAll={() => navigate('/merchants/orders')}
                         />
                     </VStack>
                 </GridItem>

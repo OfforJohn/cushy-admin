@@ -52,6 +52,7 @@ import {
     RefreshCw,
     Filter,
     Eye,
+    Edit,
     MapPin,
     Truck,
     Navigation,
@@ -61,12 +62,13 @@ import {
 } from 'lucide-react';
 import { adminApi } from '../../api/admin.api';
 import { ordersApi } from '../../api/orders.api';
+import { storesApi } from '../../api/stores.api';
 import { StatusPill } from '../../components/common/StatusPill';
 import { formatCurrency, formatFullName } from '../../utils/formatters';
+import { useLocationFilter, matchesLocationFilter } from '../../context/LocationContext';
 
 export const LogisticsPage: React.FC = () => {
     const [activeTab, setActiveTab] = useState(0);
-    const [cityFilter, setCityFilter] = useState('all');
     const [zoneFilter, setZoneFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
     const [verificationFilter, setVerificationFilter] = useState('all');
@@ -78,6 +80,7 @@ export const LogisticsPage: React.FC = () => {
     const { isOpen: isViewOrderOpen, onOpen: onViewOrderOpen, onClose: onViewOrderClose } = useDisclosure();
     const toast = useToast();
     const queryClient = useQueryClient();
+    const { selectedLocation } = useLocationFilter();
 
     // Fetch riders
     const { data: ridersData, isLoading: ridersLoading, error: ridersError, refetch: refetchRiders } = useQuery({
@@ -93,8 +96,18 @@ export const LogisticsPage: React.FC = () => {
         retry: false,
     });
 
+    // Fetch all stores for name lookup
+    const { data: storesData } = useQuery({
+        queryKey: ['allStores'],
+        queryFn: () => storesApi.getStores(),
+    });
+
     // Get orders directly from API response (no enrichment to avoid re-render issues)
     const orders = ordersData?.data || [];
+    const stores = storesData?.data || [];
+
+    // Create stores lookup map
+    const storesMap = new Map(stores.map((s: any) => [s.id, s]));
 
     // Extract riders - handle different response formats from external TrackThatRide API
     const ridersRaw = ridersData?.data as any;
@@ -118,14 +131,13 @@ export const LogisticsPage: React.FC = () => {
     }
 
     // Filter orders that have been assigned to riders (delivery jobs)
-    // Show orders that are in progress OR have an assigned rider
+    // Only show orders that have a ttrRideId - these are actually assigned in TrackThatRide
     const deliveryJobs = orders.filter((order: any) => {
         if (!order) return false;
-        const latestStatus = String(getLatestStatus(order) || 'PENDING').toUpperCase();
-        const hasAssignedRider = order.assignedRider || order.riderId || order.ttrRideId;
-        // Orders that are in progress (acknowledged, picked up, in transit) OR have assigned rider
-        const inProgressStatuses = ['ACKNOWLEDGED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'RIDER_ASSIGNED'];
-        return inProgressStatuses.includes(latestStatus) || hasAssignedRider;
+        // Only include orders with an assigned ride ID
+        if (!order.ttrRideId) return false;
+        // Apply global location filter
+        return matchesLocationFilter(order.dropOffLocationAddress, selectedLocation);
     });
 
     // Stats
@@ -133,7 +145,6 @@ export const LogisticsPage: React.FC = () => {
     const activeJobs = deliveryJobs.length;
 
     const clearFilters = () => {
-        setCityFilter('all');
         setZoneFilter('all');
         setStatusFilter('all');
         setVerificationFilter('all');
@@ -162,6 +173,33 @@ export const LogisticsPage: React.FC = () => {
         }
         // Has ride ID but rider not found in list
         return order.ttrTrackingCode ? `Tracking: ${order.ttrTrackingCode}` : `Ride #${order.ttrRideId}`;
+    };
+
+    // Helper to get store name from order
+    const getStoreName = (order: any): string => {
+        // Try embedded store first
+        if (order.store?.name) return order.store.name;
+        // Try storesMap lookup
+        const storeId = order.storeId || order.store?.id;
+        const storeFromMap = storesMap.get(storeId) as any;
+        if (storeFromMap?.name) return storeFromMap.name;
+        // Fallback to pickup address
+        if (order.pickUpLocationAddress) {
+            const addressPart = order.pickUpLocationAddress.split(',')[0]?.trim();
+            if (addressPart && addressPart.length > 2) return addressPart;
+        }
+        return 'Unknown Store';
+    };
+
+    // Helper to get store phone from order
+    const getStorePhone = (order: any): string => {
+        // Try embedded store first
+        if (order.store?.mobile) return order.store.mobile;
+        // Try storesMap lookup
+        const storeId = order.storeId || order.store?.id;
+        const storeFromMap = storesMap.get(storeId) as any;
+        if (storeFromMap?.mobile) return storeFromMap.mobile;
+        return '--';
     };
 
     // Helper to calculate rider lifetime earnings from completed orders
@@ -323,19 +361,6 @@ export const LogisticsPage: React.FC = () => {
 
                 {/* Filters - Shared across tabs */}
                 <HStack spacing={4} mb={6} flexWrap="wrap">
-                    <Select
-                        size="sm"
-                        bg="gray.800"
-                        borderColor="gray.700"
-                        maxW="150px"
-                        value={cityFilter}
-                        onChange={(e) => setCityFilter(e.target.value)}
-                    >
-                        <option value="all">All Cities</option>
-                        <option value="lagos">Lagos</option>
-                        <option value="abuja">Abuja</option>
-                        <option value="minna">Minna</option>
-                    </Select>
 
                     <Select
                         size="sm"
@@ -550,18 +575,17 @@ export const LogisticsPage: React.FC = () => {
                                         <Thead>
                                             <Tr>
                                                 <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Order ID</Th>
-                                                <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Customer</Th>
                                                 <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Pickup</Th>
                                                 <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Dropoff</Th>
                                                 <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Status</Th>
-                                                <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Rider</Th>
+                                                <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Assigned Rider</Th>
                                                 <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Amount</Th>
                                             </Tr>
                                         </Thead>
                                         <Tbody>
                                             {deliveryJobs.length === 0 ? (
                                                 <Tr>
-                                                    <Td colSpan={7} textAlign="center" py={8} borderColor="gray.800">
+                                                    <Td colSpan={6} textAlign="center" py={8} borderColor="gray.800">
                                                         <VStack spacing={2}>
                                                             <Icon as={Truck} color="gray.600" boxSize={8} />
                                                             <Text color="gray.500">No active delivery jobs</Text>
@@ -587,22 +611,14 @@ export const LogisticsPage: React.FC = () => {
                                                             </Link>
                                                         </Td>
                                                         <Td borderColor="gray.800">
-                                                            <Box>
-                                                                <Text fontSize="sm" fontWeight="500" color="gray.100">
-                                                                    {formatFullName(order.user?.firstName, order.user?.lastName)}
-                                                                </Text>
-                                                                <Text fontSize="xs" color="gray.500">{order.user?.mobile || '--'}</Text>
-                                                            </Box>
-                                                        </Td>
-                                                        <Td borderColor="gray.800">
                                                             <HStack spacing={1}>
                                                                 <Icon as={MapPin} color="green.400" boxSize={3} />
                                                                 <Box>
                                                                     <Text fontSize="sm" color="gray.100" noOfLines={1} maxW="150px">
-                                                                        {order.store?.name || 'Unknown Store'}
+                                                                        {getStoreName(order)}
                                                                     </Text>
                                                                     <Text fontSize="xs" color="gray.500" noOfLines={1} maxW="150px">
-                                                                        {order.store?.address || order.pickUpLocationAddress || '--'}
+                                                                        {order.pickUpLocationAddress || '--'}
                                                                     </Text>
                                                                 </Box>
                                                             </HStack>
@@ -1104,53 +1120,89 @@ export const LogisticsPage: React.FC = () => {
             </Modal>
 
             {/* View Rider Details Modal */}
-            <Modal isOpen={isViewRiderOpen} onClose={onViewRiderClose} size="4xl">
+            <Modal isOpen={isViewRiderOpen} onClose={onViewRiderClose} size="6xl" scrollBehavior="inside">
                 <ModalOverlay />
-                <ModalContent bg="gray.900" borderColor="gray.800" borderWidth="1px">
-                    <ModalHeader color="gray.100">Rider Details</ModalHeader>
+                <ModalContent bg="gray.900" borderColor="gray.800" borderWidth="1px" maxH="90vh">
+                    <ModalHeader color="gray.100" borderBottomWidth="1px" borderColor="gray.800">
+                        <Text fontSize="xl" fontWeight="bold">Rider Details</Text>
+                        <Text fontSize="sm" color="gray.500" fontWeight="normal">View rider profile and performance</Text>
+                    </ModalHeader>
                     <ModalCloseButton color="gray.400" />
                     <ModalBody pb={6}>
                         {selectedRider && (
-                            <Flex gap={6}>
+                            <Flex gap={6} flexDir={{ base: 'column', lg: 'row' }}>
                                 {/* Left Column */}
                                 <Box flex={2}>
                                     {/* Basic Information */}
                                     <Box bg="gray.800" borderRadius="lg" p={4} mb={4}>
                                         <Flex align="center" gap={4} mb={4}>
                                             <Avatar
-                                                size="lg"
-                                                name={selectedRider.name}
+                                                size="xl"
+                                                name={selectedRider.name || selectedRider.fullName}
                                                 bg="purple.600"
                                                 color="white"
                                             />
-                                            <Box>
-                                                <Text fontSize="lg" fontWeight="600" color="gray.100">
-                                                    {selectedRider.name}
+                                            <Box flex={1}>
+                                                <Text fontSize="xl" fontWeight="600" color="gray.100">
+                                                    {selectedRider.name || selectedRider.fullName || 'N/A'}
                                                 </Text>
                                                 <Text fontSize="sm" color="purple.400">
-                                                    Rider ID{selectedRider.riderId}
+                                                    Rider ID: {selectedRider.riderId || selectedRider.id || 'N/A'}
                                                 </Text>
-                                                <Badge
-                                                    colorScheme={
-                                                        selectedRider.status === 'active' ? 'green' :
-                                                            selectedRider.status === 'busy' ? 'yellow' : 'gray'
-                                                    }
-                                                    variant="subtle"
-                                                    mt={1}
-                                                >
-                                                    {(selectedRider.status || 'Unknown').charAt(0).toUpperCase() + (selectedRider.status || 'unknown').slice(1)}
-                                                </Badge>
+                                                <HStack mt={2} spacing={2}>
+                                                    <Badge
+                                                        colorScheme={
+                                                            selectedRider.status === 'active' || selectedRider.isActive ? 'green' :
+                                                                selectedRider.status === 'busy' ? 'yellow' : 'gray'
+                                                        }
+                                                        variant="subtle"
+                                                        px={2}
+                                                    >
+                                                        {selectedRider.status || (selectedRider.isActive ? 'Active' : 'Inactive')}
+                                                    </Badge>
+                                                    {selectedRider.isVerified && (
+                                                        <Badge colorScheme="blue" variant="subtle">Verified</Badge>
+                                                    )}
+                                                </HStack>
                                             </Box>
                                         </Flex>
 
-                                        <SimpleGrid columns={2} spacing={4}>
+                                        <Text fontWeight="600" color="gray.100" mb={3}>Contact Information</Text>
+                                        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                                             <Box>
                                                 <Text fontSize="xs" color="gray.500" mb={1}>Phone Number</Text>
-                                                <Text fontSize="sm" color="gray.100">{selectedRider.phone}</Text>
+                                                <Text fontSize="sm" color="gray.100">{selectedRider.phone || selectedRider.phoneNumber || 'N/A'}</Text>
                                             </Box>
                                             <Box>
                                                 <Text fontSize="xs" color="gray.500" mb={1}>Email Address</Text>
-                                                <Text fontSize="sm" color="gray.100">{selectedRider.email}</Text>
+                                                <Text fontSize="sm" color="gray.100">{selectedRider.email || 'N/A'}</Text>
+                                            </Box>
+                                            <Box>
+                                                <Text fontSize="xs" color="gray.500" mb={1}>Date of Birth</Text>
+                                                <Text fontSize="sm" color="gray.100">{selectedRider.dateOfBirth || selectedRider.dob || 'N/A'}</Text>
+                                            </Box>
+                                            <Box>
+                                                <Text fontSize="xs" color="gray.500" mb={1}>Gender</Text>
+                                                <Text fontSize="sm" color="gray.100">{selectedRider.gender || 'N/A'}</Text>
+                                            </Box>
+                                        </SimpleGrid>
+                                    </Box>
+
+                                    {/* Address Information */}
+                                    <Box bg="gray.800" borderRadius="lg" p={4} mb={4}>
+                                        <Text fontWeight="600" color="gray.100" mb={4}>Address Information</Text>
+                                        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                                            <Box gridColumn={{ md: 'span 2' }}>
+                                                <Text fontSize="xs" color="gray.500" mb={1}>Street Address</Text>
+                                                <Text fontSize="sm" color="gray.100">{selectedRider.address || selectedRider.streetAddress || 'N/A'}</Text>
+                                            </Box>
+                                            <Box>
+                                                <Text fontSize="xs" color="gray.500" mb={1}>City</Text>
+                                                <Text fontSize="sm" color="gray.100">{selectedRider.city || 'N/A'}</Text>
+                                            </Box>
+                                            <Box>
+                                                <Text fontSize="xs" color="gray.500" mb={1}>State</Text>
+                                                <Text fontSize="sm" color="gray.100">{selectedRider.state || 'N/A'}</Text>
                                             </Box>
                                         </SimpleGrid>
                                     </Box>
@@ -1158,43 +1210,63 @@ export const LogisticsPage: React.FC = () => {
                                     {/* Vehicle Information */}
                                     <Box bg="gray.800" borderRadius="lg" p={4} mb={4}>
                                         <Text fontWeight="600" color="gray.100" mb={4}>Vehicle Information</Text>
-                                        <SimpleGrid columns={2} spacing={4}>
+                                        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                                             <Box>
                                                 <Text fontSize="xs" color="gray.500" mb={1}>Vehicle Type</Text>
                                                 <HStack spacing={1}>
                                                     <Icon as={Bike} color="green.400" boxSize={4} />
-                                                    <Text fontSize="sm" color="gray.100">{selectedRider.vehicleType}</Text>
+                                                    <Text fontSize="sm" color="gray.100">{selectedRider.vehicleType || 'Motorcycle'}</Text>
                                                 </HStack>
                                             </Box>
                                             <Box>
-                                                <Text fontSize="xs" color="gray.500" mb={1}>Vehicle ID</Text>
-                                                <Text fontSize="sm" color="purple.400">{selectedRider.vehicleId}</Text>
+                                                <Text fontSize="xs" color="gray.500" mb={1}>Vehicle Model</Text>
+                                                <Text fontSize="sm" color="gray.100">{selectedRider.vehicleModel || 'N/A'}</Text>
+                                            </Box>
+                                            <Box>
+                                                <Text fontSize="xs" color="gray.500" mb={1}>License Plate</Text>
+                                                <Text fontSize="sm" color="purple.400" fontWeight="500">{selectedRider.licensePlate || selectedRider.vehicleId || 'N/A'}</Text>
+                                            </Box>
+                                            <Box>
+                                                <Text fontSize="xs" color="gray.500" mb={1}>Vehicle Color</Text>
+                                                <Text fontSize="sm" color="gray.100">{selectedRider.vehicleColor || 'N/A'}</Text>
                                             </Box>
                                         </SimpleGrid>
                                     </Box>
 
-                                    {/* Company Information */}
-                                    <Box bg="gray.800" borderRadius="lg" p={4} mb={4}>
-                                        <Text fontWeight="600" color="gray.100" mb={4}>Company Information</Text>
-                                        <Box>
-                                            <Text fontSize="xs" color="gray.500" mb={1}>Company ID</Text>
-                                            <Text fontSize="sm" color="gray.100">{selectedRider.companyId}</Text>
-                                        </Box>
-                                    </Box>
-
-                                    {/* Earnings Information */}
+                                    {/* Banking Information */}
                                     <Box bg="gray.800" borderRadius="lg" p={4}>
+                                        <Text fontWeight="600" color="gray.100" mb={4}>Banking Information</Text>
+                                        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                                            <Box>
+                                                <Text fontSize="xs" color="gray.500" mb={1}>Bank Name</Text>
+                                                <Text fontSize="sm" color="gray.100">{selectedRider.bankName || 'N/A'}</Text>
+                                            </Box>
+                                            <Box>
+                                                <Text fontSize="xs" color="gray.500" mb={1}>Account Number</Text>
+                                                <Text fontSize="sm" color="gray.100">{selectedRider.accountNumber || 'N/A'}</Text>
+                                            </Box>
+                                            <Box gridColumn={{ md: 'span 2' }}>
+                                                <Text fontSize="xs" color="gray.500" mb={1}>Account Name</Text>
+                                                <Text fontSize="sm" color="gray.100">{selectedRider.accountName || 'N/A'}</Text>
+                                            </Box>
+                                        </SimpleGrid>
+                                    </Box>
+                                </Box>
+
+                                {/* Right Column - Stats & Zone */}
+                                <Box flex={1}>
+                                    {/* Earnings & Performance */}
+                                    <Box bg="gray.800" borderRadius="lg" p={4} mb={4}>
                                         <Text fontWeight="600" color="gray.100" mb={4}>Lifetime Earnings</Text>
-                                        <Box>
-                                            <Text fontSize="xs" color="gray.500" mb={1}>Total Money Made</Text>
-                                            <Text fontSize="2xl" fontWeight="bold" color="green.400">
+                                        <Box textAlign="center" mb={4}>
+                                            <Text fontSize="3xl" fontWeight="bold" color="green.400">
                                                 {formatCurrency(
                                                     selectedRider.totalEarnings ||
                                                     getRiderLifetimeEarnings(selectedRider.id || selectedRider.riderId)
                                                 )}
                                             </Text>
                                             <Text fontSize="xs" color="gray.500" mt={1}>
-                                                Calculated from {orders.filter((o: any) => {
+                                                From {orders.filter((o: any) => {
                                                     const rid = o.ttrRideId || o.riderId;
                                                     const matches = rid && (String(rid) === String(selectedRider.id) || String(rid) === String(selectedRider.riderId));
                                                     const status = String(getLatestStatus(o) || '').toUpperCase();
@@ -1202,7 +1274,89 @@ export const LogisticsPage: React.FC = () => {
                                                 }).length} completed deliveries
                                             </Text>
                                         </Box>
+                                        <Divider borderColor="gray.700" my={3} />
+                                        <SimpleGrid columns={2} spacing={3}>
+                                            <Card bg="gray.700" borderWidth="0">
+                                                <CardBody py={3} textAlign="center">
+                                                    <Text fontSize="lg" fontWeight="bold" color="gray.100">
+                                                        {selectedRider.totalDeliveries || orders.filter((o: any) => {
+                                                            const rid = o.ttrRideId || o.riderId;
+                                                            return rid && (String(rid) === String(selectedRider.id) || String(rid) === String(selectedRider.riderId));
+                                                        }).length}
+                                                    </Text>
+                                                    <Text fontSize="xs" color="gray.500">Total Orders</Text>
+                                                </CardBody>
+                                            </Card>
+                                            <Card bg="gray.700" borderWidth="0">
+                                                <CardBody py={3} textAlign="center">
+                                                    <Text fontSize="lg" fontWeight="bold" color="gray.100">{selectedRider.rating || '4.8'}</Text>
+                                                    <Text fontSize="xs" color="gray.500">Avg Rating</Text>
+                                                </CardBody>
+                                            </Card>
+                                        </SimpleGrid>
                                     </Box>
+
+                                    {/* Zone Assignment */}
+                                    <Box bg="gray.800" borderRadius="lg" p={4} mb={4}>
+                                        <Text fontWeight="600" color="gray.100" mb={4}>Zone Assignment</Text>
+                                        <Box mb={3}>
+                                            <Text fontSize="xs" color="gray.500" mb={1}>Primary Zone</Text>
+                                            <Badge colorScheme="purple" variant="subtle" px={2} py={1}>
+                                                {selectedRider.primaryZone || selectedRider.zone || 'Not Assigned'}
+                                            </Badge>
+                                        </Box>
+                                        <Box mb={3}>
+                                            <Text fontSize="xs" color="gray.500" mb={1}>Working Hours</Text>
+                                            <Text fontSize="sm" color="gray.100">
+                                                {selectedRider.workingHours || '08:00 AM - 06:00 PM'}
+                                            </Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500" mb={1}>Company ID</Text>
+                                            <Text fontSize="sm" color="gray.100">{selectedRider.companyId || 'N/A'}</Text>
+                                        </Box>
+                                    </Box>
+
+                                    {/* Documents Status */}
+                                    <Box bg="gray.800" borderRadius="lg" p={4} mb={4}>
+                                        <Text fontWeight="600" color="gray.100" mb={4}>Documents</Text>
+                                        <VStack spacing={2} align="stretch">
+                                            <Flex justify="space-between" align="center">
+                                                <Text fontSize="sm" color="gray.300">Profile Photo</Text>
+                                                <Badge colorScheme={selectedRider.hasProfilePhoto ? 'green' : 'gray'} variant="subtle">
+                                                    {selectedRider.hasProfilePhoto ? 'Uploaded' : 'Not Uploaded'}
+                                                </Badge>
+                                            </Flex>
+                                            <Flex justify="space-between" align="center">
+                                                <Text fontSize="sm" color="gray.300">National ID (NIN)</Text>
+                                                <Badge colorScheme={selectedRider.hasNIN ? 'green' : 'gray'} variant="subtle">
+                                                    {selectedRider.hasNIN ? 'Verified' : 'Pending'}
+                                                </Badge>
+                                            </Flex>
+                                            <Flex justify="space-between" align="center">
+                                                <Text fontSize="sm" color="gray.300">Driver's License</Text>
+                                                <Badge colorScheme={selectedRider.hasLicense ? 'green' : 'gray'} variant="subtle">
+                                                    {selectedRider.hasLicense ? 'Verified' : 'Pending'}
+                                                </Badge>
+                                            </Flex>
+                                            <Flex justify="space-between" align="center">
+                                                <Text fontSize="sm" color="gray.300">Vehicle Papers</Text>
+                                                <Badge colorScheme={selectedRider.hasVehiclePapers ? 'green' : 'gray'} variant="subtle">
+                                                    {selectedRider.hasVehiclePapers ? 'Verified' : 'Pending'}
+                                                </Badge>
+                                            </Flex>
+                                        </VStack>
+                                    </Box>
+
+                                    {/* Action Buttons */}
+                                    <VStack spacing={3}>
+                                        <Button colorScheme="purple" w="full" leftIcon={<Edit size={16} />}>
+                                            Edit Rider
+                                        </Button>
+                                        <Button variant="outline" borderColor="gray.600" w="full" onClick={onViewRiderClose}>
+                                            Close
+                                        </Button>
+                                    </VStack>
                                 </Box>
                             </Flex>
                         )}
@@ -1229,26 +1383,38 @@ export const LogisticsPage: React.FC = () => {
                                         <Text fontWeight="600" color="gray.400">Total Amount: <Text as="span" fontWeight="normal" color="green.400">{formatCurrency(selectedOrder.totalAmount)}</Text></Text>
                                     </Box>
                                     <Box flex={1}>
-                                        <Text fontWeight="600" color="gray.400">Customer: <Text as="span" fontWeight="normal" color="gray.100">{formatFullName(selectedOrder.user?.firstName, selectedOrder.user?.lastName)}</Text></Text>
-                                        <Text fontWeight="600" color="gray.400">Phone: <Text as="span" fontWeight="normal" color="gray.100">{selectedOrder.user?.mobile || '--'}</Text></Text>
-                                        <HStack spacing={2}>
-                                            <Text fontWeight="600" color="gray.400">Status:</Text>
-                                            <StatusPill status={getLatestStatus(selectedOrder)} />
-                                        </HStack>
+                                        <Text fontWeight="600" color="gray.400">Customer: <Text as="span" fontWeight="normal" color="gray.100">
+                                            {formatFullName(selectedOrder.user?.firstName, selectedOrder.user?.lastName) || 'N/A'}
+                                        </Text></Text>
+                                        <Text fontWeight="600" color="gray.400">Phone: <Text as="span" fontWeight="normal" color="gray.100">
+                                            {selectedOrder.user?.mobile || selectedOrder.additionalPhoneNumber || 'N/A'}
+                                        </Text></Text>
+                                        <Text fontWeight="600" color="gray.400">Created At: <Text as="span" fontWeight="normal" color="gray.100">
+                                            {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : '--'}
+                                        </Text></Text>
                                     </Box>
                                 </Flex>
+
+                                {/* Notes Card */}
+                                <Card bg="gray.800" borderColor="gray.700" borderWidth="1px">
+                                    <CardBody>
+                                        <Text fontWeight="600" mb={2} color="gray.100">Notes</Text>
+                                        <Text color="gray.400"><Text as="span" fontWeight="500" color="gray.300">Note for Vendor:</Text> {selectedOrder.noteForVendor || '—'}</Text>
+                                        <Text color="gray.400"><Text as="span" fontWeight="500" color="gray.300">Note for Rider:</Text> {selectedOrder.noteForRider || '—'}</Text>
+                                    </CardBody>
+                                </Card>
 
                                 {/* Address Card */}
                                 <Card bg="gray.800" borderColor="gray.700" borderWidth="1px">
                                     <CardBody>
-                                        <Text fontWeight="600" mb={2} color="gray.100">Delivery Address</Text>
+                                        <Text fontWeight="600" mb={2} color="gray.100">Address</Text>
                                         <Text color="gray.400"><Text as="span" fontWeight="500" color="gray.300">Drop-off Location:</Text> {selectedOrder.dropOffLocationAddress || '--'}</Text>
                                         <Text color="gray.400"><Text as="span" fontWeight="500" color="gray.300">Full Address:</Text> {selectedOrder.fullHouseAddress || '--'}</Text>
 
                                         {/* Merchant Info */}
                                         <Divider my={3} borderColor="gray.700" />
-                                        <Text fontWeight="600" color="purple.400">Pickup Store: <Text as="span" fontWeight="normal" color="gray.100">{selectedOrder.store?.name || '--'}</Text></Text>
-                                        <Text fontWeight="600" color="purple.400">Store Phone: <Text as="span" fontWeight="normal" color="gray.100">{selectedOrder.store?.mobile || '--'}</Text></Text>
+                                        <Text fontWeight="600" color="purple.400">Merchant Store: <Text as="span" fontWeight="normal" color="gray.100">{getStoreName(selectedOrder)}</Text></Text>
+                                        <Text fontWeight="600" color="purple.400">Merchant Phone: <Text as="span" fontWeight="normal" color="gray.100">{getStorePhone(selectedOrder)}</Text></Text>
                                     </CardBody>
                                 </Card>
 

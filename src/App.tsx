@@ -3,6 +3,7 @@ import { ChakraProvider } from '@chakra-ui/react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LocationProvider } from './context/LocationContext';
 import { MainLayout } from './components/layout';
 import theme from './theme';
 
@@ -11,9 +12,13 @@ import { LoginPage } from './pages/auth/LoginPage';
 import { OverviewPage } from './pages/overview/OverviewPage';
 import { MerchantsPage, ProductsPage, OrdersPage, MerchantApprovalPage } from './pages/merchants';
 import { UsersPage } from './pages/users/UsersPage';
+import { PayoutsPage } from './pages/users/PayoutsPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { HealthProfessionalsPage, ConsultationsPage, LicensesVerificationsPage } from './pages/health';
 import { LogisticsPage } from './pages/logistics/LogisticsPage';
+import { AdListingPage } from './pages/marketing/AdListingPage';
+import { TransactionsPage } from './pages/users/TransactionsPage';
+import { AnalyticsPage } from './pages/analytics/AnalyticsPage';
 
 // Placeholder pages - will be implemented incrementally
 const PlaceholderPage: React.FC<{ title: string }> = ({ title }) => (
@@ -98,12 +103,12 @@ const AppRoutes: React.FC = () => {
 
         {/* Users & Wallet */}
         <Route path="users" element={<UsersPage />} />
-        <Route path="users/transactions" element={<PlaceholderPage title="Transactions" />} />
+        <Route path="users/transactions" element={<TransactionsPage />} />
         <Route path="users/refunds" element={<PlaceholderPage title="Refunds" />} />
-        <Route path="users/payouts" element={<PlaceholderPage title="Payouts" />} />
+        <Route path="users/payouts" element={<PayoutsPage />} />
 
         {/* Marketing */}
-        <Route path="marketing/coupons" element={<PlaceholderPage title="Coupons & Promotions" />} />
+        <Route path="marketing/ads" element={<AdListingPage />} />
         <Route path="marketing/announcements" element={<PlaceholderPage title="Announcements" />} />
         <Route path="marketing/segments" element={<PlaceholderPage title="Segments & Campaigns" />} />
         <Route path="marketing/referrals" element={<PlaceholderPage title="Referrals" />} />
@@ -114,7 +119,7 @@ const AppRoutes: React.FC = () => {
         <Route path="support/reviews" element={<PlaceholderPage title="Reviews & Reports" />} />
 
         {/* Analytics */}
-        <Route path="analytics" element={<PlaceholderPage title="Analytics" />} />
+        <Route path="analytics" element={<AnalyticsPage />} />
 
         {/* Settings */}
         <Route path="settings" element={<SettingsPage />} />
@@ -135,7 +140,9 @@ function App() {
       <ChakraProvider theme={theme}>
         <BrowserRouter>
           <AuthProvider>
-            <AppRoutes />
+            <LocationProvider>
+              <AppRoutes />
+            </LocationProvider>
           </AuthProvider>
         </BrowserRouter>
       </ChakraProvider>

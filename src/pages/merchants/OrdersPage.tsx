@@ -32,6 +32,7 @@ import {
     Spinner,
     Card,
     CardBody,
+    Tooltip,
 } from '@chakra-ui/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -56,6 +57,7 @@ import { usersApi } from '../../api/users.api';
 import { StatusPill } from '../../components/common/StatusPill';
 import { Order, OrderStatus } from '../../types/order.types';
 import { formatCurrency, formatFullName } from '../../utils/formatters';
+import { useLocationFilter, matchesLocationFilter } from '../../context/LocationContext';
 
 interface OrdersPageProps {
     categoryFilter?: string;
@@ -68,7 +70,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
 }) => {
     const [statusFilter, setStatusFilter] = useState<string>('');
     const [businessTypeFilter, setBusinessTypeFilter] = useState<string>('');
-    const [cityFilter, setCityFilter] = useState<string>('');
+    const [deliveryFilter, setDeliveryFilter] = useState<string>('');
     const [dateFrom, setDateFrom] = useState<string>('');
     const [dateTo, setDateTo] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -76,6 +78,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
     const [editingOrder, setEditingOrder] = useState<Order | null>(null);
     const [newStatus, setNewStatus] = useState<string>('PENDING');
     const [assigningOrder, setAssigningOrder] = useState<Order | null>(null);
+    const [assigningRiderId, setAssigningRiderId] = useState<number | null>(null);
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -87,6 +90,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
 
     const toast = useToast();
     const queryClient = useQueryClient();
+    const { selectedLocation } = useLocationFilter();
 
     // Fetch all orders
     const { data: ordersData, isLoading, refetch } = useQuery({
@@ -125,10 +129,13 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['orders'] });
             toast({ title: 'Rider assigned successfully', status: 'success', duration: 2000 });
+            setAssigningRiderId(null);
             onAssignClose();
         },
-        onError: () => {
-            toast({ title: 'Failed to assign rider', status: 'error', duration: 3000 });
+        onError: (error: any) => {
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to assign rider';
+            toast({ title: errorMessage, status: 'error', duration: 4000 });
+            setAssigningRiderId(null);
         },
     });
 
@@ -217,13 +224,34 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
         return sorted[0]?.orderStatus || sorted[0]?.status || 'PENDING';
     }
 
+    // Helper to get specific charge from order
+    function getChargeByName(order: Order, chargeName: string): number {
+        if (!order.orderCharges?.chargeNodes) return 0;
+        const chargeNode = order.orderCharges.chargeNodes.find(
+            (node) => node.name?.toLowerCase() === chargeName.toLowerCase()
+        );
+        return chargeNode ? Number(chargeNode.amount) || 0 : 0;
+    }
+
+    function getDeliveryFee(order: Order): number {
+        return getChargeByName(order, 'deliveryFee');
+    }
+
+    function getServiceFee(order: Order): number {
+        return getChargeByName(order, 'serviceFee');
+    }
+
     // Filter orders locally
     const filteredOrders = orders.filter((order: Order) => {
         const latestStatus = getLatestStatus(order);
         const orderDate = new Date(order.createdAt);
         const matchesStatus = !statusFilter || latestStatus.toUpperCase() === statusFilter.toUpperCase();
         const matchesBusinessType = !businessTypeFilter || order.type?.toUpperCase() === businessTypeFilter.toUpperCase();
-        const matchesCity = !cityFilter || order.dropOffLocationAddress?.toLowerCase().includes(cityFilter.toLowerCase());
+        // Use global location filter from context
+        const matchesLocation = matchesLocationFilter(order.dropOffLocationAddress, selectedLocation);
+        const matchesDelivery = !deliveryFilter ||
+            (deliveryFilter === 'assigned' && !!order.ttrRideId) ||
+            (deliveryFilter === 'unassigned' && !order.ttrRideId);
         const matchesDateFrom = !dateFrom || orderDate >= new Date(dateFrom);
         const matchesDateTo = !dateTo || orderDate <= new Date(dateTo + 'T23:59:59');
 
@@ -239,7 +267,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
             order.user?.firstName?.toLowerCase()?.includes(searchLower) ||
             order.user?.lastName?.toLowerCase()?.includes(searchLower);
 
-        return matchesStatus && matchesBusinessType && matchesCity && matchesDateFrom && matchesDateTo && matchesSearch;
+        return matchesStatus && matchesBusinessType && matchesLocation && matchesDelivery && matchesDateFrom && matchesDateTo && matchesSearch;
     });
 
     // Stats calculation - based on filtered orders so filters apply to stats too
@@ -264,16 +292,20 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
             return d >= yesterday && d < today;
         });
 
-    // Status-based stats (use filteredOrders to respect all filters)
-    const pendingOrders = filteredOrders.filter((o: Order) => getLatestStatus(o).toUpperCase() === 'PENDING');
-    const completedOrders = filteredOrders.filter((o: Order) => getLatestStatus(o).toUpperCase() === 'DELIVERED');
+    // Status-based stats - now filter by period (today or filtered)
+    const pendingOrdersInPeriod = ordersInPeriod.filter((o: Order) => getLatestStatus(o).toUpperCase() === 'PENDING');
+    const completedOrdersInPeriod = ordersInPeriod.filter((o: Order) => getLatestStatus(o).toUpperCase() === 'DELIVERED');
+
+    // Previous period stats for comparison
+    const pendingOrdersPrevious = ordersPreviousPeriod.filter((o: Order) => getLatestStatus(o).toUpperCase() === 'PENDING');
+    const completedOrdersPrevious = ordersPreviousPeriod.filter((o: Order) => getLatestStatus(o).toUpperCase() === 'DELIVERED');
 
     // Revenue stats
     const revenueInPeriod = ordersInPeriod.reduce((sum: number, o: Order) => sum + (parseFloat(String(o.totalAmount)) || 0), 0);
     const revenuePreviousPeriod = ordersPreviousPeriod.reduce((sum: number, o: Order) => sum + (parseFloat(String(o.totalAmount)) || 0), 0);
 
-    // Completion rate based on filtered orders
-    const completionRate = filteredOrders.length > 0 ? Math.round((completedOrders.length / filteredOrders.length) * 100) : 0;
+    // Completion rate based on orders in period
+    const completionRate = ordersInPeriod.length > 0 ? Math.round((completedOrdersInPeriod.length / ordersInPeriod.length) * 100) : 0;
 
     // Stats period label
     const statsPeriodLabel = hasDateFilter
@@ -291,7 +323,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
     const clearFilters = () => {
         setStatusFilter('');
         setBusinessTypeFilter('');
-        setCityFilter('');
+        setDeliveryFilter('');
         setDateFrom('');
         setDateTo('');
         setSearchQuery('');
@@ -318,6 +350,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
     };
     const handleAssignRiderToOrder = (riderId: number) => {
         if (assigningOrder) {
+            setAssigningRiderId(riderId);
             assignRiderMutation.mutate({ orderId: assigningOrder.id, riderId });
         }
     };
@@ -373,10 +406,14 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                 <Box flex="1" minW="200px" bg="gray.900" p={4} borderRadius="xl" borderWidth="1px" borderColor="gray.800">
                     <Flex justify="space-between" align="flex-start">
                         <Box>
-                            <Text color="gray.500" fontSize="sm">Pending Orders</Text>
-                            <Text color="gray.100" fontSize="2xl" fontWeight="bold">{pendingOrders.length}</Text>
-                            <Text color="orange.400" fontSize="xs">
-                                {pendingOrders.length > 0 ? 'Awaiting processing' : 'No pending orders'}
+                            <Text color="gray.500" fontSize="sm">Pending Orders ({statsPeriodLabel})</Text>
+                            <Text color="gray.100" fontSize="2xl" fontWeight="bold">{pendingOrdersInPeriod.length}</Text>
+                            <Text color={hasDateFilter ? 'orange.400' : (pendingOrdersPrevious.length > 0 ? 'orange.400' : 'gray.500')} fontSize="xs">
+                                {hasDateFilter
+                                    ? `${pendingOrdersInPeriod.length} pending in selected period`
+                                    : pendingOrdersPrevious.length > 0
+                                        ? `${pendingOrdersPrevious.length} pending yesterday`
+                                        : 'No pending yesterday'}
                             </Text>
                         </Box>
                         <Icon as={Clock} color="orange.400" boxSize={6} />
@@ -385,9 +422,15 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                 <Box flex="1" minW="200px" bg="gray.900" p={4} borderRadius="xl" borderWidth="1px" borderColor="gray.800">
                     <Flex justify="space-between" align="flex-start">
                         <Box>
-                            <Text color="gray.500" fontSize="sm">Completed</Text>
-                            <Text color="gray.100" fontSize="2xl" fontWeight="bold">{completedOrders.length}</Text>
-                            <Text color="teal.400" fontSize="xs">{completionRate}% completion rate</Text>
+                            <Text color="gray.500" fontSize="sm">Completed ({statsPeriodLabel})</Text>
+                            <Text color="gray.100" fontSize="2xl" fontWeight="bold">{completedOrdersInPeriod.length}</Text>
+                            <Text color="teal.400" fontSize="xs">
+                                {hasDateFilter
+                                    ? `${completionRate}% completion rate`
+                                    : completedOrdersPrevious.length > 0
+                                        ? `${completedOrdersPrevious.length} completed yesterday`
+                                        : `${completionRate}% completion rate`}
+                            </Text>
                         </Box>
                         <Icon as={CheckCircle} color="teal.400" boxSize={6} />
                     </Flex>
@@ -434,12 +477,11 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                         </Select>
                     </Box>
                     <Box minW="120px">
-                        <Text color="gray.500" fontSize="xs" mb={1}>City</Text>
-                        <Select value={cityFilter} onChange={(e) => setCityFilter(e.target.value)} size="sm" bg="gray.800" borderColor="gray.700">
-                            <option value="">All Cities</option>
-                            <option value="minna">Minna</option>
-                            <option value="lagos">Lagos</option>
-                            <option value="abuja">Abuja</option>
+                        <Text color="gray.500" fontSize="xs" mb={1}>Delivery</Text>
+                        <Select value={deliveryFilter} onChange={(e) => setDeliveryFilter(e.target.value)} size="sm" bg="gray.800" borderColor="gray.700">
+                            <option value="">All Orders</option>
+                            <option value="assigned">Assigned</option>
+                            <option value="unassigned">Unassigned</option>
                         </Select>
                     </Box>
                     <Box minW="130px">
@@ -466,7 +508,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                         }}>
                             Export
                         </Button>
-                        {(statusFilter || businessTypeFilter || cityFilter || dateFrom || dateTo) && (
+                        {(statusFilter || businessTypeFilter || deliveryFilter || dateFrom || dateTo) && (
                             <Button variant="ghost" size="sm" onClick={clearFilters}>Clear</Button>
                         )}
                     </HStack>
@@ -488,8 +530,10 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                                     <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Store Phone</Th>
                                     <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Created At</Th>
                                     <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Customer Phone</Th>
-                                    <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs"># Items</Th>
+                                    <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Delivery</Th>
                                     <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Amount</Th>
+                                    <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Service Fee</Th>
+                                    <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Delivery Fee</Th>
                                     <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Status</Th>
                                     <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Customer Name</Th>
                                     <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Actions</Th>
@@ -498,7 +542,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                             <Tbody>
                                 {paginatedOrders.length === 0 ? (
                                     <Tr>
-                                        <Td colSpan={9} textAlign="center" py={8} borderColor="gray.800">
+                                        <Td colSpan={11} textAlign="center" py={8} borderColor="gray.800">
                                             <Text color="gray.500">No orders found</Text>
                                         </Td>
                                     </Tr>
@@ -518,10 +562,33 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                                                 <Text fontSize="sm" color="gray.400">{order.user?.mobile || '--'}</Text>
                                             </Td>
                                             <Td borderColor="gray.800">
-                                                <Text fontSize="sm" color="purple.400">{order.totalItems || 0}</Text>
+                                                {order.ttrRideId ? (
+                                                    <Tooltip
+                                                        label={`Ride #${order.ttrRideId}${order.ttrTrackingCode ? ` • ${order.ttrTrackingCode}` : ''}`}
+                                                        placement="top"
+                                                        hasArrow
+                                                        bg="gray.700"
+                                                    >
+                                                        <Badge
+                                                            colorScheme="green"
+                                                            variant="subtle"
+                                                            cursor="pointer"
+                                                        >
+                                                            Assigned
+                                                        </Badge>
+                                                    </Tooltip>
+                                                ) : (
+                                                    <Badge colorScheme="gray" variant="subtle" opacity={0.6}>Unassigned</Badge>
+                                                )}
                                             </Td>
                                             <Td borderColor="gray.800">
                                                 <Text fontSize="sm" fontWeight="500" color="green.400">{formatCurrency(order.totalAmount)}</Text>
+                                            </Td>
+                                            <Td borderColor="gray.800">
+                                                <Text fontSize="sm" fontWeight="500" color="orange.400">{formatCurrency(getServiceFee(order))}</Text>
+                                            </Td>
+                                            <Td borderColor="gray.800">
+                                                <Text fontSize="sm" fontWeight="500" color="blue.400">{formatCurrency(getDeliveryFee(order))}</Text>
                                             </Td>
                                             <Td borderColor="gray.800">
                                                 <StatusPill status={getLatestStatus(order)} />
@@ -662,9 +729,37 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                                 {/* Amount Breakdown */}
                                 <Card bg="gray.800" borderColor="gray.700" borderWidth="1px">
                                     <CardBody>
-                                        <Text fontWeight="600" color="gray.400">Total Amount: <Text as="span" fontWeight="normal" color="gray.100">{formatCurrency(selectedOrder.totalAmount)}</Text></Text>
-                                        <Text fontWeight="600" color="gray.400">Amount Before Charges: <Text as="span" fontWeight="normal" color="gray.100">{formatCurrency(selectedOrder.totalAmountBeforeCharges)}</Text></Text>
-                                        <Text fontWeight="600" color="gray.400">Charges: <Text as="span" fontWeight="normal" color="gray.100">{formatCurrency(selectedOrder.Charges)}</Text></Text>
+                                        <Text fontWeight="600" mb={3} color="gray.100">Payment Summary</Text>
+                                        <VStack spacing={2} align="stretch">
+                                            <Flex justify="space-between">
+                                                <Text color="gray.400">Subtotal (Before Charges)</Text>
+                                                <Text color="gray.100">{formatCurrency(selectedOrder.totalAmountBeforeCharges)}</Text>
+                                            </Flex>
+                                            <Divider borderColor="gray.700" />
+                                            <Flex justify="space-between">
+                                                <Text color="gray.400">Service Fee</Text>
+                                                <Text color="orange.400" fontWeight="500">{formatCurrency(getServiceFee(selectedOrder))}</Text>
+                                            </Flex>
+                                            <Flex justify="space-between">
+                                                <Text color="gray.400">Delivery Fee</Text>
+                                                <Text color="blue.400" fontWeight="500">{formatCurrency(getDeliveryFee(selectedOrder))}</Text>
+                                            </Flex>
+                                            <Flex justify="space-between">
+                                                <Text color="gray.400">Total Charges</Text>
+                                                <Text color="gray.300">{formatCurrency(selectedOrder.Charges)}</Text>
+                                            </Flex>
+                                            {selectedOrder.discountAmount && selectedOrder.discountAmount > 0 && (
+                                                <Flex justify="space-between">
+                                                    <Text color="gray.400">Discount {selectedOrder.appliedCouponCode ? `(${selectedOrder.appliedCouponCode})` : ''}</Text>
+                                                    <Text color="green.400">-{formatCurrency(selectedOrder.discountAmount)}</Text>
+                                                </Flex>
+                                            )}
+                                            <Divider borderColor="gray.700" />
+                                            <Flex justify="space-between">
+                                                <Text fontWeight="600" color="gray.100">Total Amount</Text>
+                                                <Text fontWeight="600" color="green.400" fontSize="lg">{formatCurrency(selectedOrder.totalAmount)}</Text>
+                                            </Flex>
+                                        </VStack>
                                     </CardBody>
                                 </Card>
 
@@ -748,23 +843,43 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                             {riders.length === 0 ? (
                                 <Text color="gray.500">No riders available</Text>
                             ) : (
-                                riders.map((rider: any) => (
-                                    <Card key={rider.id || rider.riderId} bg="gray.800" borderColor="gray.700" borderWidth="1px" w="100%">
-                                        <CardBody py={3}>
-                                            <Flex justify="space-between" align="center">
-                                                <Box>
-                                                    <Text fontWeight="600" color="gray.100">
-                                                        {rider.riderName || `${rider.firstName || ''} ${rider.lastName || ''}`.trim() || 'Unknown Rider'}
-                                                    </Text>
-                                                    <Text fontSize="sm" color="purple.400">{rider.phone || rider.mobile || '--'}</Text>
-                                                </Box>
-                                                <Button size="sm" colorScheme="purple" onClick={() => handleAssignRiderToOrder(rider.riderId || rider.id)} isLoading={assignRiderMutation.isPending}>
-                                                    Assign
-                                                </Button>
-                                            </Flex>
-                                        </CardBody>
-                                    </Card>
-                                ))
+                                riders.map((rider: any, index: number) => {
+                                    // Handle both internal and external API field names (matching LogisticsPage)
+                                    const name = rider.name || rider.riderName || `${rider.first_name || ''} ${rider.last_name || ''}`.trim() || 'Unknown Rider';
+                                    const phone = rider.riderPhone || rider.phone || rider.mobile || '--';
+                                    const riderIdValue = rider.riderId || rider.id || rider.driver_id;
+                                    const uniqueKey = riderIdValue || `rider-${index}`;
+
+                                    return (
+                                        <Card key={uniqueKey} bg="gray.800" borderColor="gray.700" borderWidth="1px" w="100%">
+                                            <CardBody py={3}>
+                                                <Flex justify="space-between" align="center">
+                                                    <Box>
+                                                        <Text fontWeight="600" color="gray.100">
+                                                            {name}
+                                                        </Text>
+                                                        <Text fontSize="sm" color="purple.400">{phone}</Text>
+                                                    </Box>
+                                                    <Button
+                                                        size="sm"
+                                                        colorScheme="purple"
+                                                        onClick={() => {
+                                                            if (riderIdValue) {
+                                                                handleAssignRiderToOrder(Number(riderIdValue));
+                                                            } else {
+                                                                toast({ title: 'Rider ID not found', status: 'error', duration: 3000 });
+                                                            }
+                                                        }}
+                                                        isLoading={assigningRiderId === Number(riderIdValue) && assignRiderMutation.isPending}
+                                                        isDisabled={assignRiderMutation.isPending && assigningRiderId !== Number(riderIdValue)}
+                                                    >
+                                                        Assign
+                                                    </Button>
+                                                </Flex>
+                                            </CardBody>
+                                        </Card>
+                                    );
+                                })
                             )}
                         </VStack>
                     </ModalBody>

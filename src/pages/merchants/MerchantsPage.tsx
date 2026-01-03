@@ -56,6 +56,7 @@ import { VerificationStatusPill } from '../../components/common/StatusPill';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
 import { STORE_CATEGORY_LABELS } from '../../utils/constants';
 import { Store as StoreType, StoreCategory } from '../../types/store.types';
+import { useLocationFilter, matchesLocationFilter } from '../../context/LocationContext';
 
 export const MerchantsPage: React.FC = () => {
     const [page, setPage] = useState(1);
@@ -72,8 +73,9 @@ export const MerchantsPage: React.FC = () => {
     const { isOpen, onOpen, onClose } = useDisclosure();
     const toast = useToast();
     const queryClient = useQueryClient();
+    const { selectedLocation } = useLocationFilter();
 
-    // Fetch vendors
+    // Fetch vendors (stores) - this has all store data including images, categories, locations
     const { data: vendorsData, isLoading, refetch } = useQuery({
         queryKey: ['vendors', categoryFilter],
         queryFn: () => storesApi.getStores(categoryFilter as StoreCategory || undefined),
@@ -116,13 +118,11 @@ export const MerchantsPage: React.FC = () => {
             vendor.mobile?.toLowerCase()?.includes(searchQuery.toLowerCase()) ||
             vendor.address?.city?.toLowerCase()?.includes(searchQuery.toLowerCase()) ||
             vendor.address?.address?.toLowerCase()?.includes(searchQuery.toLowerCase());
+        // Use global location filter
+        const matchesLocation = matchesLocationFilter(vendor.address?.city, selectedLocation) ||
+            matchesLocationFilter(vendor.address?.address, selectedLocation);
 
-        // Date filter - filter by createdAt if available (using store creation or fallback to always match)
-        let matchesDate = true;
-        // Note: StoreType doesn't have createdAt, but if you add it later this will work
-        // For now we skip date filtering on stores since the API doesn't return createdAt
-
-        return matchesCategory && matchesVerification && matchesSearch && matchesDate;
+        return matchesCategory && matchesVerification && matchesSearch && matchesLocation;
     });
 
     // Calculate stats from filtered data
@@ -139,7 +139,7 @@ export const MerchantsPage: React.FC = () => {
         setSelectedVendor(vendor);
         if (approve) {
             verificationMutation.mutate({
-                vendorId: vendor.id,
+                vendorId: vendor.userId,
                 isVerified: true,
             });
         } else {
@@ -150,7 +150,7 @@ export const MerchantsPage: React.FC = () => {
     const handleRejectConfirm = () => {
         if (selectedVendor) {
             verificationMutation.mutate({
-                vendorId: selectedVendor.id,
+                vendorId: selectedVendor.userId,
                 isVerified: false,
                 reason: verificationNote,
             });
@@ -267,9 +267,6 @@ export const MerchantsPage: React.FC = () => {
         <>
             <MenuItem icon={<Eye size={16} />}>
                 View Details
-            </MenuItem>
-            <MenuItem icon={<Store size={16} />}>
-                View Products
             </MenuItem>
             <MenuItem icon={<Wallet size={16} />}>
                 View Payouts
@@ -525,10 +522,10 @@ export const MerchantsPage: React.FC = () => {
                         Export CSV
                     </Button>
                 </Flex>
-            </Box>
+            </Box >
 
             {/* Vendors Table */}
-            <DataGrid
+            < DataGrid
                 data={filteredVendors}
                 columns={columns}
                 isLoading={isLoading}
@@ -544,7 +541,7 @@ export const MerchantsPage: React.FC = () => {
             />
 
             {/* Rejection Modal */}
-            <Modal isOpen={isOpen} onClose={onClose}>
+            < Modal isOpen={isOpen} onClose={onClose} >
                 <ModalOverlay />
                 <ModalContent bg="gray.900">
                     <ModalHeader>Reject Vendor</ModalHeader>
@@ -576,8 +573,8 @@ export const MerchantsPage: React.FC = () => {
                         </Button>
                     </ModalFooter>
                 </ModalContent>
-            </Modal>
-        </Box>
+            </Modal >
+        </Box >
     );
 };
 

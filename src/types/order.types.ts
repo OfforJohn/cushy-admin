@@ -62,6 +62,14 @@ export interface Order {
     discountAmount?: number;
     appliedCouponCode?: string;
     Charges: number;
+    orderCharges?: {
+        id: string;
+        chargeNodes: {
+            id: string;
+            name: string;
+            amount: number;
+        }[];
+    };
     storeId?: string;
     store?: {
         id: string;

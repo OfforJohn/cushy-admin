@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import {
     Flex,
-    Input,
-    InputGroup,
-    InputLeftElement,
     Menu,
     MenuButton,
     MenuList,
@@ -22,7 +19,6 @@ import {
     Spinner,
 } from '@chakra-ui/react';
 import {
-    Search,
     Bell,
     ChevronDown,
     LogOut,
@@ -39,6 +35,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
+import { useLocationFilter } from '../../context/LocationContext';
 import { formatFullName } from '../../utils/formatters';
 import { ordersApi } from '../../api/orders.api';
 import { storesApi } from '../../api/stores.api';
@@ -49,6 +46,7 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
     const { user, logout } = useAuth();
+    const { selectedLocation, setSelectedLocation, locations } = useLocationFilter();
     const navigate = useNavigate();
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
@@ -105,47 +103,34 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
                     onClick={onToggleSidebar}
                 />
 
-                {/* Search */}
-                <InputGroup w={{ base: '200px', md: '320px' }}>
-                    <InputLeftElement>
-                        <Icon as={Search} color="gray.500" boxSize={4} />
-                    </InputLeftElement>
-                    <Input
-                        placeholder="Search orders, users, vendors..."
-                        variant="filled"
-                        bg="gray.800"
-                        border="1px solid"
-                        borderColor="gray.700"
-                        _hover={{ borderColor: 'gray.600' }}
-                        _focus={{ borderColor: 'brand.primary.500', bg: 'gray.800' }}
-                        fontSize="sm"
-                    />
-                </InputGroup>
-
-                {/* City Filter */}
+                {/* Global Location Filter */}
                 <HStack
                     bg="gray.800"
                     px={3}
                     py={2}
                     borderRadius="lg"
                     border="1px solid"
-                    borderColor="gray.700"
-                    display={{ base: 'none', md: 'flex' }}
+                    borderColor={selectedLocation !== 'all' ? 'brand.accent.500' : 'gray.700'}
+                    transition="all 0.2s"
                 >
                     <Icon as={MapPin} color="brand.accent.500" boxSize={4} />
                     <Select
                         variant="unstyled"
                         size="sm"
-                        defaultValue="all"
+                        value={selectedLocation}
+                        onChange={(e) => setSelectedLocation(e.target.value)}
                         w="auto"
                         cursor="pointer"
                         fontWeight="500"
+                        color={selectedLocation !== 'all' ? 'brand.accent.500' : 'gray.100'}
                     >
-                        <option value="all">All Locations</option>
-                        <option value="minna">Minna</option>
-                        <option value="abuja">Abuja</option>
-                        <option value="lagos">Lagos</option>
+                        {locations.map(loc => (
+                            <option key={loc.value} value={loc.value}>{loc.label}</option>
+                        ))}
                     </Select>
+                    {selectedLocation !== 'all' && (
+                        <Badge colorScheme="purple" fontSize="xs" ml={1}>Active</Badge>
+                    )}
                 </HStack>
             </HStack>
 

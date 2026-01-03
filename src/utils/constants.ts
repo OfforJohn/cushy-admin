@@ -83,9 +83,9 @@ export const NAV_ITEMS = [
         icon: 'Store',
         children: [
             { label: 'All Merchants', path: '/merchants' },
-            { label: 'Merchant Approval', path: '/merchants/merchant-approval' },
             { label: 'Orders', path: '/merchants/orders' },
             { label: 'Products', path: '/merchants/products' },
+            { label: 'Merchant Approval', path: '/merchants/merchant-approval' },
         ],
     },
     {
@@ -116,19 +116,10 @@ export const NAV_ITEMS = [
         label: 'Marketing',
         icon: 'Megaphone',
         children: [
-            { label: 'Coupons', path: '/marketing/coupons' },
+            { label: 'Ad Listing', path: '/marketing/ads' },
             { label: 'Announcements', path: '/marketing/announcements' },
             { label: 'Segments', path: '/marketing/segments' },
             { label: 'Referrals', path: '/marketing/referrals' },
-        ],
-    },
-    {
-        label: 'Support',
-        icon: 'HeadphonesIcon',
-        children: [
-            { label: 'Tickets', path: '/support/tickets' },
-            { label: 'Disputes', path: '/support/disputes' },
-            { label: 'Reviews', path: '/support/reviews' },
         ],
     },
     {
@@ -140,10 +131,5 @@ export const NAV_ITEMS = [
         label: 'Settings',
         path: '/settings',
         icon: 'Settings',
-    },
-    {
-        label: 'Audit Log',
-        path: '/audit-log',
-        icon: 'FileText',
     },
 ] as const;

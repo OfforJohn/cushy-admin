@@ -7,7 +7,6 @@ export const ordersApi = {
     getAllOrders: async (filters?: OrderFilters): Promise<StandardResponse<Order[]>> => {
         try {
             const response = await api.get('/api/v1/orders/get-all-orders');
-            console.log('RAW Orders API Response:', response.data);
             let orders = response.data || [];
 
             // Handle if response is wrapped in data property

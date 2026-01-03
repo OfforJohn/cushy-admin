@@ -8,6 +8,17 @@ export const api = axios.create({
         'Content-Type': 'application/json',
     },
     timeout: 30000,
+    // Handle null responses from server
+    transformResponse: [(data) => {
+        if (data === null || data === undefined || data === '' || data === 'null') {
+            return { success: true, message: 'Operation completed', data: null };
+        }
+        try {
+            return typeof data === 'string' ? JSON.parse(data) : data;
+        } catch (e) {
+            return { success: true, message: 'Operation completed', data: null };
+        }
+    }],
 });
 
 // Request interceptor to add auth token
@@ -27,7 +38,13 @@ api.interceptors.request.use(
 
 // Response interceptor for error handling
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        // Handle null or empty responses
+        if (response.data === null || response.data === undefined || response.data === 'null') {
+            response.data = { success: true, message: 'Operation completed', data: null };
+        }
+        return response;
+    },
     (error: AxiosError<{ message?: string; error?: boolean }>) => {
         // Log 401 errors but don't auto-redirect (let the app handle it gracefully)
         if (error.response?.status === 401) {

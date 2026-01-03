@@ -54,11 +54,12 @@ interface NavItemProps {
     icon: string;
     children?: { label: string; path: string }[];
     isCollapsed?: boolean;
+    defaultOpen?: boolean;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ label, path, icon, children, isCollapsed }) => {
+const NavItem: React.FC<NavItemProps> = ({ label, path, icon, children, isCollapsed, defaultOpen = false }) => {
     const location = useLocation();
-    const { isOpen, onToggle } = useDisclosure();
+    const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: defaultOpen });
     const IconComponent = iconMap[icon] || LayoutDashboard;
 
     const isActive = path ? location.pathname === path :
@@ -230,6 +231,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed = false }) => {
                         icon={item.icon}
                         children={'children' in item ? (item.children as unknown as { label: string; path: string }[]) : undefined}
                         isCollapsed={isCollapsed}
+                        defaultOpen={item.label === 'Merchants'}
                     />
                 ))}
             </VStack>
