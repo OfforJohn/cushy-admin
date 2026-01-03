@@ -81,7 +81,7 @@ export const TransactionsPage: React.FC = () => {
         queryFn: () => walletApi.getAllTransactions(),
     });
 
-    const transactions: Transaction[] = transactionsData?.data || transactionsData || [];
+    const transactions: Transaction[] = Array.isArray(transactionsData?.data) ? transactionsData.data : (Array.isArray(transactionsData) ? transactionsData : []);
 
     // Helper to determine if a category is a credit type
     const isCreditCategory = (category: string) => {

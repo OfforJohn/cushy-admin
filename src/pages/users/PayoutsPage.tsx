@@ -81,8 +81,8 @@ export const PayoutsPage: React.FC = () => {
     const extractVendors = () => {
         if (!vendorData) return [];
         const data = vendorData.data || vendorData;
-        if (data.vendorList) return data.vendorList;
         if (Array.isArray(data)) return data;
+        if (data && typeof data === 'object' && 'vendorList' in data) return (data as { vendorList: any[] }).vendorList;
         return [];
     };
 
@@ -255,7 +255,7 @@ export const PayoutsPage: React.FC = () => {
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
                     <CardBody p={5}>
                         <HStack spacing={3} mb={2}>
-                            <Box p={2} borderRadius="lg" bg="purple.500" bgOpacity={0.2}>
+                            <Box p={2} borderRadius="lg" bg="purple.500" opacity={0.8}>
                                 <Icon as={Store} color="purple.400" boxSize={5} />
                             </Box>
                             <Text fontSize="xs" color="gray.500" fontWeight="500">Total Merchant Balance</Text>
@@ -273,7 +273,7 @@ export const PayoutsPage: React.FC = () => {
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
                     <CardBody p={5}>
                         <HStack spacing={3} mb={2}>
-                            <Box p={2} borderRadius="lg" bg="yellow.500" bgOpacity={0.2}>
+                            <Box p={2} borderRadius="lg" bg="yellow.500" opacity={0.8}>
                                 <Icon as={Clock} color="yellow.400" boxSize={5} />
                             </Box>
                             <Text fontSize="xs" color="gray.500" fontWeight="500">Pending Payouts</Text>
@@ -291,7 +291,7 @@ export const PayoutsPage: React.FC = () => {
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
                     <CardBody p={5}>
                         <HStack spacing={3} mb={2}>
-                            <Box p={2} borderRadius="lg" bg="green.500" bgOpacity={0.2}>
+                            <Box p={2} borderRadius="lg" bg="green.500" opacity={0.8}>
                                 <Icon as={CheckCircle} color="green.400" boxSize={5} />
                             </Box>
                             <Text fontSize="xs" color="gray.500" fontWeight="500">Completed</Text>
@@ -309,7 +309,7 @@ export const PayoutsPage: React.FC = () => {
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
                     <CardBody p={5}>
                         <HStack spacing={3} mb={2}>
-                            <Box p={2} borderRadius="lg" bg="blue.500" bgOpacity={0.2}>
+                            <Box p={2} borderRadius="lg" bg="blue.500" opacity={0.8}>
                                 <Icon as={TrendingUp} color="blue.400" boxSize={5} />
                             </Box>
                             <Text fontSize="xs" color="gray.500" fontWeight="500">Processing</Text>

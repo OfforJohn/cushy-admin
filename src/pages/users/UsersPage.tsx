@@ -173,17 +173,17 @@ const UsersPageContent: React.FC = () => {
         let users: UserListItem[] = [];
         let total = 0;
 
-        // Extract users array
-        const data = usersData.data || usersData;
-        if (Array.isArray(data)) {
-            users = data;
-            total = data.length;
-        } else if (data.users && Array.isArray(data.users)) {
-            users = data.users;
-            total = data.pagination?.total || data.users.length;
-        } else if (Array.isArray(data.data)) {
-            users = data.data;
-            total = data.pagination?.total || data.data.length;
+        // Extract users array - cast to any to handle flexible response structure
+        const rawData: any = usersData.data || usersData;
+        if (Array.isArray(rawData)) {
+            users = rawData;
+            total = rawData.length;
+        } else if (rawData && rawData.users && Array.isArray(rawData.users)) {
+            users = rawData.users;
+            total = rawData.pagination?.total || rawData.users.length;
+        } else if (rawData && Array.isArray(rawData.data)) {
+            users = rawData.data;
+            total = rawData.pagination?.total || rawData.data.length;
         }
 
         return { users, total };

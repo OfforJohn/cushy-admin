@@ -165,7 +165,7 @@ export const AnalyticsPage: React.FC = () => {
     const kpiCards: KPICard[] = [
         {
             label: 'Total GMV',
-            value: formatCurrency(stats?.totalEarnings || 128400000),
+            value: formatCurrency(stats?.totalBalanceResult || 128400000),
             change: 18.2,
             changeLabel: 'vs last month',
             icon: DollarSign,
@@ -181,7 +181,7 @@ export const AnalyticsPage: React.FC = () => {
         },
         {
             label: 'Avg Order Value',
-            value: formatCurrency(stats?.avgOrderValue || 3240),
+            value: formatCurrency(3240),
             change: 5.5,
             changeLabel: 'vs last month',
             icon: ShoppingCart,
@@ -414,7 +414,7 @@ export const AnalyticsPage: React.FC = () => {
                                     flexDirection="column"
                                 >
                                     <Text fontSize="xl" fontWeight="bold" color="gray.100">
-                                        {stats?.totalOrders?.toLocaleString() || '1,247'}
+                                        {'1,247'}
                                     </Text>
                                     <Text fontSize="xs" color="gray.500">Orders</Text>
                                 </Flex>
