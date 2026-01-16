@@ -52,7 +52,11 @@ export const adminApi = {
         vendorId: string,
         verificationFlag: { isVerified: boolean; reason?: string }
     ): Promise<StandardResponse<any>> => {
-        const response = await api.post(`/api/v1/admin/vendor-verification`, verificationFlag, {
+        // Backend expects status: 'VERIFIED' | 'UNVERIFIED', not isVerified boolean
+        const payload = {
+            status: verificationFlag.isVerified ? 'VERIFIED' : 'UNVERIFIED',
+        };
+        const response = await api.post(`/api/v1/admin/vendor-verification`, payload, {
             params: { vendorId },
         });
         return response.data;

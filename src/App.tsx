@@ -116,7 +116,7 @@ const AppRoutes: React.FC = () => {
         {/* Support */}
         <Route path="support/tickets" element={<PlaceholderPage title="Support Tickets" />} />
         <Route path="support/disputes" element={<PlaceholderPage title="Disputes" />} />
-        <Route path="support/reviews" element={<PlaceholderPage title="Reviews & Reports" />} />
+
 
         {/* Analytics */}
         <Route path="analytics" element={<AnalyticsPage />} />

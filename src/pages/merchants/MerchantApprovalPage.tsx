@@ -31,6 +31,15 @@ import {
     Spinner,
     Card,
     CardBody,
+    Modal,
+    ModalOverlay,
+    ModalContent,
+    ModalHeader,
+    ModalBody,
+    ModalCloseButton,
+    ModalFooter,
+    useDisclosure,
+    Divider,
 } from '@chakra-ui/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -48,8 +57,14 @@ import {
     ChevronLeft,
     ChevronRight,
     Filter,
+    Store,
+    Mail,
+    Phone,
+    MapPin,
+    Calendar,
 } from 'lucide-react';
 import { adminApi } from '../../api/admin.api';
+import { useLocationFilter, matchesLocationFilter } from '../../context/LocationContext';
 
 interface Vendor {
     id: string;
@@ -63,12 +78,19 @@ interface Vendor {
         id: string;
         name: string;
         category?: string;
+        address?: {
+            city?: string;
+            state?: string;
+            address?: string;
+        };
     };
 }
 
 export const MerchantApprovalPage: React.FC = () => {
     const toast = useToast();
     const queryClient = useQueryClient();
+    const { isOpen, onOpen, onClose } = useDisclosure();
+    const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
 
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -90,20 +112,31 @@ export const MerchantApprovalPage: React.FC = () => {
         staleTime: 30000,
     });
 
+    // Fetch vendor stats for accurate counts
+    const { data: vendorStatsData } = useQuery({
+        queryKey: ['vendorStats'],
+        queryFn: () => adminApi.getVendorStats(),
+    });
+
+    const { selectedLocation } = useLocationFilter();
+
     // Approve vendor mutation
     const approveVendorMutation = useMutation({
         mutationFn: (vendorId: string) => adminApi.updateVendorVerification(vendorId, { isVerified: true }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['vendorApproval'] });
+            queryClient.invalidateQueries({ queryKey: ['vendorStats'] });
             toast({
                 title: 'Vendor approved successfully',
                 status: 'success',
                 duration: 2000,
             });
+            onClose();
         },
-        onError: () => {
+        onError: (error: any) => {
             toast({
                 title: 'Failed to approve vendor',
+                description: error?.message || 'An error occurred',
                 status: 'error',
                 duration: 3000,
             });
@@ -115,15 +148,18 @@ export const MerchantApprovalPage: React.FC = () => {
         mutationFn: (vendorId: string) => adminApi.updateVendorVerification(vendorId, { isVerified: false }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['vendorApproval'] });
+            queryClient.invalidateQueries({ queryKey: ['vendorStats'] });
             toast({
                 title: 'Vendor rejected',
                 status: 'success',
                 duration: 2000,
             });
+            onClose();
         },
-        onError: () => {
+        onError: (error: any) => {
             toast({
                 title: 'Failed to reject vendor',
+                description: error?.message || 'An error occurred',
                 status: 'error',
                 duration: 3000,
             });
@@ -133,13 +169,22 @@ export const MerchantApprovalPage: React.FC = () => {
     const vendorsRaw = vendorsData?.data;
     const vendors: Vendor[] = Array.isArray(vendorsRaw) ? vendorsRaw : (vendorsRaw as any)?.vendorList || [];
     const pagination = (vendorsRaw as any)?.pagination || { total: vendors.length, page: 1, pageCount: 1 };
+    const vendorStats = vendorStatsData?.data;
 
-    // Calculate stats
-    const pendingCount = vendors.filter(v => !v.isVerified).length;
-    const approvedCount = vendors.filter(v => v.isVerified).length;
+    // Apply location filter
+    const filteredByLocation = vendors.filter(vendor => {
+        const vendorCity = vendor.store?.address?.city || '';
+        return matchesLocationFilter(vendorCity, selectedLocation);
+    });
 
-    // Filter vendors by search
-    const filteredVendors = vendors.filter(vendor => {
+    // Calculate stats from API - Total vendors = verified + unverified (all registered)
+    const pendingCount = vendorStats?.unverifiedVendors ?? filteredByLocation.filter(v => !v.isVerified).length;
+    const approvedCount = vendorStats?.verifiedVendors ?? filteredByLocation.filter(v => v.isVerified).length;
+    const totalVendors = (vendorStats?.verifiedVendors ?? 0) + (vendorStats?.unverifiedVendors ?? 0) || pagination.total;
+    const newVendors = vendorStats?.newVendors ?? 0;
+
+    // Filter vendors by search (use filteredByLocation as base)
+    const filteredVendors = filteredByLocation.filter(vendor => {
         if (!searchQuery) return true;
         const searchLower = searchQuery.toLowerCase();
         return (
@@ -174,6 +219,46 @@ export const MerchantApprovalPage: React.FC = () => {
     const handleBulkReject = () => {
         selectedVendors.forEach(id => rejectVendorMutation.mutate(id));
         setSelectedVendors([]);
+    };
+
+    const handleViewDetails = (vendor: Vendor) => {
+        setSelectedVendor(vendor);
+        onOpen();
+    };
+
+    const handleSendReminder = (vendor: Vendor) => {
+        // Simulate sending email reminder
+        const mailtoLink = `mailto:${vendor.email}?subject=Complete Your Merchant Verification&body=Dear ${vendor.firstName},\n\nPlease complete your merchant verification process to start selling on our platform.\n\nBest regards,\nCushy Access Team`;
+        window.open(mailtoLink, '_blank');
+        toast({
+            title: 'Email client opened',
+            description: `Reminder email draft created for ${vendor.email}`,
+            status: 'info',
+            duration: 3000,
+        });
+    };
+
+    const handleBulkSendReminders = () => {
+        const unverifiedVendors = filteredVendors.filter(v => !v.isVerified && selectedVendors.includes(v.id));
+        if (unverifiedVendors.length === 0) {
+            toast({
+                title: 'No pending vendors selected',
+                description: 'Select vendors with pending status to send reminders',
+                status: 'warning',
+                duration: 3000,
+            });
+            return;
+        }
+        // Open email for first vendor (for bulk, you'd typically use a backend email service)
+        const emails = unverifiedVendors.map(v => v.email).join(',');
+        const mailtoLink = `mailto:${emails}?subject=Complete Your Merchant Verification&body=Dear Merchant,\n\nPlease complete your merchant verification process to start selling on our platform.\n\nBest regards,\nCushy Access Team`;
+        window.open(mailtoLink, '_blank');
+        toast({
+            title: 'Email client opened',
+            description: `Reminder email draft created for ${unverifiedVendors.length} vendors`,
+            status: 'info',
+            duration: 3000,
+        });
     };
 
     const getStatusBadge = (isVerified: boolean) => {
@@ -240,9 +325,9 @@ export const MerchantApprovalPage: React.FC = () => {
             </InputGroup>
 
             {/* Stats Cards */}
-            <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4} mb={6}>
+            <SimpleGrid columns={{ base: 2, md: 5 }} spacing={4} mb={6}>
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
-                    <CardBody>
+                    <CardBody py={4}>
                         <HStack spacing={3}>
                             <Box p={2} bg="rgba(251, 191, 36, 0.1)" borderRadius="lg">
                                 <Icon as={Clock} color="orange.400" boxSize={5} />
@@ -250,52 +335,63 @@ export const MerchantApprovalPage: React.FC = () => {
                             <Box>
                                 <Text fontSize="xs" color="gray.500">Pending Review</Text>
                                 <Text fontSize="2xl" fontWeight="bold" color="gray.100">{pendingCount}</Text>
-                                <Text fontSize="xs" color="gray.500">Avg 3.2 days</Text>
                             </Box>
                         </HStack>
                     </CardBody>
                 </Card>
 
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
-                    <CardBody>
+                    <CardBody py={4}>
                         <HStack spacing={3}>
                             <Box p={2} bg="rgba(34, 197, 94, 0.1)" borderRadius="lg">
                                 <Icon as={CheckCircle} color="green.400" boxSize={5} />
                             </Box>
                             <Box>
-                                <Text fontSize="xs" color="gray.500">Approved Today</Text>
+                                <Text fontSize="xs" color="gray.500">Verified</Text>
                                 <Text fontSize="2xl" fontWeight="bold" color="gray.100">{approvedCount}</Text>
-                                <Text fontSize="xs" color="green.400">↑ 10 this week</Text>
                             </Box>
                         </HStack>
                     </CardBody>
                 </Card>
 
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
-                    <CardBody>
+                    <CardBody py={4}>
                         <HStack spacing={3}>
                             <Box p={2} bg="rgba(239, 68, 68, 0.1)" borderRadius="lg">
                                 <Icon as={XCircle} color="red.400" boxSize={5} />
                             </Box>
                             <Box>
-                                <Text fontSize="xs" color="gray.500">Rejected This Week</Text>
-                                <Text fontSize="2xl" fontWeight="bold" color="gray.100">0</Text>
-                                <Text fontSize="xs" color="red.400">× Invalid KYC docs</Text>
+                                <Text fontSize="xs" color="gray.500">Rejected</Text>
+                                <Text fontSize="2xl" fontWeight="bold" color="gray.100">-</Text>
+                                <Text fontSize="xs" color="gray.500">Coming soon</Text>
                             </Box>
                         </HStack>
                     </CardBody>
                 </Card>
 
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
-                    <CardBody>
+                    <CardBody py={4}>
                         <HStack spacing={3}>
-                            <Box p={2} bg="rgba(139, 92, 246, 0.1)" borderRadius="lg">
-                                <Icon as={TrendingUp} color="purple.400" boxSize={5} />
+                            <Box p={2} bg="rgba(59, 130, 246, 0.1)" borderRadius="lg">
+                                <Icon as={TrendingUp} color="blue.400" boxSize={5} />
                             </Box>
                             <Box>
-                                <Text fontSize="xs" color="gray.500">Total Active Vendors</Text>
-                                <Text fontSize="2xl" fontWeight="bold" color="gray.100">{pagination.total}</Text>
-                                <Text fontSize="xs" color="green.400">↑ 10 this month</Text>
+                                <Text fontSize="xs" color="gray.500">New This Month</Text>
+                                <Text fontSize="2xl" fontWeight="bold" color="gray.100">{newVendors}</Text>
+                            </Box>
+                        </HStack>
+                    </CardBody>
+                </Card>
+
+                <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
+                    <CardBody py={4}>
+                        <HStack spacing={3}>
+                            <Box p={2} bg="rgba(139, 92, 246, 0.1)" borderRadius="lg">
+                                <Icon as={Store} color="purple.400" boxSize={5} />
+                            </Box>
+                            <Box>
+                                <Text fontSize="xs" color="gray.500">Total Vendors</Text>
+                                <Text fontSize="2xl" fontWeight="bold" color="gray.100">{totalVendors}</Text>
                             </Box>
                         </HStack>
                     </CardBody>
@@ -332,6 +428,8 @@ export const MerchantApprovalPage: React.FC = () => {
                         variant="outline"
                         borderColor="gray.600"
                         leftIcon={<Bell size={14} />}
+                        onClick={handleBulkSendReminders}
+                        isDisabled={selectedVendors.length === 0}
                     >
                         Send Reminders
                     </Button>
@@ -373,24 +471,9 @@ export const MerchantApprovalPage: React.FC = () => {
                     <option value="pharmacy">Pharmacy</option>
                     <option value="grocery">Grocery</option>
                 </Select>
-                <Select
-                    w="120px"
-                    size="sm"
-                    bg="gray.800"
-                    borderColor="gray.700"
-                    value={cityFilter}
-                    onChange={(e) => setCityFilter(e.target.value)}
-                >
-                    <option value="all">All Cities</option>
-                    <option value="minna">Minna</option>
-                    <option value="abuja">Abuja</option>
-                </Select>
-                <Button size="sm" variant="ghost" leftIcon={<Filter size={14} />}>
-                    More Filters
-                </Button>
 
                 <Text fontSize="sm" color="gray.500" ml="auto">
-                    Showing urgent reviews first
+                    Showing {filteredVendors.length} vendors
                 </Text>
             </HStack>
 
@@ -398,7 +481,7 @@ export const MerchantApprovalPage: React.FC = () => {
             <Box bg="gray.900" borderRadius="xl" borderWidth="1px" borderColor="gray.800" overflow="hidden">
                 <Flex justify="space-between" align="center" p={4} borderBottomWidth="1px" borderColor="gray.800">
                     <Text fontWeight="600" color="gray.100">Merchant Approval Queue</Text>
-                    <Text fontSize="sm" color="purple.400">{pagination.total} pending approvals</Text>
+                    <Text fontSize="sm" color="purple.400">{pendingCount} pending approvals</Text>
                 </Flex>
 
                 {isLoading ? (
@@ -420,18 +503,16 @@ export const MerchantApprovalPage: React.FC = () => {
                                     </Th>
                                     <Th borderColor="gray.800" color="gray.500">VENDOR</Th>
                                     <Th borderColor="gray.800" color="gray.500">BUSINESS TYPE</Th>
-                                    <Th borderColor="gray.800" color="gray.500">REGISTRATION</Th>
+                                    <Th borderColor="gray.800" color="gray.500">CONTACT</Th>
                                     <Th borderColor="gray.800" color="gray.500">SUBMITTED</Th>
                                     <Th borderColor="gray.800" color="gray.500">STATUS</Th>
-                                    <Th borderColor="gray.800" color="gray.500">PRIORITY</Th>
-                                    <Th borderColor="gray.800" color="gray.500">KYC DOCUMENTS</Th>
                                     <Th borderColor="gray.800" color="gray.500">ACTIONS</Th>
                                 </Tr>
                             </Thead>
                             <Tbody>
                                 {filteredVendors.length === 0 ? (
                                     <Tr>
-                                        <Td colSpan={9} textAlign="center" py={8} borderColor="gray.800">
+                                        <Td colSpan={7} textAlign="center" py={8} borderColor="gray.800">
                                             <Text color="gray.500">No vendors found</Text>
                                         </Td>
                                     </Tr>
@@ -458,7 +539,7 @@ export const MerchantApprovalPage: React.FC = () => {
                                             </Td>
                                             <Td borderColor="gray.800">
                                                 <Badge colorScheme="blue" variant="subtle">
-                                                    {vendor.store?.category || 'Restaurant'}
+                                                    {vendor.store?.category || 'Not set'}
                                                 </Badge>
                                             </Td>
                                             <Td borderColor="gray.800">
@@ -471,34 +552,29 @@ export const MerchantApprovalPage: React.FC = () => {
                                                 {getStatusBadge(vendor.isVerified)}
                                             </Td>
                                             <Td borderColor="gray.800">
-                                                {getPriorityBadge(vendor.createdAt)}
-                                            </Td>
-                                            <Td borderColor="gray.800">
                                                 <HStack spacing={1}>
-                                                    <Badge colorScheme="green" size="sm">ID</Badge>
-                                                    <Badge colorScheme="green" size="sm">CAC</Badge>
-                                                    <Badge colorScheme="gray" size="sm">TIN</Badge>
-                                                </HStack>
-                                            </Td>
-                                            <Td borderColor="gray.800">
-                                                <HStack spacing={1}>
-                                                    <IconButton
-                                                        aria-label="Approve"
-                                                        icon={<Check size={14} />}
-                                                        size="xs"
-                                                        colorScheme="green"
-                                                        variant="ghost"
-                                                        onClick={() => approveVendorMutation.mutate(vendor.id)}
-                                                        isDisabled={vendor.isVerified}
-                                                    />
-                                                    <IconButton
-                                                        aria-label="Reject"
-                                                        icon={<X size={14} />}
-                                                        size="xs"
-                                                        colorScheme="red"
-                                                        variant="ghost"
-                                                        onClick={() => rejectVendorMutation.mutate(vendor.id)}
-                                                    />
+                                                    {!vendor.isVerified && (
+                                                        <IconButton
+                                                            aria-label="Approve"
+                                                            icon={<Check size={14} />}
+                                                            size="xs"
+                                                            colorScheme="green"
+                                                            variant="ghost"
+                                                            onClick={() => approveVendorMutation.mutate(vendor.id)}
+                                                            isLoading={approveVendorMutation.isPending}
+                                                        />
+                                                    )}
+                                                    {vendor.isVerified && (
+                                                        <IconButton
+                                                            aria-label="Revoke"
+                                                            icon={<X size={14} />}
+                                                            size="xs"
+                                                            colorScheme="red"
+                                                            variant="ghost"
+                                                            onClick={() => rejectVendorMutation.mutate(vendor.id)}
+                                                            isLoading={rejectVendorMutation.isPending}
+                                                        />
+                                                    )}
                                                     <Menu>
                                                         <MenuButton
                                                             as={IconButton}
@@ -507,13 +583,20 @@ export const MerchantApprovalPage: React.FC = () => {
                                                             variant="ghost"
                                                         />
                                                         <MenuList bg="gray.800" borderColor="gray.700">
-                                                            <MenuItem bg="gray.800" _hover={{ bg: 'gray.700' }} icon={<Eye size={14} />}>
+                                                            <MenuItem
+                                                                bg="gray.800"
+                                                                _hover={{ bg: 'gray.700' }}
+                                                                icon={<Eye size={14} />}
+                                                                onClick={() => handleViewDetails(vendor)}
+                                                            >
                                                                 View Details
                                                             </MenuItem>
-                                                            <MenuItem bg="gray.800" _hover={{ bg: 'gray.700' }} icon={<FileText size={14} />}>
-                                                                View Documents
-                                                            </MenuItem>
-                                                            <MenuItem bg="gray.800" _hover={{ bg: 'gray.700' }} icon={<Bell size={14} />}>
+                                                            <MenuItem
+                                                                bg="gray.800"
+                                                                _hover={{ bg: 'gray.700' }}
+                                                                icon={<Bell size={14} />}
+                                                                onClick={() => handleSendReminder(vendor)}
+                                                            >
                                                                 Send Reminder
                                                             </MenuItem>
                                                         </MenuList>
@@ -557,6 +640,172 @@ export const MerchantApprovalPage: React.FC = () => {
                     </HStack>
                 </Flex>
             </Box>
+
+            {/* Vendor Details Modal */}
+            <Modal isOpen={isOpen} onClose={onClose} size="xl">
+                <ModalOverlay />
+                <ModalContent bg="gray.900" borderColor="gray.700">
+                    <ModalHeader color="gray.100">
+                        Vendor Details
+                        {selectedVendor && (
+                            <Text fontSize="sm" color="gray.400" fontWeight="normal">
+                                {selectedVendor.store?.name || `${selectedVendor.firstName} ${selectedVendor.lastName}`}
+                            </Text>
+                        )}
+                    </ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        {selectedVendor && (
+                            <VStack spacing={4} align="stretch">
+                                {/* Business Info */}
+                                <Box p={4} bg="gray.800" borderRadius="md">
+                                    <SimpleGrid columns={2} spacing={4}>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Business Name</Text>
+                                            <Text color="gray.100">{selectedVendor.store?.name || 'Not set'}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Category</Text>
+                                            <Text color="gray.100">{selectedVendor.store?.category || 'Restaurant'}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Owner Name</Text>
+                                            <Text color="gray.100">{selectedVendor.firstName} {selectedVendor.lastName}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Status</Text>
+                                            {getStatusBadge(selectedVendor.isVerified)}
+                                        </Box>
+                                    </SimpleGrid>
+                                </Box>
+
+                                <Divider borderColor="gray.700" />
+
+                                {/* Contact Info */}
+                                <Text fontWeight="600" color="gray.100">Contact Information</Text>
+
+                                <SimpleGrid columns={1} spacing={3}>
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={Mail} color="blue.400" />
+                                                <Text color="gray.100">Email</Text>
+                                            </HStack>
+                                            <Text color="gray.300">{selectedVendor.email}</Text>
+                                        </Flex>
+                                    </Box>
+
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={Phone} color="green.400" />
+                                                <Text color="gray.100">Phone</Text>
+                                            </HStack>
+                                            <Text color="gray.300">{selectedVendor.mobile}</Text>
+                                        </Flex>
+                                    </Box>
+
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={MapPin} color="orange.400" />
+                                                <Text color="gray.100">Location</Text>
+                                            </HStack>
+                                            <Text color="gray.300">
+                                                {selectedVendor.store?.address?.city || 'Not specified'}
+                                                {selectedVendor.store?.address?.state ? `, ${selectedVendor.store.address.state}` : ''}
+                                            </Text>
+                                        </Flex>
+                                    </Box>
+
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={Calendar} color="purple.400" />
+                                                <Text color="gray.100">Registered</Text>
+                                            </HStack>
+                                            <Text color="gray.300">{formatDate(selectedVendor.createdAt)}</Text>
+                                        </Flex>
+                                    </Box>
+                                </SimpleGrid>
+
+                                <Divider borderColor="gray.700" />
+
+                                {/* Verification Documents */}
+                                <Text fontWeight="600" color="gray.100">Verification Documents</Text>
+
+                                <SimpleGrid columns={1} spacing={3}>
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={FileText} color="green.400" />
+                                                <Text color="gray.100">Business Registration (CAC)</Text>
+                                            </HStack>
+                                            <Badge colorScheme="gray">Coming Soon</Badge>
+                                        </Flex>
+                                    </Box>
+
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={FileText} color="blue.400" />
+                                                <Text color="gray.100">Government ID</Text>
+                                            </HStack>
+                                            <Badge colorScheme="gray">Coming Soon</Badge>
+                                        </Flex>
+                                    </Box>
+
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={FileText} color="purple.400" />
+                                                <Text color="gray.100">Tax Identification (TIN)</Text>
+                                            </HStack>
+                                            <Badge colorScheme="gray">Coming Soon</Badge>
+                                        </Flex>
+                                    </Box>
+                                </SimpleGrid>
+                            </VStack>
+                        )}
+                    </ModalBody>
+                    <ModalFooter>
+                        {selectedVendor && !selectedVendor.isVerified && (
+                            <>
+                                <Button
+                                    colorScheme="red"
+                                    variant="outline"
+                                    mr={3}
+                                    onClick={() => rejectVendorMutation.mutate(selectedVendor.id)}
+                                    isLoading={rejectVendorMutation.isPending}
+                                >
+                                    Reject
+                                </Button>
+                                <Button
+                                    colorScheme="green"
+                                    onClick={() => approveVendorMutation.mutate(selectedVendor.id)}
+                                    isLoading={approveVendorMutation.isPending}
+                                >
+                                    Approve
+                                </Button>
+                            </>
+                        )}
+                        {selectedVendor && selectedVendor.isVerified && (
+                            <>
+                                <Button
+                                    colorScheme="red"
+                                    variant="outline"
+                                    mr={3}
+                                    onClick={() => rejectVendorMutation.mutate(selectedVendor.id)}
+                                    isLoading={rejectVendorMutation.isPending}
+                                >
+                                    Revoke Verification
+                                </Button>
+                                <Button variant="ghost" onClick={onClose}>Close</Button>
+                            </>
+                        )}
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
         </Box>
     );
 };

@@ -27,133 +27,160 @@ import {
     Spinner,
     Card,
     CardBody,
+    Link,
+    Modal,
+    ModalOverlay,
+    ModalContent,
+    ModalHeader,
+    ModalBody,
+    ModalCloseButton,
+    ModalFooter,
+    useDisclosure,
+    VStack,
+    Divider,
 } from '@chakra-ui/react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Clock,
     CheckCircle,
     XCircle,
-    Calendar,
     Check,
-    Bell,
     FileText,
     MoreVertical,
     Eye,
-    Filter,
     ArrowUpDown,
+    ExternalLink,
+    ShieldCheck,
+    Users,
 } from 'lucide-react';
-
-// Mock data for license verifications
-const mockLicenses = [
-    {
-        id: '1',
-        professional: { name: 'Dr. Amina Yusuf', email: 'amina@email.com' },
-        licenseType: 'MDCN',
-        licenseNumber: 'MDCN-12345',
-        submittedDate: '2024-12-25',
-        status: 'Pending',
-        priority: 'High',
-        documents: ['License', 'ID'],
-    },
-    {
-        id: '2',
-        professional: { name: 'Dr. Chidi Okonkwo', email: 'chidi@email.com' },
-        licenseType: 'PCN',
-        licenseNumber: 'PCN-67890',
-        submittedDate: '2024-12-27',
-        status: 'Verified',
-        priority: 'Low',
-        documents: ['License', 'ID', 'Certificate'],
-    },
-    {
-        id: '3',
-        professional: { name: 'Dr. Fatima Ibrahim', email: 'fatima@email.com' },
-        licenseType: 'MDCN',
-        licenseNumber: 'MDCN-11111',
-        submittedDate: '2024-12-20',
-        status: 'Rejected',
-        priority: 'Medium',
-        documents: ['License'],
-    },
-];
+import { healthApi, Doctor, ApprovalStatus } from '../../api/health.api';
+import { useLocationFilter, matchesLocationFilter } from '../../context/LocationContext';
 
 export const LicensesVerificationsPage: React.FC = () => {
     const toast = useToast();
+    const queryClient = useQueryClient();
+    const { isOpen, onOpen, onClose } = useDisclosure();
+    const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
 
     const [statusFilter, setStatusFilter] = useState('all');
-    const [licenseTypeFilter, setLicenseTypeFilter] = useState('all');
-    const [cityFilter, setCityFilter] = useState('all');
     const [selectedLicenses, setSelectedLicenses] = useState<string[]>([]);
+    const { selectedLocation } = useLocationFilter();
 
-    const licenses = mockLicenses;
-    const isLoading = false;
+    // Fetch doctors with pending verification
+    const { data: pendingData, isLoading: pendingLoading } = useQuery({
+        queryKey: ['pendingDoctors'],
+        queryFn: () => healthApi.getDoctorsWithPendingVerification(),
+    });
+
+    // Fetch all doctors for statistics
+    const { data: allDoctorsData, isLoading: allLoading } = useQuery({
+        queryKey: ['allDoctors'],
+        queryFn: () => healthApi.getAllDoctors(),
+    });
+
+    // Verify doctor mutation
+    const verifyMutation = useMutation({
+        mutationFn: ({ doctorId, status }: { doctorId: string; status: ApprovalStatus }) =>
+            healthApi.verifyDoctor(doctorId, status),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['pendingDoctors'] });
+            queryClient.invalidateQueries({ queryKey: ['allDoctors'] });
+            toast({
+                title: 'Success',
+                description: 'Verification status updated',
+                status: 'success',
+                duration: 3000,
+            });
+            setSelectedLicenses([]);
+            onClose();
+        },
+        onError: (error: any) => {
+            toast({
+                title: 'Error',
+                description: error?.message || 'Failed to update verification status',
+                status: 'error',
+                duration: 3000,
+            });
+        },
+    });
+
+    const isLoading = pendingLoading || allLoading;
+    const allPendingDoctors = pendingData?.data || [];
+    const allDoctorsRaw = allDoctorsData?.data || [];
+
+    // Apply location filter
+    const pendingDoctors = allPendingDoctors.filter((d: Doctor) =>
+        matchesLocationFilter(d.location?.state || '', selectedLocation)
+    );
+    const allDoctors = allDoctorsRaw.filter((d: Doctor) =>
+        matchesLocationFilter(d.location?.state || '', selectedLocation)
+    );
 
     // Calculate stats
-    const pendingCount = licenses.filter(l => l.status === 'Pending').length;
-    const verifiedTodayCount = licenses.filter(l => l.status === 'Verified').length;
-    const rejectedCount = licenses.filter(l => l.status === 'Rejected').length;
-    const expiringCount = 0; // Would come from API
+    const pendingCount = pendingDoctors.length;
+    const verifiedCount = allDoctors.filter((d: Doctor) => d.professionDetails?.approvalStatus === ApprovalStatus.APPROVED).length;
+    const rejectedCount = allDoctors.filter((d: Doctor) => d.professionDetails?.approvalStatus === ApprovalStatus.REJECTED).length;
 
-    // Filter licenses
-    const filteredLicenses = licenses.filter(license => {
-        if (statusFilter !== 'all' && license.status.toLowerCase() !== statusFilter) return false;
-        if (licenseTypeFilter !== 'all' && license.licenseType !== licenseTypeFilter) return false;
-        return true;
-    });
+    // Get filtered list based on status
+    const getFilteredDoctors = () => {
+        if (statusFilter === 'pending') return pendingDoctors;
+        if (statusFilter === 'approved') return allDoctors.filter((d: Doctor) => d.professionDetails?.approvalStatus === ApprovalStatus.APPROVED);
+        if (statusFilter === 'rejected') return allDoctors.filter((d: Doctor) => d.professionDetails?.approvalStatus === ApprovalStatus.REJECTED);
+        return allDoctors;
+    };
+
+    const filteredDoctors = getFilteredDoctors();
 
     const handleSelectAll = (checked: boolean) => {
         if (checked) {
-            setSelectedLicenses(filteredLicenses.map(l => l.id));
+            setSelectedLicenses(filteredDoctors.map((d: Doctor) => d.id));
         } else {
             setSelectedLicenses([]);
         }
     };
 
-    const handleSelectLicense = (licenseId: string, checked: boolean) => {
+    const handleSelectLicense = (doctorId: string, checked: boolean) => {
         if (checked) {
-            setSelectedLicenses([...selectedLicenses, licenseId]);
+            setSelectedLicenses([...selectedLicenses, doctorId]);
         } else {
-            setSelectedLicenses(selectedLicenses.filter(id => id !== licenseId));
+            setSelectedLicenses(selectedLicenses.filter(id => id !== doctorId));
         }
     };
 
     const handleBulkApprove = () => {
-        toast({
-            title: `Approved ${selectedLicenses.length} licenses`,
-            status: 'success',
-            duration: 2000,
+        selectedLicenses.forEach(doctorId => {
+            verifyMutation.mutate({ doctorId, status: ApprovalStatus.APPROVED });
         });
-        setSelectedLicenses([]);
     };
 
-    const getStatusBadge = (status: string) => {
+    const handleApprove = (doctorId: string) => {
+        verifyMutation.mutate({ doctorId, status: ApprovalStatus.APPROVED });
+    };
+
+    const handleReject = (doctorId: string) => {
+        verifyMutation.mutate({ doctorId, status: ApprovalStatus.REJECTED });
+    };
+
+    const handleViewDocuments = (doctor: Doctor) => {
+        setSelectedDoctor(doctor);
+        onOpen();
+    };
+
+    const getStatusBadge = (status?: ApprovalStatus) => {
         switch (status) {
-            case 'Verified':
+            case ApprovalStatus.APPROVED:
                 return <Badge colorScheme="green" variant="subtle">Verified</Badge>;
-            case 'Pending':
+            case ApprovalStatus.PENDING:
                 return <Badge colorScheme="yellow" variant="subtle">Pending</Badge>;
-            case 'Rejected':
+            case ApprovalStatus.REJECTED:
                 return <Badge colorScheme="red" variant="subtle">Rejected</Badge>;
-            case 'Expired':
-                return <Badge colorScheme="orange" variant="subtle">Expired</Badge>;
             default:
-                return <Badge colorScheme="gray" variant="subtle">{status}</Badge>;
+                return <Badge colorScheme="gray" variant="subtle">Unknown</Badge>;
         }
     };
 
-    const getPriorityBadge = (priority: string) => {
-        switch (priority) {
-            case 'High':
-                return <Badge colorScheme="red" variant="subtle">High</Badge>;
-            case 'Medium':
-                return <Badge colorScheme="orange" variant="subtle">Medium</Badge>;
-            case 'Low':
-                return <Badge colorScheme="gray" variant="subtle">Low</Badge>;
-            default:
-                return <Badge colorScheme="gray" variant="subtle">{priority}</Badge>;
-        }
-    };
-
-    const formatDate = (dateString: string) => {
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return 'N/A';
         return new Date(dateString).toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
@@ -165,24 +192,9 @@ export const LicensesVerificationsPage: React.FC = () => {
         <Box>
             {/* Header */}
             <Flex justify="space-between" align="center" mb={6}>
-                <HStack spacing={4}>
-                    <Heading size="lg" color="gray.100">
-                        Licenses & Verifications
-                    </Heading>
-                    <Select
-                        w="140px"
-                        size="sm"
-                        bg="gray.800"
-                        borderColor="gray.700"
-                        value={cityFilter}
-                        onChange={(e) => setCityFilter(e.target.value)}
-                    >
-                        <option value="all">All Cities</option>
-                        <option value="minna">Minna</option>
-                        <option value="abuja">Abuja</option>
-                        <option value="lagos">Lagos</option>
-                    </Select>
-                </HStack>
+                <Heading size="lg" color="gray.100">
+                    Licenses & Verifications
+                </Heading>
             </Flex>
 
             {/* Stats Cards */}
@@ -192,8 +204,8 @@ export const LicensesVerificationsPage: React.FC = () => {
                         <Flex justify="space-between" align="flex-start">
                             <Box>
                                 <Text fontSize="xs" color="gray.500">Pending Verification</Text>
-                                <Text fontSize="2xl" fontWeight="bold" color="gray.100">{pendingCount}</Text>
-                                <Text fontSize="xs" color="gray.500">Avg 2.3 days</Text>
+                                <Text fontSize="2xl" fontWeight="bold" color="orange.400">{pendingCount}</Text>
+                                <Text fontSize="xs" color="gray.500">Awaiting review</Text>
                             </Box>
                             <Icon as={Clock} color="orange.400" boxSize={5} />
                         </Flex>
@@ -204,9 +216,9 @@ export const LicensesVerificationsPage: React.FC = () => {
                     <CardBody py={4}>
                         <Flex justify="space-between" align="flex-start">
                             <Box>
-                                <Text fontSize="xs" color="gray.500">Verified Today</Text>
-                                <Text fontSize="2xl" fontWeight="bold" color="gray.100">{verifiedTodayCount}</Text>
-                                <Text fontSize="xs" color="green.400">12 approved this week</Text>
+                                <Text fontSize="xs" color="gray.500">Verified</Text>
+                                <Text fontSize="2xl" fontWeight="bold" color="green.400">{verifiedCount}</Text>
+                                <Text fontSize="xs" color="green.400">Approved professionals</Text>
                             </Box>
                             <Icon as={CheckCircle} color="green.400" boxSize={5} />
                         </Flex>
@@ -217,9 +229,9 @@ export const LicensesVerificationsPage: React.FC = () => {
                     <CardBody py={4}>
                         <Flex justify="space-between" align="flex-start">
                             <Box>
-                                <Text fontSize="xs" color="gray.500">Rejected This Week</Text>
-                                <Text fontSize="2xl" fontWeight="bold" color="gray.100">{rejectedCount}</Text>
-                                <Text fontSize="xs" color="red.400">Most: Invalid docs</Text>
+                                <Text fontSize="xs" color="gray.500">Rejected</Text>
+                                <Text fontSize="2xl" fontWeight="bold" color="red.400">{rejectedCount}</Text>
+                                <Text fontSize="xs" color="red.400">Invalid documents</Text>
                             </Box>
                             <Icon as={XCircle} color="red.400" boxSize={5} />
                         </Flex>
@@ -230,11 +242,11 @@ export const LicensesVerificationsPage: React.FC = () => {
                     <CardBody py={4}>
                         <Flex justify="space-between" align="flex-start">
                             <Box>
-                                <Text fontSize="xs" color="gray.500">Expiring Soon</Text>
-                                <Text fontSize="2xl" fontWeight="bold" color="gray.100">{expiringCount}</Text>
-                                <Text fontSize="xs" color="orange.400">Next 30 days</Text>
+                                <Text fontSize="xs" color="gray.500">Total Professionals</Text>
+                                <Text fontSize="2xl" fontWeight="bold" color="gray.100">{allDoctors.length}</Text>
+                                <Text fontSize="xs" color="gray.500">All registered</Text>
                             </Box>
-                            <Icon as={Calendar} color="orange.400" boxSize={5} />
+                            <Icon as={Users} color="purple.400" boxSize={5} />
                         </Flex>
                     </CardBody>
                 </Card>
@@ -245,20 +257,13 @@ export const LicensesVerificationsPage: React.FC = () => {
                 <HStack spacing={3}>
                     <Button
                         size="sm"
-                        colorScheme="purple"
+                        colorScheme="green"
                         leftIcon={<Check size={14} />}
-                        isDisabled={selectedLicenses.length === 0}
+                        isDisabled={selectedLicenses.length === 0 || verifyMutation.isPending}
+                        isLoading={verifyMutation.isPending}
                         onClick={handleBulkApprove}
                     >
                         Bulk Approve ({selectedLicenses.length})
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        borderColor="gray.600"
-                        leftIcon={<Bell size={14} />}
-                    >
-                        Send Reminders
                     </Button>
                     <Button
                         size="sm"
@@ -285,42 +290,9 @@ export const LicensesVerificationsPage: React.FC = () => {
                     >
                         <option value="all">All Status</option>
                         <option value="pending">Pending</option>
-                        <option value="verified">Verified</option>
+                        <option value="approved">Verified</option>
                         <option value="rejected">Rejected</option>
                     </Select>
-                    <Select
-                        w="160px"
-                        size="sm"
-                        bg="gray.800"
-                        borderColor="gray.700"
-                        value={licenseTypeFilter}
-                        onChange={(e) => setLicenseTypeFilter(e.target.value)}
-                    >
-                        <option value="all">All License Types</option>
-                        <option value="MDCN">MDCN</option>
-                        <option value="PCN">PCN</option>
-                        <option value="NMCN">NMCN</option>
-                    </Select>
-                    <Select
-                        w="130px"
-                        size="sm"
-                        bg="gray.800"
-                        borderColor="gray.700"
-                        value={cityFilter}
-                        onChange={(e) => setCityFilter(e.target.value)}
-                    >
-                        <option value="all">All Cities</option>
-                        <option value="minna">Minna</option>
-                        <option value="abuja">Abuja</option>
-                    </Select>
-                    <Button size="sm" variant="ghost" leftIcon={<Filter size={14} />}>
-                        More Filters
-                    </Button>
-                </HStack>
-
-                <HStack spacing={2}>
-                    <Text fontSize="sm" color="gray.500">Showing urgent items first</Text>
-                    <Icon as={Calendar} color="red.400" boxSize={4} />
                 </HStack>
             </Flex>
 
@@ -335,7 +307,6 @@ export const LicensesVerificationsPage: React.FC = () => {
                         <Button size="xs" variant="ghost" leftIcon={<ArrowUpDown size={12} />}>
                             Sort
                         </Button>
-                        <Text fontSize="sm" color="gray.500">Date</Text>
                     </HStack>
                 </Flex>
 
@@ -350,80 +321,124 @@ export const LicensesVerificationsPage: React.FC = () => {
                                 <Tr>
                                     <Th borderColor="gray.800" w="40px">
                                         <Checkbox
-                                            isChecked={selectedLicenses.length === filteredLicenses.length && filteredLicenses.length > 0}
-                                            isIndeterminate={selectedLicenses.length > 0 && selectedLicenses.length < filteredLicenses.length}
+                                            isChecked={selectedLicenses.length === filteredDoctors.length && filteredDoctors.length > 0}
+                                            isIndeterminate={selectedLicenses.length > 0 && selectedLicenses.length < filteredDoctors.length}
                                             onChange={(e) => handleSelectAll(e.target.checked)}
                                             colorScheme="purple"
                                         />
                                     </Th>
                                     <Th borderColor="gray.800" color="gray.500">Professional</Th>
-                                    <Th borderColor="gray.800" color="gray.500">License Type</Th>
                                     <Th borderColor="gray.800" color="gray.500">License Number</Th>
-                                    <Th borderColor="gray.800" color="gray.500">Submitted Date</Th>
+                                    <Th borderColor="gray.800" color="gray.500">Specialty</Th>
+                                    <Th borderColor="gray.800" color="gray.500">Registered Date</Th>
                                     <Th borderColor="gray.800" color="gray.500">Status</Th>
-                                    <Th borderColor="gray.800" color="gray.500">Priority</Th>
                                     <Th borderColor="gray.800" color="gray.500">Documents</Th>
                                     <Th borderColor="gray.800" color="gray.500">Actions</Th>
                                 </Tr>
                             </Thead>
                             <Tbody>
-                                {filteredLicenses.length === 0 ? (
+                                {filteredDoctors.length === 0 ? (
                                     <Tr>
-                                        <Td colSpan={9} textAlign="center" py={8} borderColor="gray.800">
-                                            <Text color="gray.500">No records match the selected filters.</Text>
+                                        <Td colSpan={8} textAlign="center" py={8} borderColor="gray.800">
+                                            <Text color="gray.500">No records found</Text>
                                         </Td>
                                     </Tr>
                                 ) : (
-                                    filteredLicenses.map((license) => (
-                                        <Tr key={license.id} _hover={{ bg: 'gray.800' }}>
+                                    filteredDoctors.map((doctor: Doctor) => (
+                                        <Tr key={doctor.id} _hover={{ bg: 'gray.800' }}>
                                             <Td borderColor="gray.800">
                                                 <Checkbox
-                                                    isChecked={selectedLicenses.includes(license.id)}
-                                                    onChange={(e) => handleSelectLicense(license.id, e.target.checked)}
+                                                    isChecked={selectedLicenses.includes(doctor.id)}
+                                                    onChange={(e) => handleSelectLicense(doctor.id, e.target.checked)}
                                                     colorScheme="purple"
                                                 />
                                             </Td>
                                             <Td borderColor="gray.800">
                                                 <HStack spacing={3}>
-                                                    <Avatar size="sm" name={license.professional.name} bg="purple.500" />
+                                                    <Avatar
+                                                        size="sm"
+                                                        name={`${doctor.firstName || ''} ${doctor.lastName || ''}`}
+                                                        src={doctor.profilePic}
+                                                        bg="purple.500"
+                                                    />
                                                     <Box>
-                                                        <Text fontWeight="500" color="gray.100">{license.professional.name}</Text>
-                                                        <Text fontSize="xs" color="gray.500">{license.professional.email}</Text>
+                                                        <Text fontWeight="500" color="gray.100">
+                                                            Dr. {doctor.firstName} {doctor.lastName}
+                                                        </Text>
+                                                        <Text fontSize="xs" color="gray.500">{doctor.email}</Text>
                                                     </Box>
                                                 </HStack>
                                             </Td>
                                             <Td borderColor="gray.800">
-                                                <Badge colorScheme="blue" variant="subtle">{license.licenseType}</Badge>
+                                                <Text fontSize="sm" color="gray.400">
+                                                    {doctor.professionDetails?.medicalLicenseNumber || 'N/A'}
+                                                </Text>
                                             </Td>
                                             <Td borderColor="gray.800">
-                                                <Text fontSize="sm" color="gray.400">{license.licenseNumber}</Text>
+                                                <Badge colorScheme="blue" variant="subtle">
+                                                    {doctor.professionDetails?.specialty || 'General'}
+                                                </Badge>
                                             </Td>
                                             <Td borderColor="gray.800">
-                                                <Text fontSize="sm" color="gray.400">{formatDate(license.submittedDate)}</Text>
+                                                <Text fontSize="sm" color="gray.400">{formatDate(doctor.createdAt)}</Text>
                                             </Td>
                                             <Td borderColor="gray.800">
-                                                {getStatusBadge(license.status)}
-                                            </Td>
-                                            <Td borderColor="gray.800">
-                                                {getPriorityBadge(license.priority)}
+                                                {getStatusBadge(doctor.professionDetails?.approvalStatus)}
                                             </Td>
                                             <Td borderColor="gray.800">
                                                 <HStack spacing={1}>
-                                                    {license.documents.map((doc, idx) => (
-                                                        <Badge key={idx} colorScheme="green" size="sm">{doc}</Badge>
-                                                    ))}
+                                                    {doctor.professionDetails?.medicalLicense && (
+                                                        <Link href={doctor.professionDetails.medicalLicense} isExternal>
+                                                            <Badge colorScheme="green" size="sm" cursor="pointer">
+                                                                License
+                                                            </Badge>
+                                                        </Link>
+                                                    )}
+                                                    {doctor.professionDetails?.governmentId && (
+                                                        <Link href={doctor.professionDetails.governmentId} isExternal>
+                                                            <Badge colorScheme="blue" size="sm" cursor="pointer">
+                                                                ID
+                                                            </Badge>
+                                                        </Link>
+                                                    )}
+                                                    {doctor.professionDetails?.professionalCertificate && (
+                                                        <Link href={doctor.professionDetails.professionalCertificate} isExternal>
+                                                            <Badge colorScheme="purple" size="sm" cursor="pointer">
+                                                                Cert
+                                                            </Badge>
+                                                        </Link>
+                                                    )}
+                                                    {!doctor.professionDetails?.medicalLicense &&
+                                                        !doctor.professionDetails?.governmentId &&
+                                                        !doctor.professionDetails?.professionalCertificate && (
+                                                            <Text fontSize="xs" color="gray.500">No docs</Text>
+                                                        )}
                                                 </HStack>
                                             </Td>
                                             <Td borderColor="gray.800">
                                                 <HStack spacing={1}>
-                                                    <IconButton
-                                                        aria-label="Approve"
-                                                        icon={<Check size={14} />}
-                                                        size="xs"
-                                                        colorScheme="green"
-                                                        variant="ghost"
-                                                        isDisabled={license.status !== 'Pending'}
-                                                    />
+                                                    {doctor.professionDetails?.approvalStatus === ApprovalStatus.PENDING && (
+                                                        <>
+                                                            <IconButton
+                                                                aria-label="Approve"
+                                                                icon={<Check size={14} />}
+                                                                size="xs"
+                                                                colorScheme="green"
+                                                                variant="ghost"
+                                                                onClick={() => handleApprove(doctor.id)}
+                                                                isDisabled={verifyMutation.isPending}
+                                                            />
+                                                            <IconButton
+                                                                aria-label="Reject"
+                                                                icon={<XCircle size={14} />}
+                                                                size="xs"
+                                                                colorScheme="red"
+                                                                variant="ghost"
+                                                                onClick={() => handleReject(doctor.id)}
+                                                                isDisabled={verifyMutation.isPending}
+                                                            />
+                                                        </>
+                                                    )}
                                                     <Menu>
                                                         <MenuButton
                                                             as={IconButton}
@@ -432,12 +447,37 @@ export const LicensesVerificationsPage: React.FC = () => {
                                                             variant="ghost"
                                                         />
                                                         <MenuList bg="gray.800" borderColor="gray.700">
-                                                            <MenuItem bg="gray.800" _hover={{ bg: 'gray.700' }} icon={<Eye size={14} />}>
-                                                                View Documents
+                                                            <MenuItem
+                                                                bg="gray.800"
+                                                                _hover={{ bg: 'gray.700' }}
+                                                                icon={<Eye size={14} />}
+                                                                onClick={() => handleViewDocuments(doctor)}
+                                                            >
+                                                                View Details
                                                             </MenuItem>
-                                                            <MenuItem bg="gray.800" _hover={{ bg: 'gray.700' }} icon={<Bell size={14} />}>
-                                                                Send Reminder
-                                                            </MenuItem>
+                                                            {doctor.professionDetails?.approvalStatus === ApprovalStatus.APPROVED && (
+                                                                <MenuItem
+                                                                    bg="gray.800"
+                                                                    _hover={{ bg: 'gray.700' }}
+                                                                    icon={<XCircle size={14} />}
+                                                                    color="red.400"
+                                                                    onClick={() => handleReject(doctor.id)}
+                                                                >
+                                                                    Revoke Verification
+                                                                </MenuItem>
+                                                            )}
+                                                            {doctor.professionDetails?.approvalStatus === ApprovalStatus.REJECTED && (
+                                                                <MenuItem
+                                                                    bg="gray.800"
+                                                                    _hover={{ bg: 'gray.700' }}
+                                                                    icon={<CheckCircle size={14} />}
+                                                                    color="green.400"
+                                                                    onClick={() => handleApprove(doctor.id)}
+                                                                    isDisabled={verifyMutation.isPending}
+                                                                >
+                                                                    Re-Approve
+                                                                </MenuItem>
+                                                            )}
                                                         </MenuList>
                                                     </Menu>
                                                 </HStack>
@@ -450,6 +490,150 @@ export const LicensesVerificationsPage: React.FC = () => {
                     </Box>
                 )}
             </Box>
+
+            {/* Document Viewer Modal */}
+            <Modal isOpen={isOpen} onClose={onClose} size="xl">
+                <ModalOverlay />
+                <ModalContent bg="gray.900" borderColor="gray.700">
+                    <ModalHeader color="gray.100">
+                        Professional Details
+                        {selectedDoctor && (
+                            <Text fontSize="sm" color="gray.400" fontWeight="normal">
+                                Dr. {selectedDoctor.firstName} {selectedDoctor.lastName}
+                            </Text>
+                        )}
+                    </ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        {selectedDoctor && (
+                            <VStack spacing={4} align="stretch">
+                                {/* Professional Info */}
+                                <Box p={4} bg="gray.800" borderRadius="md">
+                                    <SimpleGrid columns={2} spacing={4}>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">License Number</Text>
+                                            <Text color="gray.100">{selectedDoctor.professionDetails?.medicalLicenseNumber || 'N/A'}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Specialty</Text>
+                                            <Text color="gray.100">{selectedDoctor.professionDetails?.specialty || 'General'}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Institution</Text>
+                                            <Text color="gray.100">{selectedDoctor.professionDetails?.medicalInstitution || 'N/A'}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Qualification</Text>
+                                            <Text color="gray.100">{selectedDoctor.professionDetails?.highestQualification || 'N/A'}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Experience</Text>
+                                            <Text color="gray.100">
+                                                {selectedDoctor.professionDetails?.yearOfExperience
+                                                    ? `${selectedDoctor.professionDetails.yearOfExperience} years`
+                                                    : 'N/A'}
+                                            </Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Languages</Text>
+                                            <Text color="gray.100">{selectedDoctor.professionDetails?.languageSpoken || 'N/A'}</Text>
+                                        </Box>
+                                    </SimpleGrid>
+                                </Box>
+
+                                <Divider borderColor="gray.700" />
+
+                                {/* Documents */}
+                                <Text fontWeight="600" color="gray.100">Verification Documents</Text>
+
+                                <SimpleGrid columns={1} spacing={3}>
+                                    {/* Medical License */}
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={FileText} color="green.400" />
+                                                <Text color="gray.100">Medical License</Text>
+                                            </HStack>
+                                            {selectedDoctor.professionDetails?.medicalLicense ? (
+                                                <Link href={selectedDoctor.professionDetails.medicalLicense} isExternal>
+                                                    <Button size="xs" colorScheme="purple" rightIcon={<ExternalLink size={12} />}>
+                                                        View Document
+                                                    </Button>
+                                                </Link>
+                                            ) : (
+                                                <Badge colorScheme="red">Not Uploaded</Badge>
+                                            )}
+                                        </Flex>
+                                    </Box>
+
+                                    {/* Government ID */}
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={FileText} color="blue.400" />
+                                                <Text color="gray.100">Government ID</Text>
+                                            </HStack>
+                                            {selectedDoctor.professionDetails?.governmentId ? (
+                                                <Link href={selectedDoctor.professionDetails.governmentId} isExternal>
+                                                    <Button size="xs" colorScheme="purple" rightIcon={<ExternalLink size={12} />}>
+                                                        View Document
+                                                    </Button>
+                                                </Link>
+                                            ) : (
+                                                <Badge colorScheme="red">Not Uploaded</Badge>
+                                            )}
+                                        </Flex>
+                                    </Box>
+
+                                    {/* Professional Certificate */}
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={FileText} color="purple.400" />
+                                                <Text color="gray.100">Professional Certificate</Text>
+                                            </HStack>
+                                            {selectedDoctor.professionDetails?.professionalCertificate ? (
+                                                <Link href={selectedDoctor.professionDetails.professionalCertificate} isExternal>
+                                                    <Button size="xs" colorScheme="purple" rightIcon={<ExternalLink size={12} />}>
+                                                        View Document
+                                                    </Button>
+                                                </Link>
+                                            ) : (
+                                                <Badge colorScheme="gray">Not Uploaded (Optional)</Badge>
+                                            )}
+                                        </Flex>
+                                    </Box>
+                                </SimpleGrid>
+                            </VStack>
+                        )}
+                    </ModalBody>
+                    <ModalFooter>
+                        {selectedDoctor?.professionDetails?.approvalStatus === ApprovalStatus.PENDING && (
+                            <>
+                                <Button
+                                    colorScheme="red"
+                                    variant="outline"
+                                    mr={3}
+                                    onClick={() => handleReject(selectedDoctor.id)}
+                                    isLoading={verifyMutation.isPending}
+                                >
+                                    Reject
+                                </Button>
+                                <Button
+                                    colorScheme="green"
+                                    onClick={() => handleApprove(selectedDoctor.id)}
+                                    isLoading={verifyMutation.isPending}
+                                >
+                                    Approve
+                                </Button>
+                            </>
+                        )}
+                        {selectedDoctor?.professionDetails?.approvalStatus !== ApprovalStatus.PENDING && (
+                            <Button variant="ghost" onClick={onClose}>Close</Button>
+                        )}
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
         </Box>
     );
 };

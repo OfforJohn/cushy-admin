@@ -29,163 +29,168 @@ import {
     Spinner,
     Card,
     CardBody,
+    Modal,
+    ModalOverlay,
+    ModalContent,
+    ModalHeader,
+    ModalBody,
+    ModalCloseButton,
+    ModalFooter,
+    useDisclosure,
+    Image,
+    VStack,
+    Divider,
+    Link,
 } from '@chakra-ui/react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Search,
     Users,
     Clock,
     CheckCircle,
     Star,
-    Plus,
     MoreVertical,
     Eye,
-    Edit,
-    Trash2,
     Download,
-    Filter,
     ArrowUpDown,
+    ShieldCheck,
+    XCircle,
+    FileText,
+    ExternalLink,
 } from 'lucide-react';
-
-// Mock data for health professionals
-const mockProfessionals = [
-    {
-        id: '1',
-        name: 'Dr. Amina Yusuf',
-        email: 'amina.yusuf@email.com',
-        specialty: 'General Practice',
-        license: 'MDCN-12345',
-        location: 'Minna',
-        fee: 5000,
-        status: 'Active',
-        rating: 4.8,
-        availability: 'Available',
-        avatar: null,
-    },
-    {
-        id: '2',
-        name: 'Dr. Chidi Okonkwo',
-        email: 'chidi.okonkwo@email.com',
-        specialty: 'Pediatrics',
-        license: 'MDCN-23456',
-        location: 'Abuja',
-        fee: 7500,
-        status: 'Active',
-        rating: 4.5,
-        availability: 'Busy',
-        avatar: null,
-    },
-    {
-        id: '3',
-        name: 'Dr. Fatima Ibrahim',
-        email: 'fatima.ibrahim@email.com',
-        specialty: 'Dermatology',
-        license: 'MDCN-34567',
-        location: 'Lagos',
-        fee: 10000,
-        status: 'Pending',
-        rating: 0,
-        availability: 'Offline',
-        avatar: null,
-    },
-];
+import { healthApi, Doctor, ApprovalStatus } from '../../api/health.api';
+import { formatCurrency } from '../../utils/formatters';
+import { useLocationFilter, matchesLocationFilter } from '../../context/LocationContext';
 
 export const HealthProfessionalsPage: React.FC = () => {
     const toast = useToast();
+    const queryClient = useQueryClient();
+    const { isOpen, onOpen, onClose } = useDisclosure();
+    const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [specialtyFilter, setSpecialtyFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
-    const [cityFilter, setCityFilter] = useState('all');
+    const { selectedLocation } = useLocationFilter();
 
-    // In production, this would fetch from a health professionals API
-    const professionals = mockProfessionals;
-    const isLoading = false;
+    // Fetch all doctors from API
+    const { data: doctorsData, isLoading, isError } = useQuery({
+        queryKey: ['doctors'],
+        queryFn: () => healthApi.getAllDoctors(),
+    });
+
+    // Fetch pending verifications
+    const { data: pendingData } = useQuery({
+        queryKey: ['pendingDoctors'],
+        queryFn: () => healthApi.getDoctorsWithPendingVerification(),
+    });
+
+    // Verify doctor mutation
+    const verifyMutation = useMutation({
+        mutationFn: ({ doctorId, status }: { doctorId: string; status: ApprovalStatus }) =>
+            healthApi.verifyDoctor(doctorId, status),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['doctors'] });
+            queryClient.invalidateQueries({ queryKey: ['pendingDoctors'] });
+            toast({
+                title: 'Success',
+                description: 'Verification status updated',
+                status: 'success',
+                duration: 3000,
+            });
+            onClose();
+        },
+        onError: (error: any) => {
+            toast({
+                title: 'Error',
+                description: error?.message || 'Failed to update verification status',
+                status: 'error',
+                duration: 3000,
+            });
+        },
+    });
+
+    const allProfessionals = doctorsData?.data || [];
+    const pendingProfessionals = pendingData?.data || [];
+
+    // Filter by location
+    const professionals = allProfessionals.filter((professional: Doctor) => {
+        const professionalLocation = professional.location?.state || professional.location?.address || '';
+        return matchesLocationFilter(professionalLocation, selectedLocation);
+    });
 
     // Calculate stats
     const totalProfessionals = professionals.length;
-    const pendingVerification = professionals.filter(p => p.status === 'Pending').length;
-    const activeToday = professionals.filter(p => p.availability === 'Available').length;
-    const avgRating = professionals.filter(p => p.rating > 0).reduce((acc, p) => acc + p.rating, 0) /
-        (professionals.filter(p => p.rating > 0).length || 1);
+    const pendingVerification = pendingProfessionals.filter((p: Doctor) =>
+        matchesLocationFilter(p.location?.state || '', selectedLocation)
+    ).length;
+    const activeProfessionals = professionals.filter(
+        (p: Doctor) => p.professionDetails?.approvalStatus === ApprovalStatus.APPROVED
+    ).length;
+    const avgRating = 4.5; // TODO: Calculate from actual ratings when available
 
     // Filter professionals
-    const filteredProfessionals = professionals.filter(professional => {
+    const filteredProfessionals = professionals.filter((professional: Doctor) => {
+        const fullName = `${professional.firstName || ''} ${professional.lastName || ''}`.trim();
         if (searchQuery) {
             const searchLower = searchQuery.toLowerCase();
-            if (!professional.name.toLowerCase().includes(searchLower) &&
-                !professional.email.toLowerCase().includes(searchLower)) {
+            if (
+                !fullName.toLowerCase().includes(searchLower) &&
+                !(professional.email || '').toLowerCase().includes(searchLower)
+            ) {
                 return false;
             }
         }
-        if (specialtyFilter !== 'all' && professional.specialty !== specialtyFilter) return false;
-        if (statusFilter !== 'all' && professional.status.toLowerCase() !== statusFilter) return false;
+        if (statusFilter !== 'all') {
+            const status = professional.professionDetails?.approvalStatus;
+            if (statusFilter === 'approved' && status !== ApprovalStatus.APPROVED) return false;
+            if (statusFilter === 'pending' && status !== ApprovalStatus.PENDING) return false;
+            if (statusFilter === 'rejected' && status !== ApprovalStatus.REJECTED) return false;
+        }
         return true;
     });
 
-    const getStatusBadge = (status: string) => {
+    const getStatusBadge = (status?: ApprovalStatus) => {
         switch (status) {
-            case 'Active':
-                return <Badge colorScheme="green" variant="subtle">Active</Badge>;
-            case 'Pending':
+            case ApprovalStatus.APPROVED:
+                return <Badge colorScheme="green" variant="subtle">Approved</Badge>;
+            case ApprovalStatus.PENDING:
                 return <Badge colorScheme="yellow" variant="subtle">Pending</Badge>;
-            case 'Suspended':
-                return <Badge colorScheme="red" variant="subtle">Suspended</Badge>;
+            case ApprovalStatus.REJECTED:
+                return <Badge colorScheme="red" variant="subtle">Rejected</Badge>;
             default:
-                return <Badge colorScheme="gray" variant="subtle">{status}</Badge>;
+                return <Badge colorScheme="gray" variant="subtle">Unknown</Badge>;
         }
     };
 
-    const getAvailabilityBadge = (availability: string) => {
-        switch (availability) {
-            case 'Available':
-                return <Badge colorScheme="green" variant="solid">Available</Badge>;
-            case 'Busy':
-                return <Badge colorScheme="orange" variant="solid">Busy</Badge>;
-            case 'Offline':
-                return <Badge colorScheme="gray" variant="solid">Offline</Badge>;
-            default:
-                return <Badge colorScheme="gray" variant="subtle">{availability}</Badge>;
+    const getAvailabilityBadge = (isVerified?: boolean) => {
+        if (isVerified) {
+            return <Badge colorScheme="green" variant="solid">Verified</Badge>;
         }
+        return <Badge colorScheme="gray" variant="solid">Unverified</Badge>;
+    };
+
+    const handleVerify = (doctorId: string, status: ApprovalStatus) => {
+        verifyMutation.mutate({ doctorId, status });
+    };
+
+    const handleViewDocuments = (doctor: Doctor) => {
+        setSelectedDoctor(doctor);
+        onOpen();
     };
 
     return (
         <Box>
             {/* Header */}
             <Flex justify="space-between" align="center" mb={6}>
-                <HStack spacing={4}>
-                    <Heading size="lg" color="gray.100">
-                        Professionals
-                    </Heading>
-                    <Select
-                        w="140px"
-                        size="sm"
-                        bg="gray.800"
-                        borderColor="gray.700"
-                        value={cityFilter}
-                        onChange={(e) => setCityFilter(e.target.value)}
-                    >
-                        <option value="all">All Cities</option>
-                        <option value="minna">Minna</option>
-                        <option value="abuja">Abuja</option>
-                        <option value="lagos">Lagos</option>
-                    </Select>
-                </HStack>
+                <Heading size="lg" color="gray.100">
+                    Professionals
+                </Heading>
             </Flex>
 
             {/* Sub-header with search */}
             <Flex justify="space-between" align="center" mb={6}>
                 <HStack spacing={4}>
                     <Text fontSize="lg" fontWeight="500" color="gray.300">Health Professionals</Text>
-                    <Select
-                        w="140px"
-                        size="sm"
-                        bg="gray.800"
-                        borderColor="gray.700"
-                        defaultValue="all"
-                    >
-                        <option value="all">All Cities</option>
-                    </Select>
                 </HStack>
                 <HStack spacing={4}>
                     <InputGroup maxW="250px">
@@ -201,10 +206,6 @@ export const HealthProfessionalsPage: React.FC = () => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </InputGroup>
-                    <HStack spacing={2}>
-                        <Avatar size="xs" name="Sarah Admin" bg="purple.500" />
-                        <Text fontSize="sm" color="gray.400">Sarah Admin</Text>
-                    </HStack>
                 </HStack>
             </Flex>
 
@@ -216,7 +217,7 @@ export const HealthProfessionalsPage: React.FC = () => {
                             <Box>
                                 <Text fontSize="xs" color="gray.500">Total Professionals</Text>
                                 <Text fontSize="2xl" fontWeight="bold" color="gray.100">{totalProfessionals}</Text>
-                                <Text fontSize="xs" color="green.400">↑ 0 new this week</Text>
+                                <Text fontSize="xs" color="green.400">Registered professionals</Text>
                             </Box>
                             <Icon as={Users} color="purple.400" boxSize={5} />
                         </Flex>
@@ -228,8 +229,8 @@ export const HealthProfessionalsPage: React.FC = () => {
                         <Flex justify="space-between" align="flex-start">
                             <Box>
                                 <Text fontSize="xs" color="gray.500">Verification Pending</Text>
-                                <Text fontSize="2xl" fontWeight="bold" color="gray.100">{pendingVerification}</Text>
-                                <Text fontSize="xs" color="gray.500">Avg 2.3 days</Text>
+                                <Text fontSize="2xl" fontWeight="bold" color="orange.400">{pendingVerification}</Text>
+                                <Text fontSize="xs" color="gray.500">Awaiting review</Text>
                             </Box>
                             <Icon as={Clock} color="orange.400" boxSize={5} />
                         </Flex>
@@ -240,9 +241,9 @@ export const HealthProfessionalsPage: React.FC = () => {
                     <CardBody py={4}>
                         <Flex justify="space-between" align="flex-start">
                             <Box>
-                                <Text fontSize="xs" color="gray.500">Active Today</Text>
-                                <Text fontSize="2xl" fontWeight="bold" color="gray.100">{activeToday}</Text>
-                                <Text fontSize="xs" color="green.400">↑ 89% availability</Text>
+                                <Text fontSize="xs" color="gray.500">Approved</Text>
+                                <Text fontSize="2xl" fontWeight="bold" color="green.400">{activeProfessionals}</Text>
+                                <Text fontSize="xs" color="green.400">Verified professionals</Text>
                             </Box>
                             <Icon as={CheckCircle} color="green.400" boxSize={5} />
                         </Flex>
@@ -255,7 +256,7 @@ export const HealthProfessionalsPage: React.FC = () => {
                             <Box>
                                 <Text fontSize="xs" color="gray.500">Avg Rating</Text>
                                 <Text fontSize="2xl" fontWeight="bold" color="gray.100">{avgRating.toFixed(1)}</Text>
-                                <Text fontSize="xs" color="gray.500">Based on 1,247 reviews</Text>
+                                <Text fontSize="xs" color="gray.500">Based on consultations</Text>
                             </Box>
                             <Icon as={Star} color="yellow.400" boxSize={5} />
                         </Flex>
@@ -267,20 +268,6 @@ export const HealthProfessionalsPage: React.FC = () => {
             <Flex justify="space-between" align="center" mb={4} flexWrap="wrap" gap={3}>
                 <HStack spacing={3}>
                     <Select
-                        w="150px"
-                        size="sm"
-                        bg="gray.800"
-                        borderColor="gray.700"
-                        value={specialtyFilter}
-                        onChange={(e) => setSpecialtyFilter(e.target.value)}
-                    >
-                        <option value="all">All Specialties</option>
-                        <option value="General Practice">General Practice</option>
-                        <option value="Pediatrics">Pediatrics</option>
-                        <option value="Dermatology">Dermatology</option>
-                        <option value="Cardiology">Cardiology</option>
-                    </Select>
-                    <Select
                         w="130px"
                         size="sm"
                         bg="gray.800"
@@ -289,24 +276,14 @@ export const HealthProfessionalsPage: React.FC = () => {
                         onChange={(e) => setStatusFilter(e.target.value)}
                     >
                         <option value="all">All Status</option>
-                        <option value="active">Active</option>
+                        <option value="approved">Approved</option>
                         <option value="pending">Pending</option>
-                        <option value="suspended">Suspended</option>
+                        <option value="rejected">Rejected</option>
                     </Select>
-                    <Button size="sm" variant="ghost" leftIcon={<Filter size={14} />}>
-                        More Filters
-                    </Button>
                     <Button size="sm" variant="ghost" leftIcon={<Download size={14} />}>
                         Export CSV
                     </Button>
                 </HStack>
-                <Button
-                    size="sm"
-                    colorScheme="purple"
-                    leftIcon={<Plus size={14} />}
-                >
-                    Add Professional
-                </Button>
             </Flex>
 
             {/* Table */}
@@ -322,6 +299,10 @@ export const HealthProfessionalsPage: React.FC = () => {
                     <Flex justify="center" py={12}>
                         <Spinner size="lg" color="purple.500" />
                     </Flex>
+                ) : isError ? (
+                    <Flex justify="center" py={12}>
+                        <Text color="red.400">Failed to load professionals. Make sure the backend is running.</Text>
+                    </Flex>
                 ) : (
                     <Box overflowX="auto">
                         <Table variant="simple" size="sm">
@@ -329,57 +310,65 @@ export const HealthProfessionalsPage: React.FC = () => {
                                 <Tr>
                                     <Th borderColor="gray.800" color="gray.500">Professional</Th>
                                     <Th borderColor="gray.800" color="gray.500">Specialty</Th>
-                                    <Th borderColor="gray.800" color="gray.500">License</Th>
-                                    <Th borderColor="gray.800" color="gray.500">Location</Th>
-                                    <Th borderColor="gray.800" color="gray.500">Fee</Th>
+                                    <Th borderColor="gray.800" color="gray.500">License No.</Th>
+                                    <Th borderColor="gray.800" color="gray.500">Experience</Th>
+                                    <Th borderColor="gray.800" color="gray.500">Consultation Fee</Th>
                                     <Th borderColor="gray.800" color="gray.500">Status</Th>
-                                    <Th borderColor="gray.800" color="gray.500">Rating</Th>
-                                    <Th borderColor="gray.800" color="gray.500">Availability</Th>
                                     <Th borderColor="gray.800" color="gray.500">Actions</Th>
                                 </Tr>
                             </Thead>
                             <Tbody>
                                 {filteredProfessionals.length === 0 ? (
                                     <Tr>
-                                        <Td colSpan={9} textAlign="center" py={8} borderColor="gray.800">
+                                        <Td colSpan={7} textAlign="center" py={8} borderColor="gray.800">
                                             <Text color="gray.500">No professionals found</Text>
                                         </Td>
                                     </Tr>
                                 ) : (
-                                    filteredProfessionals.map((professional) => (
+                                    filteredProfessionals.map((professional: Doctor) => (
                                         <Tr key={professional.id} _hover={{ bg: 'gray.800' }}>
                                             <Td borderColor="gray.800">
                                                 <HStack spacing={3}>
-                                                    <Avatar size="sm" name={professional.name} bg="purple.500" />
+                                                    <Avatar
+                                                        size="sm"
+                                                        name={`${professional.firstName || ''} ${professional.lastName || ''}`}
+                                                        src={professional.profilePic}
+                                                        bg="purple.500"
+                                                    />
                                                     <Box>
-                                                        <Text fontWeight="500" color="gray.100">{professional.name}</Text>
+                                                        <Text fontWeight="500" color="gray.100">
+                                                            Dr. {professional.firstName} {professional.lastName}
+                                                        </Text>
                                                         <Text fontSize="xs" color="gray.500">{professional.email}</Text>
                                                     </Box>
                                                 </HStack>
                                             </Td>
                                             <Td borderColor="gray.800">
-                                                <Badge colorScheme="blue" variant="subtle">{professional.specialty}</Badge>
+                                                <Badge colorScheme="blue" variant="subtle">
+                                                    {professional.professionDetails?.specialty || 'General'}
+                                                </Badge>
                                             </Td>
                                             <Td borderColor="gray.800">
-                                                <Text fontSize="sm" color="gray.400">{professional.license}</Text>
+                                                <Text fontSize="sm" color="gray.400">
+                                                    {professional.professionDetails?.medicalLicenseNumber || 'N/A'}
+                                                </Text>
                                             </Td>
                                             <Td borderColor="gray.800">
-                                                <Text fontSize="sm" color="gray.400">{professional.location}</Text>
+                                                <Text fontSize="sm" color="gray.400">
+                                                    {professional.professionDetails?.yearOfExperience
+                                                        ? `${professional.professionDetails.yearOfExperience} years`
+                                                        : 'N/A'}
+                                                </Text>
                                             </Td>
                                             <Td borderColor="gray.800">
-                                                <Text fontSize="sm" color="gray.100">₦{professional.fee.toLocaleString()}</Text>
+                                                <Text fontSize="sm" color="green.400" fontWeight="500">
+                                                    {professional.professionDetails?.consultationFee
+                                                        ? formatCurrency(professional.professionDetails.consultationFee)
+                                                        : 'Not set'}
+                                                </Text>
                                             </Td>
                                             <Td borderColor="gray.800">
-                                                {getStatusBadge(professional.status)}
-                                            </Td>
-                                            <Td borderColor="gray.800">
-                                                <HStack spacing={1}>
-                                                    <Icon as={Star} color="yellow.400" boxSize={3} fill="yellow.400" />
-                                                    <Text fontSize="sm" color="gray.100">{professional.rating || '-'}</Text>
-                                                </HStack>
-                                            </Td>
-                                            <Td borderColor="gray.800">
-                                                {getAvailabilityBadge(professional.availability)}
+                                                {getStatusBadge(professional.professionDetails?.approvalStatus)}
                                             </Td>
                                             <Td borderColor="gray.800">
                                                 <Menu>
@@ -390,15 +379,61 @@ export const HealthProfessionalsPage: React.FC = () => {
                                                         variant="ghost"
                                                     />
                                                     <MenuList bg="gray.800" borderColor="gray.700">
-                                                        <MenuItem bg="gray.800" _hover={{ bg: 'gray.700' }} icon={<Eye size={14} />}>
-                                                            View Profile
+                                                        <MenuItem
+                                                            bg="gray.800"
+                                                            _hover={{ bg: 'gray.700' }}
+                                                            icon={<FileText size={14} />}
+                                                            onClick={() => handleViewDocuments(professional)}
+                                                        >
+                                                            View Documents
                                                         </MenuItem>
-                                                        <MenuItem bg="gray.800" _hover={{ bg: 'gray.700' }} icon={<Edit size={14} />}>
-                                                            Edit
-                                                        </MenuItem>
-                                                        <MenuItem bg="gray.800" _hover={{ bg: 'gray.700' }} color="red.400" icon={<Trash2 size={14} />}>
-                                                            Suspend
-                                                        </MenuItem>
+                                                        {professional.professionDetails?.approvalStatus === ApprovalStatus.PENDING && (
+                                                            <>
+                                                                <MenuItem
+                                                                    bg="gray.800"
+                                                                    _hover={{ bg: 'gray.700' }}
+                                                                    icon={<ShieldCheck size={14} />}
+                                                                    color="green.400"
+                                                                    onClick={() => handleVerify(professional.id, ApprovalStatus.APPROVED)}
+                                                                    isDisabled={verifyMutation.isPending}
+                                                                >
+                                                                    Approve
+                                                                </MenuItem>
+                                                                <MenuItem
+                                                                    bg="gray.800"
+                                                                    _hover={{ bg: 'gray.700' }}
+                                                                    icon={<XCircle size={14} />}
+                                                                    color="red.400"
+                                                                    onClick={() => handleVerify(professional.id, ApprovalStatus.REJECTED)}
+                                                                    isDisabled={verifyMutation.isPending}
+                                                                >
+                                                                    Reject
+                                                                </MenuItem>
+                                                            </>
+                                                        )}
+                                                        {professional.professionDetails?.approvalStatus === ApprovalStatus.APPROVED && (
+                                                            <MenuItem
+                                                                bg="gray.800"
+                                                                _hover={{ bg: 'gray.700' }}
+                                                                color="red.400"
+                                                                icon={<XCircle size={14} />}
+                                                                onClick={() => handleVerify(professional.id, ApprovalStatus.REJECTED)}
+                                                            >
+                                                                Revoke Approval
+                                                            </MenuItem>
+                                                        )}
+                                                        {professional.professionDetails?.approvalStatus === ApprovalStatus.REJECTED && (
+                                                            <MenuItem
+                                                                bg="gray.800"
+                                                                _hover={{ bg: 'gray.700' }}
+                                                                color="green.400"
+                                                                icon={<ShieldCheck size={14} />}
+                                                                onClick={() => handleVerify(professional.id, ApprovalStatus.APPROVED)}
+                                                                isDisabled={verifyMutation.isPending}
+                                                            >
+                                                                Re-Approve
+                                                            </MenuItem>
+                                                        )}
                                                     </MenuList>
                                                 </Menu>
                                             </Td>
@@ -410,6 +445,163 @@ export const HealthProfessionalsPage: React.FC = () => {
                     </Box>
                 )}
             </Box>
+
+            {/* Document Viewer Modal */}
+            <Modal isOpen={isOpen} onClose={onClose} size="xl">
+                <ModalOverlay />
+                <ModalContent bg="gray.900" borderColor="gray.700">
+                    <ModalHeader color="gray.100">
+                        Professional Documents
+                        {selectedDoctor && (
+                            <Text fontSize="sm" color="gray.400" fontWeight="normal">
+                                Dr. {selectedDoctor.firstName} {selectedDoctor.lastName}
+                            </Text>
+                        )}
+                    </ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        {selectedDoctor && (
+                            <VStack spacing={4} align="stretch">
+                                {/* Professional Info */}
+                                <Box p={4} bg="gray.800" borderRadius="md">
+                                    <SimpleGrid columns={2} spacing={4}>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">License Number</Text>
+                                            <Text color="gray.100">{selectedDoctor.professionDetails?.medicalLicenseNumber || 'N/A'}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Specialty</Text>
+                                            <Text color="gray.100">{selectedDoctor.professionDetails?.specialty || 'General'}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Institution</Text>
+                                            <Text color="gray.100">{selectedDoctor.professionDetails?.medicalInstitution || 'N/A'}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Qualification</Text>
+                                            <Text color="gray.100">{selectedDoctor.professionDetails?.highestQualification || 'N/A'}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Experience</Text>
+                                            <Text color="gray.100">
+                                                {selectedDoctor.professionDetails?.yearOfExperience
+                                                    ? `${selectedDoctor.professionDetails.yearOfExperience} years`
+                                                    : 'N/A'}
+                                            </Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Languages</Text>
+                                            <Text color="gray.100">{selectedDoctor.professionDetails?.languageSpoken || 'N/A'}</Text>
+                                        </Box>
+                                    </SimpleGrid>
+                                </Box>
+
+                                <Divider borderColor="gray.700" />
+
+                                {/* Documents */}
+                                <Text fontWeight="600" color="gray.100">Uploaded Documents</Text>
+
+                                <SimpleGrid columns={1} spacing={3}>
+                                    {/* Medical License */}
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={FileText} color="green.400" />
+                                                <Text color="gray.100">Medical License</Text>
+                                            </HStack>
+                                            {selectedDoctor.professionDetails?.medicalLicense ? (
+                                                <Link href={selectedDoctor.professionDetails.medicalLicense} isExternal>
+                                                    <Button size="xs" colorScheme="purple" rightIcon={<ExternalLink size={12} />}>
+                                                        View
+                                                    </Button>
+                                                </Link>
+                                            ) : (
+                                                <Badge colorScheme="red">Not Uploaded</Badge>
+                                            )}
+                                        </Flex>
+                                    </Box>
+
+                                    {/* Government ID */}
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={FileText} color="blue.400" />
+                                                <Text color="gray.100">Government ID</Text>
+                                            </HStack>
+                                            {selectedDoctor.professionDetails?.governmentId ? (
+                                                <Link href={selectedDoctor.professionDetails.governmentId} isExternal>
+                                                    <Button size="xs" colorScheme="purple" rightIcon={<ExternalLink size={12} />}>
+                                                        View
+                                                    </Button>
+                                                </Link>
+                                            ) : (
+                                                <Badge colorScheme="red">Not Uploaded</Badge>
+                                            )}
+                                        </Flex>
+                                    </Box>
+
+                                    {/* Professional Certificate */}
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={FileText} color="purple.400" />
+                                                <Text color="gray.100">Professional Certificate</Text>
+                                            </HStack>
+                                            {selectedDoctor.professionDetails?.professionalCertificate ? (
+                                                <Link href={selectedDoctor.professionDetails.professionalCertificate} isExternal>
+                                                    <Button size="xs" colorScheme="purple" rightIcon={<ExternalLink size={12} />}>
+                                                        View
+                                                    </Button>
+                                                </Link>
+                                            ) : (
+                                                <Badge colorScheme="gray">Not Uploaded</Badge>
+                                            )}
+                                        </Flex>
+                                    </Box>
+                                </SimpleGrid>
+
+                                {/* Bio */}
+                                {selectedDoctor.professionDetails?.professionalBio && (
+                                    <>
+                                        <Divider borderColor="gray.700" />
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500" mb={1}>Professional Bio</Text>
+                                            <Text color="gray.300" fontSize="sm">
+                                                {selectedDoctor.professionDetails.professionalBio}
+                                            </Text>
+                                        </Box>
+                                    </>
+                                )}
+                            </VStack>
+                        )}
+                    </ModalBody>
+                    <ModalFooter>
+                        {selectedDoctor?.professionDetails?.approvalStatus === ApprovalStatus.PENDING && (
+                            <>
+                                <Button
+                                    colorScheme="red"
+                                    variant="outline"
+                                    mr={3}
+                                    onClick={() => handleVerify(selectedDoctor.id, ApprovalStatus.REJECTED)}
+                                    isLoading={verifyMutation.isPending}
+                                >
+                                    Reject
+                                </Button>
+                                <Button
+                                    colorScheme="green"
+                                    onClick={() => handleVerify(selectedDoctor.id, ApprovalStatus.APPROVED)}
+                                    isLoading={verifyMutation.isPending}
+                                >
+                                    Approve
+                                </Button>
+                            </>
+                        )}
+                        {selectedDoctor?.professionDetails?.approvalStatus !== ApprovalStatus.PENDING && (
+                            <Button variant="ghost" onClick={onClose}>Close</Button>
+                        )}
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
         </Box>
     );
 };

@@ -29,6 +29,7 @@ import {
     FormLabel,
     Image,
     SimpleGrid,
+    Divider,
 } from '@chakra-ui/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -48,6 +49,10 @@ import {
     ShoppingCart,
     Apple,
     UtensilsCrossed,
+    Mail,
+    Phone,
+    Calendar,
+    FileText,
 } from 'lucide-react';
 import { adminApi } from '../../api/admin.api';
 import { storesApi } from '../../api/stores.api';
@@ -71,6 +76,7 @@ export const MerchantsPage: React.FC = () => {
     const [verificationNote, setVerificationNote] = useState('');
 
     const { isOpen, onOpen, onClose } = useDisclosure();
+    const { isOpen: isDetailsOpen, onOpen: onDetailsOpen, onClose: onDetailsClose } = useDisclosure();
     const toast = useToast();
     const queryClient = useQueryClient();
     const { selectedLocation } = useLocationFilter();
@@ -155,6 +161,20 @@ export const MerchantsPage: React.FC = () => {
                 reason: verificationNote,
             });
         }
+    };
+
+    const handleViewDetails = (vendor: StoreType) => {
+        setSelectedVendor(vendor);
+        onDetailsOpen();
+    };
+
+    const formatDate = (dateString: string) => {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        });
     };
 
     const getCategoryColor = (category: StoreCategory) => {
@@ -265,7 +285,10 @@ export const MerchantsPage: React.FC = () => {
 
     const renderActions = (vendor: StoreType) => (
         <>
-            <MenuItem icon={<Eye size={16} />}>
+            <MenuItem
+                icon={<Eye size={16} />}
+                onClick={() => handleViewDetails(vendor)}
+            >
                 View Details
             </MenuItem>
             <MenuItem icon={<Wallet size={16} />}>
@@ -574,6 +597,193 @@ export const MerchantsPage: React.FC = () => {
                     </ModalFooter>
                 </ModalContent>
             </Modal >
+
+            {/* Vendor Details Modal */}
+            <Modal isOpen={isDetailsOpen} onClose={onDetailsClose} size="xl">
+                <ModalOverlay />
+                <ModalContent bg="gray.900" borderColor="gray.700">
+                    <ModalHeader color="gray.100">
+                        Vendor Details
+                        {selectedVendor && (
+                            <Text fontSize="sm" color="gray.400" fontWeight="normal">
+                                {selectedVendor.name || 'Unnamed Store'}
+                            </Text>
+                        )}
+                    </ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        {selectedVendor && (
+                            <VStack spacing={4} align="stretch">
+                                {/* Business Info */}
+                                <Box p={4} bg="gray.800" borderRadius="md">
+                                    <SimpleGrid columns={2} spacing={4}>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Business Name</Text>
+                                            <Text color="gray.100">{selectedVendor.name || 'Not set'}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Category</Text>
+                                            <Badge colorScheme={getCategoryColor(selectedVendor.category)}>
+                                                {STORE_CATEGORY_LABELS[selectedVendor.category] || selectedVendor.category}
+                                            </Badge>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Rating</Text>
+                                            <HStack spacing={1}>
+                                                <Icon as={Star} color="yellow.400" boxSize={4} fill="currentColor" />
+                                                <Text color="gray.100">{selectedVendor.rating?.toFixed(1) || '0.0'}</Text>
+                                            </HStack>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Status</Text>
+                                            <VerificationStatusPill isVerified={selectedVendor.isVerified} />
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Total Orders</Text>
+                                            <Text color="gray.100">{selectedVendor.ordersCount || 0}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" color="gray.500">Wallet Balance</Text>
+                                            <Text color="green.400">{formatCurrency(selectedVendor.walletBalance || 0)}</Text>
+                                        </Box>
+                                    </SimpleGrid>
+                                </Box>
+
+                                <Divider borderColor="gray.700" />
+
+                                {/* Contact Info */}
+                                <Text fontWeight="600" color="gray.100">Contact Information</Text>
+
+                                <SimpleGrid columns={1} spacing={3}>
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={Mail} color="blue.400" />
+                                                <Text color="gray.100">Email</Text>
+                                            </HStack>
+                                            <Text color="gray.300">{selectedVendor.email || 'N/A'}</Text>
+                                        </Flex>
+                                    </Box>
+
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={Phone} color="green.400" />
+                                                <Text color="gray.100">Phone</Text>
+                                            </HStack>
+                                            <Text color="gray.300">{selectedVendor.mobile || 'N/A'}</Text>
+                                        </Flex>
+                                    </Box>
+
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={MapPin} color="orange.400" />
+                                                <Text color="gray.100">Location</Text>
+                                            </HStack>
+                                            <Text color="gray.300">
+                                                {selectedVendor.address?.city || 'Not specified'}
+                                                {selectedVendor.address?.state ? `, ${selectedVendor.address.state}` : ''}
+                                            </Text>
+                                        </Flex>
+                                    </Box>
+
+                                    {selectedVendor.address?.address && (
+                                        <Box p={3} bg="gray.800" borderRadius="md">
+                                            <Flex justify="space-between" align="center">
+                                                <HStack>
+                                                    <Icon as={Store} color="purple.400" />
+                                                    <Text color="gray.100">Full Address</Text>
+                                                </HStack>
+                                                <Text color="gray.300" maxW="250px" noOfLines={2} textAlign="right">
+                                                    {selectedVendor.address.address}
+                                                </Text>
+                                            </Flex>
+                                        </Box>
+                                    )}
+                                </SimpleGrid>
+
+                                <Divider borderColor="gray.700" />
+
+                                {/* Verification Documents */}
+                                <Text fontWeight="600" color="gray.100">Verification Documents</Text>
+
+                                <SimpleGrid columns={1} spacing={3}>
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={FileText} color="green.400" />
+                                                <Text color="gray.100">Business Registration (CAC)</Text>
+                                            </HStack>
+                                            <Badge colorScheme="gray">Coming Soon</Badge>
+                                        </Flex>
+                                    </Box>
+
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={FileText} color="blue.400" />
+                                                <Text color="gray.100">Government ID</Text>
+                                            </HStack>
+                                            <Badge colorScheme="gray">Coming Soon</Badge>
+                                        </Flex>
+                                    </Box>
+
+                                    <Box p={3} bg="gray.800" borderRadius="md">
+                                        <Flex justify="space-between" align="center">
+                                            <HStack>
+                                                <Icon as={FileText} color="purple.400" />
+                                                <Text color="gray.100">Tax Identification (TIN)</Text>
+                                            </HStack>
+                                            <Badge colorScheme="gray">Coming Soon</Badge>
+                                        </Flex>
+                                    </Box>
+                                </SimpleGrid>
+                            </VStack>
+                        )}
+                    </ModalBody>
+                    <ModalFooter>
+                        {selectedVendor && !selectedVendor.isVerified && (
+                            <>
+                                <Button
+                                    colorScheme="red"
+                                    variant="outline"
+                                    mr={3}
+                                    onClick={() => {
+                                        onDetailsClose();
+                                        handleVerify(selectedVendor, false);
+                                    }}
+                                >
+                                    Reject
+                                </Button>
+                                <Button
+                                    colorScheme="green"
+                                    onClick={() => handleVerify(selectedVendor, true)}
+                                    isLoading={verificationMutation.isPending}
+                                >
+                                    Approve
+                                </Button>
+                            </>
+                        )}
+                        {selectedVendor && selectedVendor.isVerified && (
+                            <>
+                                <Button
+                                    colorScheme="red"
+                                    variant="outline"
+                                    mr={3}
+                                    onClick={() => {
+                                        onDetailsClose();
+                                        handleVerify(selectedVendor, false);
+                                    }}
+                                >
+                                    Suspend
+                                </Button>
+                                <Button variant="ghost" onClick={onDetailsClose}>Close</Button>
+                            </>
+                        )}
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
         </Box >
     );
 };

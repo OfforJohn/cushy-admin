@@ -46,6 +46,7 @@ import {
     Star,
 } from 'lucide-react';
 import { adminApi } from '../../api/admin.api';
+import { healthApi } from '../../api/health.api';
 import { formatCurrency } from '../../utils/formatters';
 import { useLocationFilter } from '../../context/LocationContext';
 
@@ -116,6 +117,19 @@ const mockHealthFunnel = [
     { stage: 'Purchased Rx', count: 280, percentage: 23 },
 ];
 
+// Helper function to compute health funnel from real data
+const computeHealthFunnel = (stats: any) => {
+    if (!stats) return mockHealthFunnel;
+    const total = stats.total || 1;
+    return [
+        { stage: 'Total Booked', count: stats.total || 0, percentage: 100 },
+        { stage: 'Scheduled', count: stats.scheduled || 0, percentage: Math.round(((stats.scheduled || 0) / total) * 100) },
+        { stage: 'Ongoing', count: stats.ongoing || 0, percentage: Math.round(((stats.ongoing || 0) / total) * 100) },
+        { stage: 'Completed', count: stats.completed || 0, percentage: Math.round(((stats.completed || 0) / total) * 100) },
+        { stage: 'Cancelled', count: stats.cancelled || 0, percentage: Math.round(((stats.cancelled || 0) / total) * 100) },
+    ];
+};
+
 const mockWalletFlow = [
     { week: 'Week 1', inflow: 45000000, outflow: 38000000 },
     { week: 'Week 2', inflow: 52000000, outflow: 42000000 },
@@ -159,7 +173,27 @@ export const AnalyticsPage: React.FC = () => {
         queryFn: () => adminApi.getAllRiders(),
     });
 
+    // Fetch health/consultation stats
+    const { data: healthStatsData, isLoading: healthStatsLoading } = useQuery({
+        queryKey: ['healthStats'],
+        queryFn: () => healthApi.getAllAppointmentsStats(),
+    });
+
+    // Fetch all doctors for count
+    const { data: doctorsData } = useQuery({
+        queryKey: ['allDoctorsAnalytics'],
+        queryFn: () => healthApi.getAllDoctors(),
+    });
+
     const stats = statsData?.data;
+    const healthStats = healthStatsData?.data;
+    const doctors = doctorsData?.data || [];
+
+    // Compute health funnel from real data
+    const healthFunnel = computeHealthFunnel(healthStats);
+    const totalConsultations = healthStats?.total || 0;
+    const completedConsultations = healthStats?.completed || 0;
+    const completionRate = totalConsultations > 0 ? Math.round((completedConsultations / totalConsultations) * 100) : 0;
 
     // KPI Cards data
     const kpiCards: KPICard[] = [
@@ -486,11 +520,14 @@ export const AnalyticsPage: React.FC = () => {
                 {/* Health Consultations Funnel */}
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
                     <CardBody>
-                        <Text fontSize="lg" fontWeight="600" color="gray.100" mb={4}>Health Consultations Funnel</Text>
+                        <Flex justify="space-between" align="center" mb={4}>
+                            <Text fontSize="lg" fontWeight="600" color="gray.100">Health Consultations Funnel</Text>
+                            {healthStatsLoading && <Spinner size="sm" color="purple.400" />}
+                        </Flex>
 
                         <VStack spacing={3} align="stretch">
-                            {mockHealthFunnel.map((stage, index) => {
-                                const colors = ['purple.500', 'purple.400', 'green.500', 'orange.400', 'blue.500'];
+                            {healthFunnel.map((stage, index) => {
+                                const colors = ['purple.500', 'purple.400', 'blue.500', 'green.500', 'orange.400'];
                                 return (
                                     <Box key={index}>
                                         <Flex justify="space-between" mb={1}>
@@ -514,17 +551,24 @@ export const AnalyticsPage: React.FC = () => {
                         </VStack>
 
                         {/* Health Stats */}
-                        <SimpleGrid columns={2} spacing={4} mt={4} pt={4} borderTopWidth="1px" borderColor="gray.700">
+                        <SimpleGrid columns={3} spacing={4} mt={4} pt={4} borderTopWidth="1px" borderColor="gray.700">
                             <Box>
                                 <HStack>
                                     <Icon as={Heart} color="red.400" boxSize={4} />
-                                    <Text fontSize="lg" fontWeight="bold" color="gray.100">142</Text>
+                                    <Text fontSize="lg" fontWeight="bold" color="gray.100">{totalConsultations}</Text>
                                 </HStack>
-                                <Text fontSize="xs" color="gray.500">Consultations Last Week</Text>
+                                <Text fontSize="xs" color="gray.500">Total Consultations</Text>
                             </Box>
                             <Box>
-                                <Text fontSize="lg" fontWeight="bold" color="green.400">89%</Text>
+                                <Text fontSize="lg" fontWeight="bold" color="green.400">{completionRate}%</Text>
                                 <Text fontSize="xs" color="gray.500">Completion Rate</Text>
+                            </Box>
+                            <Box>
+                                <HStack>
+                                    <Icon as={Users} color="purple.400" boxSize={4} />
+                                    <Text fontSize="lg" fontWeight="bold" color="gray.100">{doctors.length}</Text>
+                                </HStack>
+                                <Text fontSize="xs" color="gray.500">Professionals</Text>
                             </Box>
                         </SimpleGrid>
                     </CardBody>

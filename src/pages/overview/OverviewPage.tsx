@@ -38,6 +38,7 @@ import {
 import { adminApi } from '../../api/admin.api';
 import { ordersApi } from '../../api/orders.api';
 import { storesApi } from '../../api/stores.api';
+import { healthApi } from '../../api/health.api';
 import { KPICard } from '../../components/common/KPICard';
 import { LiveQueueWidget } from '../../components/common/LiveQueueWidget';
 import { formatRelativeTime } from '../../utils/formatters';
@@ -82,10 +83,24 @@ export const OverviewPage: React.FC = () => {
         queryFn: () => adminApi.getAllRiders(),
     });
 
+    // Fetch health professionals (doctors)
+    const { data: doctorsData, isLoading: doctorsLoading } = useQuery({
+        queryKey: ['allDoctors'],
+        queryFn: () => healthApi.getAllDoctors(),
+    });
+
+    // Fetch consultation/appointment stats
+    const { data: appointmentStatsData, isLoading: appointmentStatsLoading } = useQuery({
+        queryKey: ['appointmentStats'],
+        queryFn: () => healthApi.getAllAppointmentsStats(),
+    });
+
     const stats = statsData?.data;
     const orders = ordersData?.data || [];
     const graphData = orderGraphData?.data || [];
     const stores = storesData?.data || [];
+    const doctors = doctorsData?.data || [];
+    const appointmentStats = appointmentStatsData?.data;
 
     // Extract riders - handle different response formats from external TrackThatRide API (same as LogisticsPage)
     const ridersRaw = ridersData?.data as any;
@@ -95,12 +110,15 @@ export const OverviewPage: React.FC = () => {
 
     // Calculate user breakdown:
     // - Businesses = stores/merchants count (from storesApi, same as MerchantsPage)
-    // - Health Professionals = 3 (mock data, hardcoded like HealthProfessionalsPage)
+    // - Health Professionals = from real API
     // - Customers = total users - businesses - health professionals
     const businessCount = stores.length;
-    const healthProCount = 3; // Mock data (same as HealthProfessionalsPage)
+    const healthProCount = doctors.length; // Real data from health API
     const totalUsers = stats?.usersCount || 0;
-    const customerCount = Math.max(0, totalUsers - businessCount);
+    const customerCount = Math.max(0, totalUsers - businessCount - healthProCount);
+
+    // Consultation stats from API
+    const completedConsultations = appointmentStats?.completed || 0;
 
     // Platform balance - the API returns just a number directly
     const platformBalance = stats?.totalBalanceResult || 0;
@@ -262,7 +280,7 @@ export const OverviewPage: React.FC = () => {
                             <Text as="span" color="orange.400">{businessCount}</Text> Businesses | <Text as="span" color="blue.400">{customerCount}</Text> Customers | <Text as="span" color="green.400">{healthProCount}</Text> Health Prof.
                         </Text>
                     }
-                    isLoading={statsLoading || storesLoading}
+                    isLoading={statsLoading || storesLoading || doctorsLoading}
                 />
                 <KPICard
                     title="Platform Balance"
@@ -295,11 +313,11 @@ export const OverviewPage: React.FC = () => {
                 />
                 <KPICard
                     title="Completed Consultations"
-                    value={1}
+                    value={completedConsultations}
                     icon={MessageCircle}
                     iconColor="teal.400"
                     subtitle="Health consultations"
-                    isLoading={false}
+                    isLoading={appointmentStatsLoading}
                 />
                 <KPICard
                     title="Riders"
