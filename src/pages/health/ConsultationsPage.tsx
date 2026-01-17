@@ -194,10 +194,10 @@ export const ConsultationsPage: React.FC = () => {
             </SimpleGrid>
 
             {/* Filters and Actions */}
-            <Flex justify="space-between" align="center" mb={4} flexWrap="wrap" gap={3}>
-                <HStack spacing={3}>
+            <Flex justify="space-between" align={{ base: 'start', md: 'center' }} mb={4} flexDir={{ base: 'column', md: 'row' }} gap={3}>
+                <Flex gap={2} flexWrap="wrap" align="center">
                     <Select
-                        w="130px"
+                        w={{ base: '110px', sm: '130px' }}
                         size="sm"
                         bg="gray.800"
                         borderColor="gray.700"
@@ -215,19 +215,21 @@ export const ConsultationsPage: React.FC = () => {
                         size="sm"
                         bg="gray.800"
                         borderColor="gray.700"
-                        w="150px"
+                        w={{ base: '140px', sm: '150px' }}
                     />
+                </Flex>
+                <HStack spacing={2} flexWrap="wrap">
                     <Button size="sm" variant="ghost" leftIcon={<Download size={14} />}>
                         Export CSV
                     </Button>
+                    <Button
+                        size="sm"
+                        colorScheme="green"
+                        leftIcon={<Radio size={14} />}
+                    >
+                        Live Monitor
+                    </Button>
                 </HStack>
-                <Button
-                    size="sm"
-                    colorScheme="green"
-                    leftIcon={<Radio size={14} />}
-                >
-                    Live Monitor
-                </Button>
             </Flex>
 
             {/* Table */}

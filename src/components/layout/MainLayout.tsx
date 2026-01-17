@@ -19,6 +19,13 @@ export const MainLayout: React.FC = () => {
         }
     };
 
+    // Callback for closing mobile sidebar when a menu item is clicked
+    const handleMobileMenuClose = () => {
+        if (isMobile && isOpen) {
+            onClose();
+        }
+    };
+
     return (
         <Flex h="100vh" overflow="hidden" bg="gray.950">
             {/* Sidebar - Desktop */}
@@ -29,7 +36,7 @@ export const MainLayout: React.FC = () => {
                 <DrawerOverlay />
                 <DrawerContent bg="gray.900" maxW="260px">
                     <DrawerCloseButton color="gray.400" />
-                    <Sidebar isCollapsed={false} />
+                    <Sidebar isCollapsed={false} onCloseMobile={handleMobileMenuClose} />
                 </DrawerContent>
             </Drawer>
 

@@ -55,17 +55,32 @@ interface NavItemProps {
     children?: { label: string; path: string }[];
     isCollapsed?: boolean;
     defaultOpen?: boolean;
+    onCloseMobile?: () => void;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ label, path, icon, children, isCollapsed, defaultOpen = false }) => {
+const NavItem: React.FC<NavItemProps> = ({ label, path, icon, children, isCollapsed, defaultOpen = false, onCloseMobile }) => {
     const location = useLocation();
-    const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: defaultOpen });
     const IconComponent = iconMap[icon] || LayoutDashboard;
 
     const isActive = path ? location.pathname === path :
         children?.some(child => location.pathname === child.path);
     const hasChildren = children && children.length > 0;
     const isLink = path && !hasChildren;
+
+    // Auto-expand if any child is active, otherwise use defaultOpen
+    const hasActiveChild = children?.some(child => location.pathname === child.path);
+    const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: hasActiveChild || defaultOpen });
+
+    const handleClick = () => {
+        if (hasChildren) {
+            onToggle();
+        }
+    };
+
+    const handleLinkClick = () => {
+        // Close mobile sidebar when any link is clicked
+        onCloseMobile?.();
+    };
 
     const content = (
         <Flex
@@ -81,7 +96,7 @@ const NavItem: React.FC<NavItemProps> = ({ label, path, icon, children, isCollap
                 color: 'gray.100',
             }}
             transition="all 0.2s"
-            onClick={hasChildren ? onToggle : undefined}
+            onClick={isLink ? handleLinkClick : handleClick}
             as={isLink ? Link : 'div'}
             {...(isLink ? { to: path } : {})}
             w="full"
@@ -122,6 +137,7 @@ const NavItem: React.FC<NavItemProps> = ({ label, path, icon, children, isCollap
                                 key={child.path}
                                 as={Link}
                                 to={child.path}
+                                onClick={handleLinkClick}
                                 align="center"
                                 py={2}
                                 px={3}
@@ -151,9 +167,10 @@ const NavItem: React.FC<NavItemProps> = ({ label, path, icon, children, isCollap
 interface SidebarProps {
     isCollapsed?: boolean;
     onToggle?: () => void;
+    onCloseMobile?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed = false }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed = false, onCloseMobile }) => {
     return (
         <Box
             as="aside"
@@ -165,7 +182,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed = false }) => {
             borderColor="gray.800"
             position="sticky"
             top={0}
-            transition="all 0.3s ease"
+            transition="width 0.2s ease"
             overflowY="auto"
             overflowX="hidden"
             css={{
@@ -232,6 +249,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed = false }) => {
                         children={'children' in item ? (item.children as unknown as { label: string; path: string }[]) : undefined}
                         isCollapsed={isCollapsed}
                         defaultOpen={item.label === 'Merchants'}
+                        onCloseMobile={onCloseMobile}
                     />
                 ))}
             </VStack>

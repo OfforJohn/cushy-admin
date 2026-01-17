@@ -483,7 +483,7 @@ const UsersPageContent: React.FC = () => {
             </Flex>
 
             {/* KPI Cards */}
-            <SimpleGrid columns={{ base: 2, md: 3, lg: 5 }} spacing={4} mb={6}>
+            <SimpleGrid columns={{ base: 1, md: 3, lg: 5 }} spacing={4} mb={6}>
                 {/* Total Users (Lifetime) */}
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
                     <CardBody py={4}>
@@ -779,9 +779,9 @@ const UsersPageContent: React.FC = () => {
 
                             {/* Pagination */}
                             {sortedUsers.length > 0 && (
-                                <Flex justify="space-between" align="center" mt={4} pt={4} borderTopWidth="1px" borderColor="gray.800">
-                                    <HStack spacing={4}>
-                                        <Text fontSize="sm" color="gray.500">
+                                <Flex justify="space-between" align={{ base: 'start', md: 'center' }} mt={4} pt={4} borderTopWidth="1px" borderColor="gray.800" flexDir={{ base: 'column', md: 'row' }} gap={3}>
+                                    <Flex gap={2} align="center" flexWrap="wrap">
+                                        <Text fontSize={{ base: 'xs', md: 'sm' }} color="gray.500">
                                             Showing {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, sortedUsers.length)} of {sortedUsers.length} users
                                             {totalUsersFromApi > 0 && sortedUsers.length !== totalUsersFromApi && ` (${totalUsersFromApi} total)`}
                                         </Text>
@@ -798,8 +798,8 @@ const UsersPageContent: React.FC = () => {
                                             <option value={50}>50</option>
                                             <option value={100}>100</option>
                                         </Select>
-                                        <Text fontSize="sm" color="gray.500">per page</Text>
-                                    </HStack>
+                                        <Text fontSize="sm" color="gray.500" display={{ base: 'none', sm: 'inline' }}>per page</Text>
+                                    </Flex>
                                     <HStack spacing={2}>
                                         <IconButton
                                             aria-label="Previous page"
@@ -810,7 +810,7 @@ const UsersPageContent: React.FC = () => {
                                             isDisabled={page === 1}
                                             onClick={() => setPage(p => Math.max(1, p - 1))}
                                         />
-                                        <HStack spacing={1}>
+                                        <HStack spacing={1} display={{ base: 'none', sm: 'flex' }}>
                                             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                                                 let pageNum = i + 1;
                                                 if (totalPages > 5) {
@@ -825,12 +825,16 @@ const UsersPageContent: React.FC = () => {
                                                         variant={page === pageNum ? 'solid' : 'ghost'}
                                                         colorScheme={page === pageNum ? 'purple' : undefined}
                                                         onClick={() => setPage(pageNum)}
+                                                        minW="32px"
                                                     >
                                                         {pageNum}
                                                     </Button>
                                                 );
                                             })}
                                         </HStack>
+                                        <Text fontSize="sm" color="gray.400" display={{ base: 'inline', sm: 'none' }}>
+                                            {page} / {totalPages}
+                                        </Text>
                                         <IconButton
                                             aria-label="Next page"
                                             icon={<ChevronRight size={16} />}

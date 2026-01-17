@@ -244,7 +244,7 @@ export const ProductsPage: React.FC = () => {
     return (
         <Box>
             {/* Header */}
-            <Flex justify="space-between" align="center" mb={6}>
+            <Flex justify="space-between" align={{ base: 'start', md: 'center' }} mb={6} flexDir={{ base: 'column', md: 'row' }} gap={3}>
                 <Box>
                     <Heading size="lg" color="gray.100">
                         All Products
@@ -253,8 +253,8 @@ export const ProductsPage: React.FC = () => {
                         Products from Restaurants, Pharmacies & Groceries
                     </Text>
                 </Box>
-                <HStack spacing={3}>
-                    <InputGroup size="sm" w="300px">
+                <HStack spacing={3} w={{ base: '100%', md: 'auto' }}>
+                    <InputGroup size="sm" flex={1} maxW={{ base: '100%', md: '300px' }}>
                         <InputLeftElement pointerEvents="none">
                             <Search size={16} color="gray" />
                         </InputLeftElement>

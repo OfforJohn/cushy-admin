@@ -399,46 +399,49 @@ export const MerchantApprovalPage: React.FC = () => {
             </SimpleGrid>
 
             {/* Quick Actions */}
-            <Flex justify="space-between" align="center" mb={4} flexWrap="wrap" gap={3}>
-                <HStack spacing={3}>
-                    <Text fontSize="sm" fontWeight="500" color="gray.400">Quick Actions</Text>
-                    <Button
-                        size="sm"
-                        colorScheme="purple"
-                        leftIcon={<Check size={14} />}
-                        isDisabled={selectedVendors.length === 0}
-                        onClick={handleBulkApprove}
-                        isLoading={approveVendorMutation.isPending}
-                    >
-                        Bulk Approve ({selectedVendors.length})
-                    </Button>
-                    <Button
-                        size="sm"
-                        colorScheme="red"
-                        variant="solid"
-                        leftIcon={<X size={14} />}
-                        isDisabled={selectedVendors.length === 0}
-                        onClick={handleBulkReject}
-                        isLoading={rejectVendorMutation.isPending}
-                    >
-                        Bulk Reject ({selectedVendors.length})
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        borderColor="gray.600"
-                        leftIcon={<Bell size={14} />}
-                        onClick={handleBulkSendReminders}
-                        isDisabled={selectedVendors.length === 0}
-                    >
-                        Send Reminders
-                    </Button>
-                </HStack>
+            <Flex justify="space-between" align={{ base: 'start', md: 'center' }} mb={4} flexDir={{ base: 'column', md: 'row' }} gap={3}>
+                <Box>
+                    <Text fontSize="sm" fontWeight="500" color="gray.400" mb={{ base: 2, md: 0 }}>Quick Actions</Text>
+                    <Flex gap={2} flexWrap="wrap" mt={{ base: 2, md: 0 }}>
+                        <Button
+                            size="sm"
+                            colorScheme="purple"
+                            leftIcon={<Check size={14} />}
+                            isDisabled={selectedVendors.length === 0}
+                            onClick={handleBulkApprove}
+                            isLoading={approveVendorMutation.isPending}
+                        >
+                            <Text display={{ base: 'none', sm: 'inline' }}>Bulk </Text>Approve ({selectedVendors.length})
+                        </Button>
+                        <Button
+                            size="sm"
+                            colorScheme="red"
+                            variant="solid"
+                            leftIcon={<X size={14} />}
+                            isDisabled={selectedVendors.length === 0}
+                            onClick={handleBulkReject}
+                            isLoading={rejectVendorMutation.isPending}
+                        >
+                            <Text display={{ base: 'none', sm: 'inline' }}>Bulk </Text>Reject ({selectedVendors.length})
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            borderColor="gray.600"
+                            leftIcon={<Bell size={14} />}
+                            onClick={handleBulkSendReminders}
+                            isDisabled={selectedVendors.length === 0}
+                        >
+                            <Text display={{ base: 'none', sm: 'inline' }}>Send </Text>Reminders
+                        </Button>
+                    </Flex>
+                </Box>
                 <Button
                     size="sm"
                     variant="outline"
                     borderColor="gray.600"
                     leftIcon={<FileText size={14} />}
+                    mt={{ base: 2, md: 0 }}
                 >
                     Export KYC Report
                 </Button>

@@ -455,7 +455,7 @@ export const SettingsPage: React.FC = () => {
             {/* Coupon Management */}
             <Card bg="gray.900" borderColor="gray.800" mb={6}>
                 <CardHeader>
-                    <Flex justify="space-between" align="center">
+                    <Flex justify="space-between" align={{ base: 'start', md: 'center' }} flexDir={{ base: 'column', md: 'row' }} gap={3}>
                         <Box>
                             <Heading size="sm">Coupon Management</Heading>
                             <Text fontSize="sm" color="gray.500">Create and manage site-wide and merchant-specific coupons</Text>
@@ -467,13 +467,15 @@ export const SettingsPage: React.FC = () => {
                 </CardHeader>
                 <CardBody pt={0}>
                     <Tabs index={couponTab} onChange={setCouponTab} variant="unstyled">
-                        <TabList borderBottom="1px solid" borderColor="gray.800" mb={4}>
-                            <Tab _selected={{ borderBottom: '2px solid', borderColor: 'purple.500', color: 'white' }} color="gray.500" pb={2}>All Coupons</Tab>
-                            <Tab _selected={{ borderBottom: '2px solid', borderColor: 'purple.500', color: 'white' }} color="gray.500" pb={2}>Site-Wide</Tab>
-                            <Tab _selected={{ borderBottom: '2px solid', borderColor: 'purple.500', color: 'white' }} color="gray.500" pb={2}>Merchant-Specific</Tab>
-                            <Tab _selected={{ borderBottom: '2px solid', borderColor: 'purple.500', color: 'white' }} color="gray.500" pb={2}>Active</Tab>
-                            <Tab _selected={{ borderBottom: '2px solid', borderColor: 'purple.500', color: 'white' }} color="gray.500" pb={2}>Expired</Tab>
-                        </TabList>
+                        <Box overflowX="auto" pb={2}>
+                            <TabList borderBottom="1px solid" borderColor="gray.800" mb={4} minW="max-content">
+                                <Tab _selected={{ borderBottom: '2px solid', borderColor: 'purple.500', color: 'white' }} color="gray.500" pb={2} fontSize={{ base: 'xs', sm: 'sm' }} whiteSpace="nowrap">All Coupons</Tab>
+                                <Tab _selected={{ borderBottom: '2px solid', borderColor: 'purple.500', color: 'white' }} color="gray.500" pb={2} fontSize={{ base: 'xs', sm: 'sm' }} whiteSpace="nowrap">Site-Wide</Tab>
+                                <Tab _selected={{ borderBottom: '2px solid', borderColor: 'purple.500', color: 'white' }} color="gray.500" pb={2} fontSize={{ base: 'xs', sm: 'sm' }} whiteSpace="nowrap">Merchant-Specific</Tab>
+                                <Tab _selected={{ borderBottom: '2px solid', borderColor: 'purple.500', color: 'white' }} color="gray.500" pb={2} fontSize={{ base: 'xs', sm: 'sm' }} whiteSpace="nowrap">Active</Tab>
+                                <Tab _selected={{ borderBottom: '2px solid', borderColor: 'purple.500', color: 'white' }} color="gray.500" pb={2} fontSize={{ base: 'xs', sm: 'sm' }} whiteSpace="nowrap">Expired</Tab>
+                            </TabList>
+                        </Box>
                         <TabPanels>
                             {[0, 1, 2, 3, 4].map((tabIndex) => (
                                 <TabPanel key={tabIndex} p={0}>
@@ -661,7 +663,7 @@ export const SettingsPage: React.FC = () => {
                         />
                     </Flex>
 
-                    <HStack spacing={4} mb={4}>
+                    <Flex gap={2} mb={4} flexWrap="wrap">
                         <Button
                             leftIcon={<ShoppingBag size={16} />}
                             bg={selectedCategories.includes('all') ? 'green.700' : 'green.500'}
@@ -692,7 +694,7 @@ export const SettingsPage: React.FC = () => {
                         >
                             Groceries
                         </Button>
-                    </HStack>
+                    </Flex>
 
                     <Flex justify="space-between" align="center">
                         <Text fontSize="sm" color="green.100">Impact Estimate:</Text>
@@ -702,11 +704,11 @@ export const SettingsPage: React.FC = () => {
             </Card>
 
             {/* Footer */}
-            <Flex justify="space-between" align="center">
-                <Text fontSize="sm" color="gray.500">
+            <Flex justify="space-between" align={{ base: 'start', md: 'center' }} flexDir={{ base: 'column', md: 'row' }} gap={3}>
+                <Text fontSize={{ base: 'xs', md: 'sm' }} color="gray.500">
                     Last updated: {new Date().toLocaleString()} • Status: <Text as="span" color={freeDeliveryEnabled ? 'green.400' : 'gray.400'}>{freeDeliveryEnabled ? 'Enabled' : 'Disabled'}</Text>
                 </Text>
-                <Button colorScheme="purple" size="sm" onClick={handleSaveChanges} isLoading={isSaving}>
+                <Button colorScheme="purple" size="sm" onClick={handleSaveChanges} isLoading={isSaving} w={{ base: '100%', md: 'auto' }}>
                     Save Changes
                 </Button>
             </Flex>

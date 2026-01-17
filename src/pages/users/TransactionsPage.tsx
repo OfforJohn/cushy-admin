@@ -219,9 +219,9 @@ export const TransactionsPage: React.FC = () => {
     };
 
     return (
-        <Box p={6}>
+        <Box>
             {/* Header */}
-            <Flex justify="space-between" align="flex-start" mb={6}>
+            <Flex justify="space-between" align={{ base: 'start', md: 'flex-start' }} mb={6} flexDir={{ base: 'column', md: 'row' }} gap={3}>
                 <Box>
                     <Heading size="lg" color="gray.100" mb={1}>Transactions</Heading>
                     <Text color="gray.500">View and manage all wallet transactions</Text>
@@ -246,7 +246,7 @@ export const TransactionsPage: React.FC = () => {
             </Flex>
 
             {/* Stats Cards */}
-            <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4} mb={6}>
+            <SimpleGrid columns={{ base: 1, md: 4 }} spacing={4} mb={6}>
                 <Card bg="gray.800" borderColor="gray.700" borderWidth="1px">
                     <CardBody py={4}>
                         <Flex align="center" gap={3}>
@@ -306,15 +306,15 @@ export const TransactionsPage: React.FC = () => {
 
             {/* Filters */}
             <Box bg="gray.900" borderRadius="xl" borderWidth="1px" borderColor="gray.800" p={4} mb={6}>
-                <Flex gap={4} flexWrap="wrap" align="flex-end">
-                    <Box flex={1} minW="200px">
+                <Flex gap={3} flexWrap="wrap" align="flex-end">
+                    <Box flex={{ base: '1 1 100%', md: '1' }} minW={{ base: '100%', md: '180px' }}>
                         <Text color="gray.500" fontSize="xs" mb={1}>Search</Text>
                         <InputGroup size="sm">
                             <InputLeftElement>
                                 <Icon as={Search} color="gray.500" boxSize={4} />
                             </InputLeftElement>
                             <Input
-                                placeholder="Search by reference, user, description..."
+                                placeholder="Search by reference, user..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 bg="gray.800"
@@ -322,7 +322,7 @@ export const TransactionsPage: React.FC = () => {
                             />
                         </InputGroup>
                     </Box>
-                    <Box minW="150px">
+                    <Box minW={{ base: '45%', sm: '120px' }} flex={{ base: '1', md: '0' }}>
                         <Text color="gray.500" fontSize="xs" mb={1}>Category</Text>
                         <Select
                             value={typeFilter}
@@ -341,7 +341,7 @@ export const TransactionsPage: React.FC = () => {
                             <option value={TransactionCategory.Q_COMMERCE}>Q-Commerce</option>
                         </Select>
                     </Box>
-                    <Box minW="140px">
+                    <Box minW={{ base: '45%', sm: '110px' }} flex={{ base: '1', md: '0' }}>
                         <Text color="gray.500" fontSize="xs" mb={1}>Status</Text>
                         <Select
                             value={statusFilter}
@@ -358,7 +358,7 @@ export const TransactionsPage: React.FC = () => {
                             <option value={TransactionStatus.AWAITING_DELIVERY}>Awaiting Delivery</option>
                         </Select>
                     </Box>
-                    <Box minW="140px">
+                    <Box minW={{ base: '45%', sm: '120px' }} flex={{ base: '1', md: '0' }}>
                         <Text color="gray.500" fontSize="xs" mb={1}>From Date</Text>
                         <Input
                             type="date"
@@ -369,7 +369,7 @@ export const TransactionsPage: React.FC = () => {
                             borderColor="gray.700"
                         />
                     </Box>
-                    <Box minW="140px">
+                    <Box minW={{ base: '45%', sm: '120px' }} flex={{ base: '1', md: '0' }}>
                         <Text color="gray.500" fontSize="xs" mb={1}>To Date</Text>
                         <Input
                             type="date"
@@ -380,7 +380,7 @@ export const TransactionsPage: React.FC = () => {
                             borderColor="gray.700"
                         />
                     </Box>
-                    <HStack>
+                    <HStack flex={{ base: '1 1 100%', md: '0' }} justify={{ base: 'flex-end', md: 'flex-start' }}>
                         <Button size="sm" colorScheme="purple" onClick={() => setCurrentPage(1)}>
                             Apply
                         </Button>
@@ -508,8 +508,8 @@ export const TransactionsPage: React.FC = () => {
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                    <Flex justify="space-between" align="center" p={4} borderTopWidth="1px" borderColor="gray.800">
-                        <Text color="gray.500" fontSize="sm">
+                    <Flex justify="space-between" align={{ base: 'start', md: 'center' }} p={4} borderTopWidth="1px" borderColor="gray.800" flexDir={{ base: 'column', md: 'row' }} gap={3}>
+                        <Text color="gray.500" fontSize={{ base: 'xs', md: 'sm' }}>
                             Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredTransactions.length)} of {filteredTransactions.length}
                         </Text>
                         <HStack spacing={2}>
@@ -521,20 +521,26 @@ export const TransactionsPage: React.FC = () => {
                                 isDisabled={currentPage === 1}
                                 onClick={() => setCurrentPage(p => p - 1)}
                             />
-                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                const page = i + 1;
-                                return (
-                                    <Button
-                                        key={page}
-                                        size="sm"
-                                        variant={currentPage === page ? 'solid' : 'ghost'}
-                                        colorScheme={currentPage === page ? 'purple' : 'gray'}
-                                        onClick={() => setCurrentPage(page)}
-                                    >
-                                        {page}
-                                    </Button>
-                                );
-                            })}
+                            <HStack spacing={1} display={{ base: 'none', sm: 'flex' }}>
+                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                    const page = i + 1;
+                                    return (
+                                        <Button
+                                            key={page}
+                                            size="sm"
+                                            variant={currentPage === page ? 'solid' : 'ghost'}
+                                            colorScheme={currentPage === page ? 'purple' : 'gray'}
+                                            onClick={() => setCurrentPage(page)}
+                                            minW="32px"
+                                        >
+                                            {page}
+                                        </Button>
+                                    );
+                                })}
+                            </HStack>
+                            <Text fontSize="sm" color="gray.400" display={{ base: 'inline', sm: 'none' }}>
+                                {currentPage} / {totalPages}
+                            </Text>
                             <IconButton
                                 aria-label="Next"
                                 icon={<ChevronRight size={16} />}

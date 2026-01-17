@@ -250,37 +250,39 @@ export const AnalyticsPage: React.FC = () => {
     };
 
     return (
-        <Box p={6}>
+        <Box>
             {/* Header */}
-            <Flex justify="space-between" align="center" mb={6}>
+            <Flex justify="space-between" align={{ base: 'start', md: 'center' }} mb={6} flexDir={{ base: 'column', md: 'row' }} gap={3}>
                 <Box>
                     <Heading size="lg" color="gray.100" mb={1}>Analytics</Heading>
                     <Text color="gray.500">Comprehensive insights and performance metrics</Text>
                 </Box>
-                <HStack spacing={3}>
+                <Flex gap={2} flexWrap="wrap" align="center">
                     {/* Time Range Tabs */}
-                    <Tabs
-                        variant="soft-rounded"
-                        colorScheme="purple"
-                        size="sm"
-                        onChange={(index) => {
-                            const ranges = ['1d', '7d', '30d', '90d'];
-                            setTimeRange(ranges[index]);
-                        }}
-                        defaultIndex={2}
-                    >
-                        <TabList bg="gray.800" borderRadius="lg" p={1}>
-                            <Tab _selected={{ bg: 'purple.500', color: 'white' }} color="gray.400" fontSize="sm">Today</Tab>
-                            <Tab _selected={{ bg: 'purple.500', color: 'white' }} color="gray.400" fontSize="sm">7 Days</Tab>
-                            <Tab _selected={{ bg: 'purple.500', color: 'white' }} color="gray.400" fontSize="sm">30 Days</Tab>
-                            <Tab _selected={{ bg: 'purple.500', color: 'white' }} color="gray.400" fontSize="sm">90 Days</Tab>
-                        </TabList>
-                    </Tabs>
+                    <Box overflowX="auto" maxW={{ base: '100%', sm: 'auto' }}>
+                        <Tabs
+                            variant="soft-rounded"
+                            colorScheme="purple"
+                            size="sm"
+                            onChange={(index) => {
+                                const ranges = ['1d', '7d', '30d', '90d'];
+                                setTimeRange(ranges[index]);
+                            }}
+                            defaultIndex={2}
+                        >
+                            <TabList bg="gray.800" borderRadius="lg" p={1}>
+                                <Tab _selected={{ bg: 'purple.500', color: 'white' }} color="gray.400" fontSize="xs" px={2}>Today</Tab>
+                                <Tab _selected={{ bg: 'purple.500', color: 'white' }} color="gray.400" fontSize="xs" px={2}>7d</Tab>
+                                <Tab _selected={{ bg: 'purple.500', color: 'white' }} color="gray.400" fontSize="xs" px={2}>30d</Tab>
+                                <Tab _selected={{ bg: 'purple.500', color: 'white' }} color="gray.400" fontSize="xs" px={2}>90d</Tab>
+                            </TabList>
+                        </Tabs>
+                    </Box>
 
                     {/* City Filter */}
                     <Select
                         size="sm"
-                        w="140px"
+                        w={{ base: '110px', md: '140px' }}
                         bg="gray.800"
                         borderColor="gray.700"
                         value={selectedLocation}
@@ -296,13 +298,13 @@ export const AnalyticsPage: React.FC = () => {
                         size="sm"
                         onClick={handleExport}
                     >
-                        Export Report
+                        <Text display={{ base: 'none', sm: 'inline' }}>Export</Text>
                     </Button>
-                </HStack>
+                </Flex>
             </Flex>
 
             {/* KPI Cards */}
-            <SimpleGrid columns={{ base: 2, lg: 4 }} spacing={4} mb={6}>
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4} mb={6}>
                 {kpiCards.map((kpi, index) => (
                     <Card key={index} bg="gray.900" borderColor="gray.800" borderWidth="1px">
                         <CardBody>
@@ -349,9 +351,9 @@ export const AnalyticsPage: React.FC = () => {
                 {/* GMV Trend Chart */}
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
                     <CardBody>
-                        <Flex justify="space-between" align="center" mb={4}>
+                        <Flex justify="space-between" align="center" mb={4} flexWrap="wrap" gap={2}>
                             <Text fontSize="lg" fontWeight="600" color="gray.100">GMV Trend</Text>
-                            <HStack spacing={2}>
+                            <HStack spacing={1}>
                                 {(['daily', 'weekly', 'monthly'] as const).map((period) => (
                                     <Button
                                         key={period}
@@ -360,8 +362,9 @@ export const AnalyticsPage: React.FC = () => {
                                         colorScheme={chartPeriod === period ? 'purple' : 'gray'}
                                         onClick={() => setChartPeriod(period)}
                                         textTransform="capitalize"
+                                        px={2}
                                     >
-                                        {period}
+                                        {period.charAt(0).toUpperCase()}
                                     </Button>
                                 ))}
                             </HStack>
@@ -500,17 +503,17 @@ export const AnalyticsPage: React.FC = () => {
                         </Flex>
 
                         {/* Stats Summary */}
-                        <SimpleGrid columns={3} spacing={4} mt={4} pt={4} borderTopWidth="1px" borderColor="gray.700">
+                        <SimpleGrid columns={{ base: 1, sm: 3 }} spacing={4} mt={4} pt={4} borderTopWidth="1px" borderColor="gray.700">
                             <Box>
-                                <Text fontSize="lg" fontWeight="bold" color="gray.100">28 mins</Text>
+                                <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="bold" color="gray.100">28 mins</Text>
                                 <Text fontSize="xs" color="gray.500">Avg Delivery Time</Text>
                             </Box>
                             <Box>
-                                <Text fontSize="lg" fontWeight="bold" color="green.400">87%</Text>
+                                <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="bold" color="green.400">87%</Text>
                                 <Text fontSize="xs" color="gray.500">On-Time Delivery</Text>
                             </Box>
                             <Box>
-                                <Text fontSize="lg" fontWeight="bold" color="gray.100">94%</Text>
+                                <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="bold" color="gray.100">94%</Text>
                                 <Text fontSize="xs" color="gray.500">Completion Rate</Text>
                             </Box>
                         </SimpleGrid>
@@ -551,22 +554,22 @@ export const AnalyticsPage: React.FC = () => {
                         </VStack>
 
                         {/* Health Stats */}
-                        <SimpleGrid columns={3} spacing={4} mt={4} pt={4} borderTopWidth="1px" borderColor="gray.700">
+                        <SimpleGrid columns={{ base: 1, sm: 3 }} spacing={4} mt={4} pt={4} borderTopWidth="1px" borderColor="gray.700">
                             <Box>
                                 <HStack>
                                     <Icon as={Heart} color="red.400" boxSize={4} />
-                                    <Text fontSize="lg" fontWeight="bold" color="gray.100">{totalConsultations}</Text>
+                                    <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="bold" color="gray.100">{totalConsultations}</Text>
                                 </HStack>
                                 <Text fontSize="xs" color="gray.500">Total Consultations</Text>
                             </Box>
                             <Box>
-                                <Text fontSize="lg" fontWeight="bold" color="green.400">{completionRate}%</Text>
+                                <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="bold" color="green.400">{completionRate}%</Text>
                                 <Text fontSize="xs" color="gray.500">Completion Rate</Text>
                             </Box>
                             <Box>
                                 <HStack>
                                     <Icon as={Users} color="purple.400" boxSize={4} />
-                                    <Text fontSize="lg" fontWeight="bold" color="gray.100">{doctors.length}</Text>
+                                    <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="bold" color="gray.100">{doctors.length}</Text>
                                 </HStack>
                                 <Text fontSize="xs" color="gray.500">Professionals</Text>
                             </Box>
@@ -674,9 +677,9 @@ export const AnalyticsPage: React.FC = () => {
             {/* Rider Performance Analytics */}
             <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
                 <CardBody>
-                    <Flex justify="space-between" align="center" mb={4}>
+                    <Flex justify="space-between" align={{ base: 'start', md: 'center' }} mb={4} flexDir={{ base: 'column', sm: 'row' }} gap={2}>
                         <Text fontSize="lg" fontWeight="600" color="gray.100">Rider Performance Analytics</Text>
-                        <HStack spacing={3}>
+                        <HStack spacing={2} flexWrap="wrap">
                             <Select size="sm" w="120px" bg="gray.800" borderColor="gray.700">
                                 <option value="all">All Zones</option>
                                 <option value="lagos-a">Lagos Zone A</option>
