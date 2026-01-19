@@ -96,7 +96,7 @@ export const PayoutsPage: React.FC = () => {
         return sum + (isNaN(balance) ? 0 : balance);
     }, 0);
 
-    // Mock payout transactions (replace with actual API when available)
+    // Mock payout transactions (to be replaced with actual API when available)
     const mockPayouts: PayoutTransaction[] = [
         {
             id: 'pyt_001',

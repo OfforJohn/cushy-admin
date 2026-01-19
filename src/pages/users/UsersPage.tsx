@@ -116,7 +116,7 @@ class ErrorBoundary extends React.Component<
                         ⚠️ Error on Users Page
                     </Text>
                     <Text color="red.200" mb={2}>
-                        Something went wrong. Please copy this error:
+                        Something went wrong:
                     </Text>
                     <Box bg="gray.900" p={4} borderRadius="md" fontFamily="mono" fontSize="sm">
                         <Text color="red.300" whiteSpace="pre-wrap">

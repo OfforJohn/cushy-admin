@@ -113,7 +113,7 @@ export const OverviewPage: React.FC = () => {
     // - Health Professionals = from real API
     // - Customers = total users - businesses - health professionals
     const businessCount = stores.length;
-    const healthProCount = doctors.length; // Real data from health API
+    const healthProCount = doctors.length;
     const totalUsers = stats?.usersCount || 0;
     const customerCount = Math.max(0, totalUsers - businessCount - healthProCount);
 

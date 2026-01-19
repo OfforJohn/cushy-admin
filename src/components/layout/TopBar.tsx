@@ -50,7 +50,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
     const navigate = useNavigate();
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
-    // Only fetch when notification menu is opened - saves server resources!
+    // Only fetch when notification menu is opened - let's not spend too much on AWS abeg (reducing API calls)
     const { data: ordersData, isLoading: ordersLoading } = useQuery({
         queryKey: ['ordersNotification'],
         queryFn: () => ordersApi.getAllOrders(),

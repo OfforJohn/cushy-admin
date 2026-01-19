@@ -245,14 +245,15 @@ export const SettingsPage: React.FC = () => {
         }
     };
 
-    // Mock service areas (would need a backend endpoint)
+    // Mock service areas (would need a backend endpoint, rememebr to mention this to Dev. Taofeek 
+    // - or maybe I'll just implement it myself on the backend, once I'm free)
     const serviceAreas = [
         { id: '1', name: 'Minna', state: 'Niger State', status: 'Active' as const },
         { id: '2', name: 'Abuja', state: 'FCT', status: 'Active' as const },
         { id: '3', name: 'Lagos', state: 'Lagos State', status: 'Pending' as const },
     ];
 
-    // System services status (would need health check endpoints)
+    // System services status (would need health check endpoints, this too.)
     const systemServices: SystemService[] = [
         { name: 'Database', icon: Database, status: 'Operational' },
         { name: 'Payment Gateway', icon: CreditCard, status: 'Operational' },

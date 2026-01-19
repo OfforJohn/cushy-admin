@@ -249,7 +249,7 @@ export const MerchantApprovalPage: React.FC = () => {
             });
             return;
         }
-        // Open email for first vendor (for bulk, you'd typically use a backend email service)
+        // Open email for first vendor (this one is just temporary; later I'll have to inform Taofeek to create a simple automated "click to send"))
         const emails = unverifiedVendors.map(v => v.email).join(',');
         const mailtoLink = `mailto:${emails}?subject=Complete Your Merchant Verification&body=Dear Merchant,\n\nPlease complete your merchant verification process to start selling on our platform.\n\nBest regards,\nCushy Access Team`;
         window.open(mailtoLink, '_blank');
