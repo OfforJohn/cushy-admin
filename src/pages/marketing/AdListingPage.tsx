@@ -1,4 +1,43 @@
+// Get all Expo tokens
+const fetchExpoTokens = async () => {
+    try {
+        const response = await fetch('https://cushy-admin-mark-1.onrender.com/expo-tokens');
+        return await response.json();
+    } catch (error) {
+        console.error('Fetch tokens error:', error);
+        return { tokens: [] };
+    }
+};
+
+// Register Expo token
+const registerExpoToken = async (token: string) => {
+    try {
+        const response = await fetch('https://cushy-admin-mark-1.onrender.com/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Register token error:', error);
+        return null;
+    }
+};
 import React, { useState } from 'react';
+// Push notification sender
+const sendPushNotification = async (title: string, body: string, data: object) => {
+    try {
+        const response = await fetch('https://cushy-admin-mark-1.onrender.com/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, body, data }),
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Push notification error:', error);
+        return null;
+    }
+};
 import {
     Box,
     Flex,
@@ -280,13 +319,19 @@ export const AdListingPage: React.FC = () => {
         return num.toString();
     };
 
-    const handleCreateBanner = () => {
+    const handleCreateBanner = async () => {
         toast({
             title: 'Banner Created',
             description: 'Your banner ad has been created successfully.',
             status: 'success',
             duration: 3000,
         });
+
+        // Send push notification
+        if (newBanner.title && newBanner.buttonText) {
+            await sendPushNotification(newBanner.title, newBanner.buttonText, {});
+        }
+
         onCreateClose();
         // Reset form
         setNewBanner({
@@ -302,6 +347,54 @@ export const AdListingPage: React.FC = () => {
             targetCities: ['All Cities'],
             userSegments: ['All Users'],
         });
+    };
+
+    // State for push notification test UI
+    const [expoToken, setExpoToken] = useState('');
+    const [registering, setRegistering] = useState(false);
+    const [sending, setSending] = useState(false);
+    const [testTitle, setTestTitle] = useState('Test');
+    const [testBody, setTestBody] = useState('Buy Your Meal From Us');
+    const [testUrl, setTestUrl] = useState('myapp://order');
+    const [tokens, setTokens] = useState<string[]>([]);
+    const [loadingTokens, setLoadingTokens] = useState(false);
+
+    // Fetch tokens on mount and on demand
+    const loadTokens = async () => {
+        setLoadingTokens(true);
+        const result = await fetchExpoTokens();
+        setTokens(result.tokens || []);
+        setLoadingTokens(false);
+    };
+    React.useEffect(() => {
+        loadTokens();
+    }, []);
+
+    // Handler for registering token
+    const handleRegisterToken = async () => {
+        setRegistering(true);
+        const result = await registerExpoToken(expoToken);
+        setRegistering(false);
+        if (result && result.success) {
+            toast({ title: 'Token Registered', status: 'success', duration: 3000 });
+            // Refresh tokens
+            const updated = await fetchExpoTokens();
+            setTokens(updated.tokens || []);
+        } else {
+            toast({ title: 'Registration Failed', description: result?.error || 'Unknown error', status: 'error', duration: 4000 });
+        }
+    };
+
+    // Handler for sending test notification
+    const handleSendTestPush = async () => {
+        setSending(true);
+        const result = await sendPushNotification(testTitle, testBody, { url: testUrl });
+        setSending(false);
+        if (result && result.sent > 0) {
+            toast({ title: 'Push Sent', description: `Sent to ${result.sent} device(s)`, status: 'success', duration: 3000 });
+        } else {
+            toast({ title: 'Push Not Sent', description: 'No devices registered or error occurred.', status: 'warning', duration: 4000 });
+        }
     };
 
     return (
@@ -810,6 +903,101 @@ export const AdListingPage: React.FC = () => {
                     </ModalFooter>
                 </ModalContent>
             </Modal>
+        {/* Push Notification Test Section */}
+        <Box mt={12} p={6} bg="gray.900" borderRadius="lg" borderWidth="1px" borderColor="gray.800">
+            <Heading size="sm" color="purple.300" mb={4}>Push Notification Test</Heading>
+            <VStack align="stretch" spacing={4}>
+                <HStack>
+                    <Input
+                        placeholder="Enter Expo Push Token"
+                        value={expoToken}
+                        onChange={e => setExpoToken(e.target.value)}
+                        bg="gray.800"
+                        borderColor="gray.700"
+                        fontSize="sm"
+                    />
+                    <Button
+                        colorScheme="purple"
+                        onClick={handleRegisterToken}
+                        isLoading={registering}
+                        isDisabled={!expoToken}
+                    >
+                        Register Token
+                    </Button>
+                </HStack>
+                <Box>
+                    <HStack justify="space-between" mb={2}>
+                        <Text color="gray.400" fontSize="sm">Registered Tokens:</Text>
+                        <Button size="xs" colorScheme="purple" variant="outline" onClick={loadTokens} isLoading={loadingTokens}>
+                            Refresh Tokens
+                        </Button>
+                    </HStack>
+                    {loadingTokens ? (
+                        <Text color="gray.500" fontSize="xs">Loading tokens...</Text>
+                    ) : tokens.length === 0 ? (
+                        <Text color="gray.500" fontSize="xs">No tokens registered.</Text>
+                    ) : (
+                        <VStack align="start" spacing={1}>
+                            {tokens.map((token, idx) => (
+                                <Text key={idx} color="gray.300" fontSize="xs" wordBreak="break-all">{token}</Text>
+                            ))}
+                        </VStack>
+                    )}
+                </Box>
+                <HStack spacing={2} flexWrap="wrap" align="stretch" overflowX="auto">
+                    <Input
+                        placeholder="Notification Title"
+                        value={testTitle}
+                        onChange={e => setTestTitle(e.target.value)}
+                        bg="gray.800"
+                        borderColor="gray.700"
+                        fontSize="sm"
+                        minW={{ base: '180px', md: '200px' }}
+                        flexShrink={0}
+                    />
+                    <Input
+                        placeholder="Notification Body"
+                        value={testBody}
+                        onChange={e => setTestBody(e.target.value)}
+                        bg="gray.800"
+                        borderColor="gray.700"
+                        fontSize="sm"
+                        minW={{ base: '180px', md: '200px' }}
+                        flexShrink={0}
+                    />
+                    <Input
+                        placeholder="Notification URL (data.url)"
+                        value={testUrl}
+                        onChange={e => setTestUrl(e.target.value)}
+                        bg="gray.800"
+                        borderColor="gray.700"
+                        fontSize="sm"
+                        minW={{ base: '180px', md: '200px' }}
+                        flexShrink={0}
+                    />
+                    <Box minW={{ base: '140px', md: '160px' }} flexShrink={0}>
+                        <Button
+                            colorScheme="blue"
+                            w="100%"
+                            onClick={handleSendTestPush}
+                            isLoading={sending}
+                            isDisabled={
+                                sending ||
+                                tokens.length === 0 ||
+                                !testTitle.trim() ||
+                                !testBody.trim() ||
+                                !testUrl.trim()
+                            }
+                        >
+                            Send Test Push
+                        </Button>
+                    </Box>
+                </HStack>
+                <Text color="gray.500" fontSize="xs">
+                    Register your device's Expo push token, view all registered tokens, and send a test notification with a custom URL.
+                </Text>
+            </VStack>
+        </Box>
         </Box>
     );
 };
