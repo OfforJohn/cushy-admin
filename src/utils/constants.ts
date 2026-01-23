@@ -108,7 +108,6 @@ export const NAV_ITEMS = [
         children: [
             { label: 'Users', path: '/users' },
             { label: 'Transactions', path: '/users/transactions' },
-            { label: 'Refunds', path: '/users/refunds' },
             { label: 'Payouts', path: '/users/payouts' },
         ],
     },

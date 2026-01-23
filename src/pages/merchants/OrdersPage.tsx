@@ -237,8 +237,8 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
         return getChargeByName(order, 'deliveryFee');
     }
 
-    function getServiceFee(order: Order): number {
-        return getChargeByName(order, 'serviceFee');
+    function getPlatformFee(order: Order): number {
+        return getChargeByName(order, 'platformFee');
     }
 
     // Filter orders locally
@@ -532,7 +532,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                                     <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Customer Phone</Th>
                                     <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Delivery</Th>
                                     <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Amount</Th>
-                                    <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Service Fee</Th>
+                                    <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Platform Fee</Th>
                                     <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Delivery Fee</Th>
                                     <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Status</Th>
                                     <Th borderColor="gray.800" color="gray.500" textTransform="uppercase" fontSize="xs">Customer Name</Th>
@@ -585,7 +585,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                                                 <Text fontSize="sm" fontWeight="500" color="green.400">{formatCurrency(order.totalAmount)}</Text>
                                             </Td>
                                             <Td borderColor="gray.800">
-                                                <Text fontSize="sm" fontWeight="500" color="orange.400">{formatCurrency(getServiceFee(order))}</Text>
+                                                <Text fontSize="sm" fontWeight="500" color="orange.400">{formatCurrency(getPlatformFee(order))}</Text>
                                             </Td>
                                             <Td borderColor="gray.800">
                                                 <Text fontSize="sm" fontWeight="500" color="blue.400">{formatCurrency(getDeliveryFee(order))}</Text>
@@ -737,8 +737,8 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                                             </Flex>
                                             <Divider borderColor="gray.700" />
                                             <Flex justify="space-between">
-                                                <Text color="gray.400">Service Fee</Text>
-                                                <Text color="orange.400" fontWeight="500">{formatCurrency(getServiceFee(selectedOrder))}</Text>
+                                                <Text color="gray.400">Platform Fee</Text>
+                                                <Text color="orange.400" fontWeight="500">{formatCurrency(getPlatformFee(selectedOrder))}</Text>
                                             </Flex>
                                             <Flex justify="space-between">
                                                 <Text color="gray.400">Delivery Fee</Text>

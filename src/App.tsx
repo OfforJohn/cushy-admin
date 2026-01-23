@@ -104,8 +104,8 @@ const AppRoutes: React.FC = () => {
         {/* Users & Wallet */}
         <Route path="users" element={<UsersPage />} />
         <Route path="users/transactions" element={<TransactionsPage />} />
-        <Route path="users/refunds" element={<PlaceholderPage title="Refunds" />} />
         <Route path="users/payouts" element={<PayoutsPage />} />
+
 
         {/* Marketing */}
         <Route path="marketing/ads" element={<AdListingPage />} />

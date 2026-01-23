@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
     Box,
     Flex,
@@ -30,173 +30,268 @@ import {
     MenuList,
     MenuItem,
     IconButton,
+    Modal,
+    ModalOverlay,
+    ModalContent,
+    ModalHeader,
+    ModalBody,
+    ModalCloseButton,
+    ModalFooter,
+    FormControl,
+    FormLabel,
+    useDisclosure,
 } from '@chakra-ui/react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Search,
     RefreshCw,
     Download,
-    Wallet,
-    ArrowUpRight,
-    ArrowDownRight,
     Clock,
     CheckCircle,
     XCircle,
     MoreVertical,
     Eye,
     Store,
-    Users,
     TrendingUp,
+    Play,
+    Calendar,
 } from 'lucide-react';
-import { adminApi } from '../../api/admin.api';
+import { storesApi } from '../../api/stores.api';
+import { walletApi } from '../../api/wallet.api';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
 
-interface PayoutTransaction {
+interface Payout {
     id: string;
-    vendorName: string;
-    vendorEmail: string;
+    vendorId: string;
     amount: number;
-    status: 'pending' | 'completed' | 'failed' | 'processing';
-    type: 'withdrawal' | 'commission' | 'refund';
-    bankName?: string;
-    accountNumber?: string;
+    status: string;
+    bankName: string;
+    accountNumber: string;
+    accountName: string;
+    reference: string;
+    narration?: string;
+    providerReference?: string;
     createdAt: string;
-    completedAt?: string;
+    updatedAt?: string;
+    vendor?: {
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        store?: {
+            name?: string;
+        };
+    };
 }
 
 export const PayoutsPage: React.FC = () => {
-    const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
     const [statusFilter, setStatusFilter] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [payoutDate, setPayoutDate] = useState(() => {
+        const today = new Date();
+        return today.toISOString().split('T')[0]; // YYYY-MM-DD format
+    });
+    const { isOpen: isRunPayoutsOpen, onOpen: onRunPayoutsOpen, onClose: onRunPayoutsClose } = useDisclosure();
     const toast = useToast();
+    const queryClient = useQueryClient();
 
-    // Fetch vendor list to calculate total merchant wallet balance
-    const { data: vendorData, isLoading: vendorsLoading, refetch } = useQuery({
-        queryKey: ['vendorList'],
-        queryFn: () => adminApi.getVendorList({ limit: 500 }),
+    // Debounce search input
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+            setPage(1); // Reset to first page on search
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Reset page when filter changes
+    useEffect(() => {
+        setPage(1);
+    }, [statusFilter]);
+
+    // Date filter state
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // desc = highest first
+
+    // Fetch stores to calculate total merchant wallet balance
+    const { data: storesData, isLoading: storesLoading } = useQuery({
+        queryKey: ['stores'],
+        queryFn: () => storesApi.getAllStores(),
     });
 
-    // Extract vendors and calculate total balance
-    const extractVendors = () => {
-        if (!vendorData) return [];
-        const data = vendorData.data || vendorData;
+    // Fetch ALL payouts for stats (no pagination, no filter)
+    const { data: allPayoutsData, isLoading: allPayoutsLoading } = useQuery({
+        queryKey: ['allPayoutsStats'],
+        queryFn: () => walletApi.getAllPayouts({ limit: 10000 }), // Fetch all for stats
+    });
+
+    // Fetch paginated/filtered payouts for table display
+    const { data: payoutsData, isLoading: payoutsLoading, refetch, error: payoutsError } = useQuery({
+        queryKey: ['payouts', statusFilter, debouncedSearch, page, pageSize, dateFrom, dateTo],
+        queryFn: () => walletApi.getAllPayouts({
+            status: statusFilter || undefined,
+            search: debouncedSearch || undefined,
+            page,
+            limit: pageSize,
+            startDate: dateFrom || undefined,
+            endDate: dateTo || undefined,
+        }),
+    });
+
+    // Log for debugging
+    useEffect(() => {
+        if (payoutsData) {
+            console.log('Payouts API Response:', payoutsData);
+        }
+        if (payoutsError) {
+            console.error('Payouts API Error:', payoutsError);
+        }
+    }, [payoutsData, payoutsError]);
+
+    // Run payouts mutation
+    const runPayoutsMutation = useMutation({
+        mutationFn: (date?: string) => walletApi.runPayouts(date),
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['payouts'] });
+            queryClient.invalidateQueries({ queryKey: ['allPayoutsStats'] });
+
+            // Check if response indicates an error
+            if (data.error) {
+                toast({
+                    title: 'Payouts issue',
+                    description: data.data?.message || data.data?.error || data.message || 'No eligible payouts found',
+                    status: 'warning',
+                    duration: 5000,
+                });
+            } else {
+                toast({
+                    title: 'Payouts initiated',
+                    description: data.data?.message || data.message || 'Daily payouts are being processed',
+                    status: 'success',
+                    duration: 3000,
+                });
+            }
+        },
+        onError: (error: any) => {
+            toast({
+                title: 'Failed to run payouts',
+                description: error?.response?.data?.data?.error || error?.response?.data?.message || 'An error occurred',
+                status: 'error',
+                duration: 5000,
+            });
+        },
+    });
+
+    // Extract stores and calculate total balance
+    const stores = useMemo(() => {
+        if (!storesData) return [];
+        // Response structure: { data: [...stores...] } or directly array
+        const data = storesData.data || storesData;
         if (Array.isArray(data)) return data;
-        if (data && typeof data === 'object' && 'vendorList' in data) return (data as { vendorList: any[] }).vendorList;
+        return [];
+    }, [storesData]);
+
+    // Calculate total merchant wallet balance from stores
+    const totalMerchantBalance = useMemo(() => {
+        return stores.reduce((sum: number, store: any) => {
+            const balance = Number(store.walletBalance) || 0;
+            return sum + balance;
+        }, 0);
+    }, [stores]);
+
+
+    // Extract payouts from response - backend returns { data: { data: [], meta: {} } }
+    const extractPayoutsFromResponse = (data: any) => {
+        if (!data) return [];
+        // Response structure: { error: false, message: 'PAYOUTS_FETCHED', data: { data: [...], meta: {...} } }
+        const responseData = data.data;
+        if (responseData?.data && Array.isArray(responseData.data)) {
+            return responseData.data;
+        }
+        // Fallback if structure is different
+        if (Array.isArray(responseData)) {
+            return responseData;
+        }
         return [];
     };
 
-    const vendors = extractVendors();
+    // Extract ALL payouts for stats calculation
+    const allPayouts: Payout[] = useMemo(() => {
+        return extractPayoutsFromResponse(allPayoutsData);
+    }, [allPayoutsData]);
 
-    // Calculate total merchant wallet balance
-    const totalMerchantBalance = vendors.reduce((sum: number, vendor: any) => {
-        const balance = typeof vendor.walletBalance === 'string'
-            ? parseFloat(vendor.walletBalance.replace(/[^0-9.-]/g, ''))
-            : (vendor.walletBalance || 0);
-        return sum + (isNaN(balance) ? 0 : balance);
-    }, 0);
+    // Calculate stats from ALL payouts (not just current page)
+    const stats = useMemo(() => ({
+        totalPending: allPayouts.filter(p => p.status === 'PENDING').reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
+        totalCompleted: allPayouts.filter(p => p.status === 'APPROVED' || p.status === 'COMPLETED').reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
+        pendingCount: allPayouts.filter(p => p.status === 'PENDING').length,
+        completedCount: allPayouts.filter(p => p.status === 'APPROVED' || p.status === 'COMPLETED').length,
+        processingCount: allPayouts.filter(p => p.status === 'PROCESSING').length,
+    }), [allPayouts]);
 
-    // Mock payout transactions (to be replaced with actual API when available)
-    const mockPayouts: PayoutTransaction[] = [
-        {
-            id: 'pyt_001',
-            vendorName: 'Fresh Foods Market',
-            vendorEmail: 'fresh@foods.com',
-            amount: 125000,
-            status: 'completed',
-            type: 'withdrawal',
-            bankName: 'GT Bank',
-            accountNumber: '****4521',
-            createdAt: '2026-01-02T10:30:00Z',
-            completedAt: '2026-01-02T11:00:00Z',
-        },
-        {
-            id: 'pyt_002',
-            vendorName: 'MediCare Pharmacy',
-            vendorEmail: 'info@medicare.ng',
-            amount: 85000,
-            status: 'pending',
-            type: 'withdrawal',
-            bankName: 'First Bank',
-            accountNumber: '****7890',
-            createdAt: '2026-01-02T09:15:00Z',
-        },
-        {
-            id: 'pyt_003',
-            vendorName: 'Quick Bites Restaurant',
-            vendorEmail: 'orders@quickbites.com',
-            amount: 45000,
-            status: 'processing',
-            type: 'withdrawal',
-            bankName: 'Access Bank',
-            accountNumber: '****1234',
-            createdAt: '2026-01-01T16:45:00Z',
-        },
-        {
-            id: 'pyt_004',
-            vendorName: 'Green Grocers',
-            vendorEmail: 'hello@greengrocers.ng',
-            amount: 15000,
-            status: 'failed',
-            type: 'withdrawal',
-            bankName: 'UBA',
-            accountNumber: '****5678',
-            createdAt: '2026-01-01T14:20:00Z',
-        },
-    ];
+    // Extract paginated payouts for table display
+    const tablePayouts: Payout[] = useMemo(() => {
+        return extractPayoutsFromResponse(payoutsData);
+    }, [payoutsData]);
 
-    // Filter payouts
-    const filteredPayouts = mockPayouts.filter(payout => {
-        const matchesStatus = !statusFilter || payout.status === statusFilter;
-        const matchesSearch = !searchQuery ||
-            payout.vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            payout.vendorEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            payout.id.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesStatus && matchesSearch;
-    });
+    // Get total count from paginated response
+    const totalPayouts = payoutsData?.data?.meta?.total || tablePayouts.length;
 
-    // Calculate stats
-    const stats = {
-        totalPending: mockPayouts.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0),
-        totalCompleted: mockPayouts.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount, 0),
-        pendingCount: mockPayouts.filter(p => p.status === 'pending').length,
-        completedCount: mockPayouts.filter(p => p.status === 'completed').length,
-    };
+    // Sort payouts by amount
+    const sortedPayouts = useMemo(() => {
+        return [...tablePayouts].sort((a, b) => {
+            const amountA = Number(a.amount) || 0;
+            const amountB = Number(b.amount) || 0;
+            return sortOrder === 'desc' ? amountB - amountA : amountA - amountB;
+        });
+    }, [tablePayouts, sortOrder]);
+
 
     const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'completed': return 'green';
-            case 'pending': return 'yellow';
-            case 'processing': return 'blue';
-            case 'failed': return 'red';
+        switch (status?.toUpperCase()) {
+            case 'APPROVED':
+            case 'COMPLETED': return 'green';
+            case 'PENDING': return 'yellow';
+            case 'PROCESSING': return 'blue';
+            case 'FAILED':
+            case 'REJECTED': return 'red';
             default: return 'gray';
         }
     };
 
     const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'completed': return CheckCircle;
-            case 'pending': return Clock;
-            case 'processing': return RefreshCw;
-            case 'failed': return XCircle;
+        switch (status?.toUpperCase()) {
+            case 'APPROVED':
+            case 'COMPLETED': return CheckCircle;
+            case 'PENDING': return Clock;
+            case 'PROCESSING': return RefreshCw;
+            case 'FAILED':
+            case 'REJECTED': return XCircle;
             default: return Clock;
         }
     };
 
+    const getVendorName = (payout: Payout) => {
+        if (payout.vendor?.store?.name) return payout.vendor.store.name;
+        if (payout.vendor?.firstName) return `${payout.vendor.firstName} ${payout.vendor.lastName || ''}`.trim();
+        return payout.accountName || 'Unknown Vendor';
+    };
+
     const handleExportCSV = () => {
-        if (filteredPayouts.length === 0) {
+        if (sortedPayouts.length === 0) {
             toast({ title: 'No data to export', status: 'warning', duration: 2000 });
             return;
         }
 
-        const headers = ['ID', 'Vendor', 'Email', 'Amount', 'Status', 'Type', 'Bank', 'Account', 'Date'];
-        const rows = filteredPayouts.map(p => [
-            p.id,
-            p.vendorName,
-            p.vendorEmail,
+        const headers = ['Reference', 'Vendor', 'Amount', 'Status', 'Bank', 'Account', 'Date'];
+        const rows = sortedPayouts.map(p => [
+            p.reference,
+            getVendorName(p),
             formatCurrency(p.amount),
             p.status,
-            p.type,
             p.bankName || 'N/A',
             p.accountNumber || 'N/A',
             formatDateTime(p.createdAt),
@@ -216,6 +311,8 @@ export const PayoutsPage: React.FC = () => {
         toast({ title: 'Export successful', status: 'success', duration: 2000 });
     };
 
+    const isLoading = storesLoading || payoutsLoading;
+
     return (
         <Box>
             {/* Header */}
@@ -229,6 +326,14 @@ export const PayoutsPage: React.FC = () => {
                     </Text>
                 </Box>
                 <HStack spacing={3}>
+                    <Button
+                        leftIcon={<Play size={16} />}
+                        colorScheme="purple"
+                        size="sm"
+                        onClick={onRunPayoutsOpen}
+                    >
+                        Run Payouts
+                    </Button>
                     <Button
                         leftIcon={<RefreshCw size={16} />}
                         variant="ghost"
@@ -250,7 +355,7 @@ export const PayoutsPage: React.FC = () => {
             </Flex>
 
             {/* Stats Cards */}
-            <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4} mb={6}>
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4} mb={6}>
                 {/* Total Merchant Wallet Balance */}
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
                     <CardBody p={5}>
@@ -261,10 +366,10 @@ export const PayoutsPage: React.FC = () => {
                             <Text fontSize="xs" color="gray.500" fontWeight="500">Total Merchant Balance</Text>
                         </HStack>
                         <Text fontSize="2xl" fontWeight="bold" color="purple.400">
-                            {vendorsLoading ? <Spinner size="sm" /> : formatCurrency(totalMerchantBalance)}
+                            {storesLoading ? <Spinner size="sm" /> : formatCurrency(totalMerchantBalance)}
                         </Text>
                         <Text fontSize="xs" color="gray.500" mt={1}>
-                            {vendors.length} merchants
+                            {stores.length} merchants
                         </Text>
                     </CardBody>
                 </Card>
@@ -279,7 +384,7 @@ export const PayoutsPage: React.FC = () => {
                             <Text fontSize="xs" color="gray.500" fontWeight="500">Pending Payouts</Text>
                         </HStack>
                         <Text fontSize="2xl" fontWeight="bold" color="yellow.400">
-                            {formatCurrency(stats.totalPending)}
+                            {payoutsLoading ? <Spinner size="sm" /> : formatCurrency(stats.totalPending)}
                         </Text>
                         <Text fontSize="xs" color="gray.500" mt={1}>
                             {stats.pendingCount} requests
@@ -287,7 +392,7 @@ export const PayoutsPage: React.FC = () => {
                     </CardBody>
                 </Card>
 
-                {/* Completed Today */}
+                {/* Completed */}
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
                     <CardBody p={5}>
                         <HStack spacing={3} mb={2}>
@@ -297,7 +402,7 @@ export const PayoutsPage: React.FC = () => {
                             <Text fontSize="xs" color="gray.500" fontWeight="500">Completed</Text>
                         </HStack>
                         <Text fontSize="2xl" fontWeight="bold" color="green.400">
-                            {formatCurrency(stats.totalCompleted)}
+                            {payoutsLoading ? <Spinner size="sm" /> : formatCurrency(stats.totalCompleted)}
                         </Text>
                         <Text fontSize="xs" color="gray.500" mt={1}>
                             {stats.completedCount} payouts
@@ -315,7 +420,7 @@ export const PayoutsPage: React.FC = () => {
                             <Text fontSize="xs" color="gray.500" fontWeight="500">Processing</Text>
                         </HStack>
                         <Text fontSize="2xl" fontWeight="bold" color="blue.400">
-                            {mockPayouts.filter(p => p.status === 'processing').length}
+                            {payoutsLoading ? <Spinner size="sm" /> : stats.processingCount}
                         </Text>
                         <Text fontSize="xs" color="gray.500" mt={1}>
                             In progress
@@ -328,7 +433,7 @@ export const PayoutsPage: React.FC = () => {
             <Card bg="gray.900" borderColor="gray.800" borderWidth="1px" mb={6}>
                 <CardBody p={4}>
                     <Flex gap={3} flexWrap="wrap" align="center">
-                        <InputGroup maxW={{ base: '100%', md: '250px' }} size="sm">
+                        <InputGroup maxW={{ base: '100%', md: '200px' }} size="sm">
                             <InputLeftElement>
                                 <Icon as={Search} color="gray.500" boxSize={4} />
                             </InputLeftElement>
@@ -343,23 +448,66 @@ export const PayoutsPage: React.FC = () => {
                         <Select
                             placeholder="All Status"
                             size="sm"
-                            maxW="150px"
+                            maxW="140px"
                             bg="gray.800"
                             borderColor="gray.700"
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
                         >
-                            <option value="pending">Pending</option>
-                            <option value="processing">Processing</option>
-                            <option value="completed">Completed</option>
-                            <option value="failed">Failed</option>
+                            <option value="PENDING">Pending</option>
+                            <option value="PROCESSING">Processing</option>
+                            <option value="APPROVED">Approved/Completed</option>
+                            <option value="FAILED">Failed</option>
                         </Select>
-                        {(statusFilter || searchQuery) && (
+
+                        {/* Date Filters */}
+                        <HStack spacing={2}>
+                            <Input
+                                type="date"
+                                size="sm"
+                                placeholder="From"
+                                value={dateFrom}
+                                onChange={(e) => setDateFrom(e.target.value)}
+                                bg="gray.800"
+                                borderColor="gray.700"
+                                maxW="140px"
+                            />
+                            <Text color="gray.500" fontSize="sm">to</Text>
+                            <Input
+                                type="date"
+                                size="sm"
+                                placeholder="To"
+                                value={dateTo}
+                                onChange={(e) => setDateTo(e.target.value)}
+                                bg="gray.800"
+                                borderColor="gray.700"
+                                maxW="140px"
+                            />
+                        </HStack>
+
+                        {/* Sort Toggle */}
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            borderColor="gray.700"
+                            color="gray.300"
+                            leftIcon={<TrendingUp size={14} />}
+                            onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                        >
+                            {sortOrder === 'desc' ? 'Highest First' : 'Lowest First'}
+                        </Button>
+
+                        {(statusFilter || searchQuery || dateFrom || dateTo) && (
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 color="gray.400"
-                                onClick={() => { setStatusFilter(''); setSearchQuery(''); }}
+                                onClick={() => {
+                                    setStatusFilter('');
+                                    setSearchQuery('');
+                                    setDateFrom('');
+                                    setDateTo('');
+                                }}
                             >
                                 Clear
                             </Button>
@@ -368,141 +516,167 @@ export const PayoutsPage: React.FC = () => {
                 </CardBody>
             </Card>
 
+
             {/* Payouts Table */}
             <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
                 <CardBody p={0}>
-                    <Box overflowX="auto">
-                        <Table variant="simple" size="sm">
-                            <Thead>
-                                <Tr>
-                                    <Th borderColor="gray.700" color="gray.500" fontSize="xs">VENDOR</Th>
-                                    <Th borderColor="gray.700" color="gray.500" fontSize="xs">AMOUNT</Th>
-                                    <Th borderColor="gray.700" color="gray.500" fontSize="xs">STATUS</Th>
-                                    <Th borderColor="gray.700" color="gray.500" fontSize="xs">BANK</Th>
-                                    <Th borderColor="gray.700" color="gray.500" fontSize="xs">DATE</Th>
-                                    <Th borderColor="gray.700" color="gray.500" fontSize="xs" w="50px"></Th>
-                                </Tr>
-                            </Thead>
-                            <Tbody>
-                                {filteredPayouts.length === 0 ? (
+                    {isLoading ? (
+                        <Flex justify="center" align="center" py={12}>
+                            <Spinner size="lg" color="purple.500" />
+                        </Flex>
+                    ) : (
+                        <Box overflowX="auto">
+                            <Table variant="simple" size="sm">
+                                <Thead>
                                     <Tr>
-                                        <Td colSpan={6} textAlign="center" py={8} borderColor="gray.800">
-                                            <Text color="gray.500">No payout requests found</Text>
-                                        </Td>
+                                        <Th borderColor="gray.700" color="gray.500" fontSize="xs">VENDOR</Th>
+                                        <Th borderColor="gray.700" color="gray.500" fontSize="xs">AMOUNT</Th>
+                                        <Th borderColor="gray.700" color="gray.500" fontSize="xs">STATUS</Th>
+                                        <Th borderColor="gray.700" color="gray.500" fontSize="xs">BANK</Th>
+                                        <Th borderColor="gray.700" color="gray.500" fontSize="xs">DATE</Th>
+                                        <Th borderColor="gray.700" color="gray.500" fontSize="xs" w="50px"></Th>
                                     </Tr>
-                                ) : (
-                                    filteredPayouts.map((payout) => (
-                                        <Tr key={payout.id} _hover={{ bg: 'gray.800' }}>
-                                            <Td borderColor="gray.800">
-                                                <HStack spacing={3}>
-                                                    <Avatar
-                                                        size="sm"
-                                                        name={payout.vendorName}
-                                                        bg="purple.600"
-                                                    />
-                                                    <VStack align="start" spacing={0}>
-                                                        <Text fontSize="sm" fontWeight="500" color="gray.100">
-                                                            {payout.vendorName}
-                                                        </Text>
-                                                        <Text fontSize="xs" color="gray.500">
-                                                            {payout.vendorEmail}
-                                                        </Text>
-                                                    </VStack>
-                                                </HStack>
-                                            </Td>
-                                            <Td borderColor="gray.800">
-                                                <Text fontSize="sm" fontWeight="600" color="gray.100">
-                                                    {formatCurrency(payout.amount)}
-                                                </Text>
-                                            </Td>
-                                            <Td borderColor="gray.800">
-                                                <Badge
-                                                    colorScheme={getStatusColor(payout.status)}
-                                                    variant="subtle"
-                                                    px={2}
-                                                    py={1}
-                                                    borderRadius="md"
-                                                >
-                                                    <HStack spacing={1}>
-                                                        <Icon as={getStatusIcon(payout.status)} boxSize={3} />
-                                                        <Text textTransform="capitalize">{payout.status}</Text>
-                                                    </HStack>
-                                                </Badge>
-                                            </Td>
-                                            <Td borderColor="gray.800">
-                                                <VStack align="start" spacing={0}>
-                                                    <Text fontSize="sm" color="gray.300">
-                                                        {payout.bankName || 'N/A'}
-                                                    </Text>
-                                                    <Text fontSize="xs" color="gray.500">
-                                                        {payout.accountNumber || ''}
-                                                    </Text>
-                                                </VStack>
-                                            </Td>
-                                            <Td borderColor="gray.800">
-                                                <Text fontSize="sm" color="gray.400">
-                                                    {formatDateTime(payout.createdAt)}
-                                                </Text>
-                                            </Td>
-                                            <Td borderColor="gray.800">
-                                                <Menu>
-                                                    <MenuButton
-                                                        as={IconButton}
-                                                        icon={<MoreVertical size={16} />}
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        color="gray.400"
-                                                    />
-                                                    <MenuList bg="gray.800" borderColor="gray.700">
-                                                        <MenuItem
-                                                            icon={<Eye size={16} />}
-                                                            bg="gray.800"
-                                                            _hover={{ bg: 'gray.700' }}
-                                                        >
-                                                            View Details
-                                                        </MenuItem>
-                                                        {payout.status === 'pending' && (
-                                                            <>
-                                                                <MenuItem
-                                                                    icon={<CheckCircle size={16} />}
-                                                                    bg="gray.800"
-                                                                    _hover={{ bg: 'gray.700' }}
-                                                                    color="green.400"
-                                                                >
-                                                                    Approve
-                                                                </MenuItem>
-                                                                <MenuItem
-                                                                    icon={<XCircle size={16} />}
-                                                                    bg="gray.800"
-                                                                    _hover={{ bg: 'gray.700' }}
-                                                                    color="red.400"
-                                                                >
-                                                                    Reject
-                                                                </MenuItem>
-                                                            </>
-                                                        )}
-                                                    </MenuList>
-                                                </Menu>
+                                </Thead>
+                                <Tbody>
+                                    {sortedPayouts.length === 0 ? (
+                                        <Tr>
+                                            <Td colSpan={6} textAlign="center" py={8} borderColor="gray.800">
+                                                <Text color="gray.500">No payout requests found</Text>
                                             </Td>
                                         </Tr>
-                                    ))
-                                )}
-                            </Tbody>
-                        </Table>
-                    </Box>
+                                    ) : (
+                                        sortedPayouts.map((payout) => (
+                                            <Tr key={payout.id} _hover={{ bg: 'gray.800' }}>
+                                                <Td borderColor="gray.800">
+                                                    <HStack spacing={3}>
+                                                        <Avatar
+                                                            size="sm"
+                                                            name={getVendorName(payout)}
+                                                            bg="purple.600"
+                                                        />
+                                                        <VStack align="start" spacing={0}>
+                                                            <Text fontSize="sm" fontWeight="500" color="gray.100">
+                                                                {getVendorName(payout)}
+                                                            </Text>
+                                                            <Text fontSize="xs" color="gray.500">
+                                                                {payout.reference}
+                                                            </Text>
+                                                        </VStack>
+                                                    </HStack>
+                                                </Td>
+                                                <Td borderColor="gray.800">
+                                                    <Text fontSize="sm" fontWeight="600" color="gray.100">
+                                                        {formatCurrency(payout.amount)}
+                                                    </Text>
+                                                </Td>
+                                                <Td borderColor="gray.800">
+                                                    <Badge
+                                                        colorScheme={getStatusColor(payout.status)}
+                                                        variant="subtle"
+                                                        px={2}
+                                                        py={1}
+                                                        borderRadius="md"
+                                                    >
+                                                        <HStack spacing={1}>
+                                                            <Icon as={getStatusIcon(payout.status)} boxSize={3} />
+                                                            <Text textTransform="capitalize">{payout.status?.toLowerCase()}</Text>
+                                                        </HStack>
+                                                    </Badge>
+                                                </Td>
+                                                <Td borderColor="gray.800">
+                                                    <VStack align="start" spacing={0}>
+                                                        <Text fontSize="sm" color="gray.300">
+                                                            {payout.bankName || 'N/A'}
+                                                        </Text>
+                                                        <Text fontSize="xs" color="gray.500">
+                                                            {payout.accountNumber ? `****${payout.accountNumber.slice(-4)}` : ''}
+                                                        </Text>
+                                                    </VStack>
+                                                </Td>
+                                                <Td borderColor="gray.800">
+                                                    <Text fontSize="sm" color="gray.400">
+                                                        {formatDateTime(payout.createdAt)}
+                                                    </Text>
+                                                </Td>
+                                                <Td borderColor="gray.800">
+                                                    <Menu>
+                                                        <MenuButton
+                                                            as={IconButton}
+                                                            icon={<MoreVertical size={16} />}
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            color="gray.400"
+                                                        />
+                                                        <MenuList bg="gray.800" borderColor="gray.700">
+                                                            <MenuItem
+                                                                icon={<Eye size={16} />}
+                                                                bg="gray.800"
+                                                                _hover={{ bg: 'gray.700' }}
+                                                            >
+                                                                View Details
+                                                            </MenuItem>
+                                                            {payout.status === 'PENDING' && (
+                                                                <>
+                                                                    <MenuItem
+                                                                        icon={<CheckCircle size={16} />}
+                                                                        bg="gray.800"
+                                                                        _hover={{ bg: 'gray.700' }}
+                                                                        color="green.400"
+                                                                    >
+                                                                        Approve
+                                                                    </MenuItem>
+                                                                    <MenuItem
+                                                                        icon={<XCircle size={16} />}
+                                                                        bg="gray.800"
+                                                                        _hover={{ bg: 'gray.700' }}
+                                                                        color="red.400"
+                                                                    >
+                                                                        Reject
+                                                                    </MenuItem>
+                                                                </>
+                                                            )}
+                                                        </MenuList>
+                                                    </Menu>
+                                                </Td>
+                                            </Tr>
+                                        ))
+                                    )}
+                                </Tbody>
+                            </Table>
+                        </Box>
+                    )}
 
                     {/* Pagination */}
-                    {filteredPayouts.length > 0 && (
+                    {sortedPayouts.length > 0 && (
                         <Flex justify="space-between" align="center" p={4} borderTopWidth="1px" borderColor="gray.800">
                             <Text fontSize="sm" color="gray.500">
-                                Showing {filteredPayouts.length} of {mockPayouts.length} payouts
+                                Showing {sortedPayouts.length} of {totalPayouts} payouts
                             </Text>
                             <HStack spacing={2}>
+                                <Button
+                                    size="xs"
+                                    variant="outline"
+                                    borderColor="gray.700"
+                                    isDisabled={page === 1}
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                >
+                                    Previous
+                                </Button>
+                                <Text fontSize="sm" color="gray.400">Page {page}</Text>
+                                <Button
+                                    size="xs"
+                                    variant="outline"
+                                    borderColor="gray.700"
+                                    isDisabled={sortedPayouts.length < pageSize}
+                                    onClick={() => setPage(p => p + 1)}
+                                >
+                                    Next
+                                </Button>
                                 <Select
                                     size="xs"
                                     w="70px"
                                     value={pageSize}
-                                    onChange={(e) => setPageSize(Number(e.target.value))}
+                                    onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
                                     bg="gray.800"
                                     borderColor="gray.700"
                                 >
@@ -515,6 +689,57 @@ export const PayoutsPage: React.FC = () => {
                     )}
                 </CardBody>
             </Card>
+
+            {/* Run Payouts Modal */}
+            <Modal isOpen={isRunPayoutsOpen} onClose={onRunPayoutsClose}>
+                <ModalOverlay />
+                <ModalContent bg="gray.900" borderColor="gray.800">
+                    <ModalHeader color="gray.100">
+                        <HStack spacing={2}>
+                            <Icon as={Play} color="purple.400" />
+                            <Text>Run Daily Payouts</Text>
+                        </HStack>
+                    </ModalHeader>
+                    <ModalCloseButton color="gray.400" />
+                    <ModalBody>
+                        <Text color="gray.400" mb={4}>
+                            This will process all pending payouts for merchants based on delivered orders on the selected date.
+                        </Text>
+                        <FormControl>
+                            <FormLabel color="gray.300">Select Date</FormLabel>
+                            <Input
+                                type="date"
+                                value={payoutDate}
+                                onChange={(e) => setPayoutDate(e.target.value)}
+                                bg="gray.800"
+                                borderColor="gray.700"
+                                color="gray.100"
+                            />
+                            <Text fontSize="xs" color="gray.500" mt={1}>
+                                Choose the date for which to process vendor payouts (based on delivered orders)
+                            </Text>
+                        </FormControl>
+                    </ModalBody>
+                    <ModalFooter>
+                        <HStack spacing={3}>
+                            <Button variant="ghost" onClick={onRunPayoutsClose}>
+                                Cancel
+                            </Button>
+                            <Button
+                                colorScheme="purple"
+                                leftIcon={<Play size={16} />}
+                                onClick={() => {
+                                    runPayoutsMutation.mutate(payoutDate);
+                                    onRunPayoutsClose();
+                                }}
+                                isLoading={runPayoutsMutation.isPending}
+                            >
+                                Run Payouts
+                            </Button>
+                        </HStack>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
         </Box>
     );
 };

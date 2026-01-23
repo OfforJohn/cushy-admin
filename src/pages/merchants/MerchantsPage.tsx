@@ -56,6 +56,7 @@ import {
 } from 'lucide-react';
 import { adminApi } from '../../api/admin.api';
 import { storesApi } from '../../api/stores.api';
+import { walletApi } from '../../api/wallet.api';
 import { DataGrid, Column } from '../../components/common/DataGrid';
 import { VerificationStatusPill } from '../../components/common/StatusPill';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
@@ -77,6 +78,7 @@ export const MerchantsPage: React.FC = () => {
 
     const { isOpen, onOpen, onClose } = useDisclosure();
     const { isOpen: isDetailsOpen, onOpen: onDetailsOpen, onClose: onDetailsClose } = useDisclosure();
+    const { isOpen: isPayoutsOpen, onOpen: onPayoutsOpen, onClose: onPayoutsClose } = useDisclosure();
     const toast = useToast();
     const queryClient = useQueryClient();
     const { selectedLocation } = useLocationFilter();
@@ -109,6 +111,16 @@ export const MerchantsPage: React.FC = () => {
             });
         },
     });
+
+    // Fetch payouts for selected vendor
+    const { data: vendorPayoutsData, isLoading: payoutsLoading } = useQuery({
+        queryKey: ['vendorPayouts', selectedVendor?.userId],
+        queryFn: () => walletApi.getAllPayouts({ vendorId: selectedVendor?.userId }),
+        enabled: !!selectedVendor?.userId && isPayoutsOpen,
+    });
+
+    // Extract payouts from response
+    const vendorPayouts = vendorPayoutsData?.data?.data || [];
 
     const vendors: StoreType[] = vendorsData?.data || [];
 
@@ -166,6 +178,11 @@ export const MerchantsPage: React.FC = () => {
     const handleViewDetails = (vendor: StoreType) => {
         setSelectedVendor(vendor);
         onDetailsOpen();
+    };
+
+    const handleViewPayouts = (vendor: StoreType) => {
+        setSelectedVendor(vendor);
+        onPayoutsOpen();
     };
 
     const formatDate = (dateString: string) => {
@@ -291,7 +308,10 @@ export const MerchantsPage: React.FC = () => {
             >
                 View Details
             </MenuItem>
-            <MenuItem icon={<Wallet size={16} />}>
+            <MenuItem
+                icon={<Wallet size={16} />}
+                onClick={() => handleViewPayouts(vendor)}
+            >
                 View Payouts
             </MenuItem>
             {!vendor.isVerified && (
@@ -781,6 +801,102 @@ export const MerchantsPage: React.FC = () => {
                                 <Button variant="ghost" onClick={onDetailsClose}>Close</Button>
                             </>
                         )}
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
+
+            {/* View Payouts Modal */}
+            <Modal isOpen={isPayoutsOpen} onClose={onPayoutsClose} size="4xl">
+                <ModalOverlay />
+                <ModalContent bg="gray.900" borderColor="gray.700">
+                    <ModalHeader color="gray.100">
+                        <HStack spacing={3}>
+                            <Icon as={Wallet} color="purple.400" />
+                            <Box>
+                                <Text>Payout History</Text>
+                                {selectedVendor && (
+                                    <Text fontSize="sm" color="gray.400" fontWeight="normal">
+                                        {selectedVendor.name || 'Unnamed Store'}
+                                    </Text>
+                                )}
+                            </Box>
+                        </HStack>
+                    </ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        {payoutsLoading ? (
+                            <Flex justify="center" py={8}>
+                                <Text color="gray.400">Loading payouts...</Text>
+                            </Flex>
+                        ) : vendorPayouts.length === 0 ? (
+                            <Flex justify="center" py={8} direction="column" align="center">
+                                <Icon as={Wallet} color="gray.600" boxSize={10} mb={3} />
+                                <Text color="gray.500">No payouts found for this vendor</Text>
+                            </Flex>
+                        ) : (
+                            <VStack spacing={3} align="stretch">
+                                {vendorPayouts.map((payout: any) => (
+                                    <Box
+                                        key={payout.id}
+                                        p={4}
+                                        bg="gray.800"
+                                        borderRadius="md"
+                                        borderWidth="1px"
+                                        borderColor="gray.700"
+                                    >
+                                        <Flex justify="space-between" align="start" mb={2}>
+                                            <Box>
+                                                <Text fontWeight="600" color="gray.100">
+                                                    {formatCurrency(payout.amount)}
+                                                </Text>
+                                                <Text fontSize="xs" color="gray.500">
+                                                    {formatDateTime(payout.createdAt)}
+                                                </Text>
+                                            </Box>
+                                            <Badge
+                                                colorScheme={
+                                                    payout.status === 'APPROVED' ? 'green' :
+                                                        payout.status === 'PENDING' ? 'yellow' :
+                                                            payout.status === 'PROCESSING' ? 'blue' :
+                                                                payout.status === 'FAILED' ? 'red' : 'gray'
+                                                }
+                                            >
+                                                {payout.status}
+                                            </Badge>
+                                        </Flex>
+                                        <SimpleGrid columns={2} spacing={2} fontSize="sm">
+                                            <Box>
+                                                <Text color="gray.500">Reference</Text>
+                                                <Text color="gray.300" fontFamily="mono" fontSize="xs">
+                                                    {payout.reference}
+                                                </Text>
+                                            </Box>
+                                            <Box>
+                                                <Text color="gray.500">Bank</Text>
+                                                <Text color="gray.300">{payout.bankName}</Text>
+                                            </Box>
+                                            <Box>
+                                                <Text color="gray.500">Account</Text>
+                                                <Text color="gray.300">{payout.accountNumber}</Text>
+                                            </Box>
+                                            <Box>
+                                                <Text color="gray.500">Account Name</Text>
+                                                <Text color="gray.300">{payout.accountName}</Text>
+                                            </Box>
+                                        </SimpleGrid>
+                                        {payout.narration && (
+                                            <Box mt={2}>
+                                                <Text color="gray.500" fontSize="xs">Narration</Text>
+                                                <Text color="gray.400" fontSize="sm">{payout.narration}</Text>
+                                            </Box>
+                                        )}
+                                    </Box>
+                                ))}
+                            </VStack>
+                        )}
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button variant="ghost" onClick={onPayoutsClose}>Close</Button>
                     </ModalFooter>
                 </ModalContent>
             </Modal>

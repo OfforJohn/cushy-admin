@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     Box,
     Flex,
@@ -37,14 +37,27 @@ import {
     Divider,
     Spinner,
     SimpleGrid,
+    Tabs,
+    TabList,
+    Tab,
+    TabPanels,
+    TabPanel,
+    Popover,
+    PopoverTrigger,
+    PopoverContent,
+    PopoverArrow,
+    PopoverCloseButton,
+    PopoverHeader,
+    PopoverBody,
 } from '@chakra-ui/react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import {
     Search,
     Download,
     RefreshCw,
     Wallet,
     Plus,
+    Minus,
     Users,
     UserCheck,
     Clock,
@@ -54,8 +67,10 @@ import {
     ChevronLeft,
     ChevronRight,
     Calendar,
+    Eye,
 } from 'lucide-react';
 import { adminApi } from '../../api/admin.api';
+import { walletApi } from '../../api/wallet.api';
 import { formatCurrency, formatDateTime, formatFullName, formatPhoneNumber } from '../../utils/formatters';
 import { UserRoles } from '../../types/user.types';
 import { useLocationFilter, matchesLocationFilter } from '../../context/LocationContext';
@@ -81,59 +96,24 @@ interface UserListItem {
     lastActive?: string;
 }
 
-interface ManualCreditEntry {
+interface ManualFundingEntry {
     id: string;
-    date: string;
-    user: {
-        name: string;
-        phone: string;
-    };
+    walletId: string;
+    userId: string;
     amount: number;
-    reason: string;
-    status: 'Completed' | 'Pending Approval' | 'Rejected';
-    initiatedBy: string;
+    fundedBy: string;
+    fundedById?: string;
+    description: string;
+    transactionReference: string;
+    status: string;
+    oldBalance: number;
+    newBalance: number;
+    currency: string;
+    createdAt: string;
+    updatedAt?: string;
 }
 
-// Error Boundary to catch errors
-class ErrorBoundary extends React.Component<
-    { children: React.ReactNode },
-    { hasError: boolean; error: Error | null }
-> {
-    constructor(props: { children: React.ReactNode }) {
-        super(props);
-        this.state = { hasError: false, error: null };
-    }
-
-    static getDerivedStateFromError(error: Error) {
-        return { hasError: true, error };
-    }
-
-    render() {
-        if (this.state.hasError) {
-            return (
-                <Box p={8} bg="red.900" borderRadius="lg" m={4}>
-                    <Text color="red.100" fontSize="xl" fontWeight="bold" mb={4}>
-                        ⚠️ Error on Users Page
-                    </Text>
-                    <Text color="red.200" mb={2}>
-                        Something went wrong:
-                    </Text>
-                    <Box bg="gray.900" p={4} borderRadius="md" fontFamily="mono" fontSize="sm">
-                        <Text color="red.300" whiteSpace="pre-wrap">
-                            {this.state.error?.message}
-                        </Text>
-                        <Text color="gray.400" mt={2} whiteSpace="pre-wrap" fontSize="xs">
-                            {this.state.error?.stack}
-                        </Text>
-                    </Box>
-                </Box>
-            );
-        }
-        return this.props.children;
-    }
-}
-
-const UsersPageContent: React.FC = () => {
+export const UsersPage: React.FC = () => {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [registrationFilter, setRegistrationFilter] = useState<string>('');
@@ -141,13 +121,26 @@ const UsersPageContent: React.FC = () => {
     const [walletFilter, setWalletFilter] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Manual Credit Modal state
+    // Manual Credit/Debit Modal state
     const { isOpen: isManualCreditOpen, onOpen: onManualCreditOpen, onClose: onManualCreditClose } = useDisclosure();
     const [creditSearch, setCreditSearch] = useState('');
     const [creditAmount, setCreditAmount] = useState('');
-    const [creditReference, setCreditReference] = useState('REF-2024-001');
     const [creditReason, setCreditReason] = useState('');
     const [creditNotes, setCreditNotes] = useState('');
+    const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null);
+    const [transactionType, setTransactionType] = useState<'credit' | 'debit'>('credit');
+    const [showUserDropdown, setShowUserDropdown] = useState(false);
+
+    // Wallet Actions Modal state
+    const { isOpen: isWalletActionsOpen, onOpen: onWalletActionsOpen, onClose: onWalletActionsClose } = useDisclosure();
+    const [selectedReason, setSelectedReason] = useState<{ description: string; reference: string } | null>(null);
+
+    // Wallet Actions Modal filter & sort state
+    const [walletActionsTypeFilter, setWalletActionsTypeFilter] = useState<'all' | 'credit' | 'debit'>('all');
+    const [walletActionsStatusFilter, setWalletActionsStatusFilter] = useState<string>('all');
+    const [walletActionsSearch, setWalletActionsSearch] = useState('');
+    const [walletActionsSortBy, setWalletActionsSortBy] = useState<'date' | 'amount'>('date');
+    const [walletActionsSortOrder, setWalletActionsSortOrder] = useState<'asc' | 'desc'>('desc');
 
     const toast = useToast();
     const queryClient = useQueryClient();
@@ -165,6 +158,115 @@ const UsersPageContent: React.FC = () => {
         queryKey: ['userSummaries'],
         queryFn: () => adminApi.getUserSummaries(1, 1000), // Fetch all users
     });
+
+    // Fetch manual fundings history
+    const { data: manualFundingsData, isLoading: fundingsLoading, refetch: refetchFundings } = useQuery({
+        queryKey: ['manualFundings'],
+        queryFn: () => walletApi.getManualFundingHistory({ limit: 50 }),
+    });
+
+    // Extract manual fundings
+    const manualFundings: ManualFundingEntry[] = useMemo(() => {
+        if (!manualFundingsData?.data) return [];
+        const data = manualFundingsData.data;
+        if (Array.isArray(data)) return data;
+        if (data.data && Array.isArray(data.data)) return data.data;
+        return [];
+    }, [manualFundingsData]);
+
+    // Manual credit mutation
+    const fundWalletMutation = useMutation({
+        mutationFn: (data: { userId: string; amount: number; description: string }) =>
+            walletApi.fundWallet({
+                userId: data.userId,
+                amount: data.amount,
+                description: data.description,
+            }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['manualFundings'] });
+            queryClient.invalidateQueries({ queryKey: ['userSummaries'] });
+            toast({
+                title: 'Credit processed successfully',
+                description: 'The wallet has been credited.',
+                status: 'success',
+                duration: 3000,
+            });
+            onManualCreditClose();
+            resetCreditForm();
+        },
+        onError: (error: any) => {
+            toast({
+                title: 'Transaction failed',
+                description: error?.response?.data?.message || 'Failed to process transaction',
+                status: 'error',
+                duration: 3000,
+            });
+        },
+    });
+
+    // Manual debit mutation
+    const debitWalletMutation = useMutation({
+        mutationFn: (data: { userId: string; amount: number; description: string }) =>
+            walletApi.debitWallet({
+                userId: data.userId,
+                amount: data.amount,
+                description: data.description,
+            }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['manualFundings'] });
+            queryClient.invalidateQueries({ queryKey: ['userSummaries'] });
+            toast({
+                title: 'Debit processed successfully',
+                description: 'The wallet has been debited.',
+                status: 'success',
+                duration: 3000,
+            });
+            onManualCreditClose();
+            resetCreditForm();
+        },
+        onError: (error: any) => {
+            toast({
+                title: 'Debit failed',
+                description: error?.response?.data?.message || 'Failed to debit wallet',
+                status: 'error',
+                duration: 3000,
+            });
+        },
+    });
+
+    // Reversal mutation (for debits)
+    const reversalMutation = useMutation({
+        mutationFn: (data: { transactionReference: string; reason: string }) =>
+            walletApi.reverseManualFunding(data.transactionReference, data.reason),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['manualFundings'] });
+            queryClient.invalidateQueries({ queryKey: ['userSummaries'] });
+            toast({
+                title: 'Reversal processed successfully',
+                description: 'The transaction has been reversed.',
+                status: 'success',
+                duration: 3000,
+            });
+            refetchFundings();
+        },
+        onError: (error: any) => {
+            toast({
+                title: 'Reversal failed',
+                description: error?.response?.data?.message || 'Failed to reverse transaction',
+                status: 'error',
+                duration: 3000,
+            });
+        },
+    });
+
+    const resetCreditForm = () => {
+        setCreditAmount('');
+        setCreditReason('');
+        setCreditNotes('');
+        setSelectedUser(null);
+        setCreditSearch('');
+        setShowUserDropdown(false);
+    };
 
     // Extract users array and pagination info - handle different response structures
     const extractUsersAndPagination = (): { users: UserListItem[]; total: number } => {
@@ -226,6 +328,54 @@ const UsersPageContent: React.FC = () => {
         return phone ? formatPhoneNumber(phone) : 'N/A';
     };
 
+    // Filtered and sorted wallet actions for the modal
+    const filteredWalletActions = useMemo(() => {
+        let result = [...manualFundings];
+
+        // Filter by type (credit/debit)
+        if (walletActionsTypeFilter === 'credit') {
+            result = result.filter(f => f.amount >= 0);
+        } else if (walletActionsTypeFilter === 'debit') {
+            result = result.filter(f => f.amount < 0);
+        }
+
+        // Filter by status
+        if (walletActionsStatusFilter !== 'all') {
+            result = result.filter(f => f.status === walletActionsStatusFilter);
+        }
+
+        // Filter by search (user name, reference, description)
+        if (walletActionsSearch.trim()) {
+            const searchLower = walletActionsSearch.toLowerCase().trim();
+            result = result.filter(f => {
+                const fundingUser = users.find(u => u.id === f.userId);
+                const userName = fundingUser ? getUserName(fundingUser).toLowerCase() : '';
+                return (
+                    userName.includes(searchLower) ||
+                    f.transactionReference?.toLowerCase().includes(searchLower) ||
+                    f.description?.toLowerCase().includes(searchLower) ||
+                    f.fundedBy?.toLowerCase().includes(searchLower)
+                );
+            });
+        }
+
+        // Sorting
+        result.sort((a, b) => {
+            if (walletActionsSortBy === 'date') {
+                const dateA = new Date(a.createdAt).getTime();
+                const dateB = new Date(b.createdAt).getTime();
+                return walletActionsSortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+            } else {
+                // Sort by amount
+                const amountA = Math.abs(a.amount);
+                const amountB = Math.abs(b.amount);
+                return walletActionsSortOrder === 'desc' ? amountB - amountA : amountA - amountB;
+            }
+        });
+
+        return result;
+    }, [manualFundings, walletActionsTypeFilter, walletActionsStatusFilter, walletActionsSearch, walletActionsSortBy, walletActionsSortOrder, users]);
+
     // Check if user is active (handles both status string and isVerified boolean)
     const isUserActive = (user: UserListItem): boolean => {
         // Check status string first (from backend)
@@ -262,11 +412,24 @@ const UsersPageContent: React.FC = () => {
         return 999;
     };
 
-    // Filter users - exclude VENDOR and ADMIN roles (only show CUSTOMER users)
-    const filteredUsers = Array.isArray(users) ? users.filter(user => {
-        // Only include CUSTOMER users (exclude VENDOR, ADMIN, DOCTOR, THIRD_PARTY)
+    // All customer users (for modal search - no table filters applied)
+    const allCustomerUsers = Array.isArray(users) ? users.filter(user => {
         const userRole = user.userRole?.toUpperCase();
-        if (userRole === 'VENDOR' || userRole === 'ADMIN' || userRole === 'DOCTOR') {
+        const isCustomer = !userRole || userRole === 'CUSTOMER' || userRole === 'USER';
+        const isExcluded = userRole === 'VENDOR' || userRole === 'ADMIN' || userRole === 'DOCTOR' ||
+            userRole === 'THIRD_PARTY' || userRole === 'RIDER' || userRole === 'HEALTH_PROFESSIONAL';
+        return !isExcluded && (isCustomer || !userRole);
+    }) : [];
+
+    // Filter users - ONLY show CUSTOMER type users
+    const filteredUsers = Array.isArray(users) ? users.filter(user => {
+        // Only include CUSTOMER users (exclude VENDOR, ADMIN, DOCTOR, THIRD_PARTY, RIDER, etc.)
+        const userRole = user.userRole?.toUpperCase();
+        // Either user role is CUSTOMER, or if no role specified include it (backwards compatibility)
+        const isCustomer = !userRole || userRole === 'CUSTOMER' || userRole === 'USER';
+        const isExcluded = userRole === 'VENDOR' || userRole === 'ADMIN' || userRole === 'DOCTOR' ||
+            userRole === 'THIRD_PARTY' || userRole === 'RIDER' || userRole === 'HEALTH_PROFESSIONAL';
+        if (isExcluded || (!isCustomer && userRole)) {
             return false;
         }
 
@@ -321,69 +484,86 @@ const UsersPageContent: React.FC = () => {
     const totalPages = Math.ceil(sortedUsers.length / pageSize);
     const paginatedUsers = sortedUsers.slice((page - 1) * pageSize, page * pageSize);
 
-    // Mock recent manual credits data
-    const recentCredits: ManualCreditEntry[] = [
-        {
-            id: '1',
-            date: 'Oct 21, 2:30 PM',
-            user: { name: 'Michael Chen', phone: '+234 803 456 7890' },
-            amount: 25000,
-            reason: 'Order Refund',
-            status: 'Completed',
-            initiatedBy: 'Admin User',
-        },
-        {
-            id: '2',
-            date: 'Oct 21, 11:15 AM',
-            user: { name: 'Lisa Wang', phone: '+234 804 567 8901' },
-            amount: 75000,
-            reason: 'Service Compensation',
-            status: 'Pending Approval',
-            initiatedBy: 'Ops Manager',
-        },
-        {
-            id: '3',
-            date: 'Oct 20, 4:45 PM',
-            user: { name: 'David Smith', phone: '+234 805 678 9012' },
-            amount: 5000,
-            reason: 'Promotional Credit',
-            status: 'Completed',
-            initiatedBy: 'Marketing',
-        },
-    ];
+
 
     const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'Completed':
+        const normalizedStatus = status?.toUpperCase();
+        switch (normalizedStatus) {
+            case 'SUCCESSFUL':
+            case 'COMPLETED':
                 return 'green.400';
-            case 'Pending Approval':
+            case 'PENDING':
+            case 'PENDING APPROVAL':
                 return 'orange.400';
-            case 'Rejected':
+            case 'REJECTED':
+            case 'FAILED':
+            case 'REVERSED':
                 return 'red.400';
             default:
                 return 'gray.400';
         }
     };
 
-    const handleProcessCredit = () => {
-        if (!creditAmount || !creditReason || !creditNotes) {
+    const handleProcessCredit = async () => {
+        if (!selectedUser) {
             toast({
-                title: 'Please fill all required fields',
+                title: 'Please select a user',
                 status: 'warning',
                 duration: 2000,
             });
             return;
         }
-        toast({
-            title: 'Credit processed successfully',
-            description: 'The wallet credit has been submitted for approval.',
-            status: 'success',
-            duration: 3000,
-        });
-        onManualCreditClose();
-        setCreditAmount('');
-        setCreditReason('');
-        setCreditNotes('');
+        if (!creditAmount || parseFloat(creditAmount) < 100) {
+            toast({
+                title: 'Please enter a valid amount (minimum ₦100)',
+                status: 'warning',
+                duration: 2000,
+            });
+            return;
+        }
+        if (!creditReason) {
+            toast({
+                title: 'Please select a reason',
+                status: 'warning',
+                duration: 2000,
+            });
+            return;
+        }
+        if (!creditNotes) {
+            toast({
+                title: 'Please provide notes for the transaction',
+                status: 'warning',
+                duration: 2000,
+            });
+            return;
+        }
+
+        const amount = parseFloat(creditAmount);
+        const descriptionText = `${creditReason}: ${creditNotes}`;
+
+        // Process the selected user
+        if (selectedUser.id) {
+            if (transactionType === 'credit') {
+                fundWalletMutation.mutate({
+                    userId: selectedUser.id,
+                    amount: Math.abs(amount),
+                    description: descriptionText,
+                });
+            } else {
+                debitWalletMutation.mutate({
+                    userId: selectedUser.id,
+                    amount: Math.abs(amount),
+                    description: descriptionText,
+                });
+            }
+        } else {
+            toast({
+                title: 'User ID not found',
+                description: 'Please select a different user or refresh the page.',
+                status: 'error',
+                duration: 3000,
+            });
+        }
     };
 
     const formatRelativeTime = (dateStr: string) => {
@@ -483,10 +663,10 @@ const UsersPageContent: React.FC = () => {
             </Flex>
 
             {/* KPI Cards */}
-            <SimpleGrid columns={{ base: 1, md: 3, lg: 5 }} spacing={4} mb={6}>
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4} mb={6}>
                 {/* Total Users (Lifetime) */}
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
-                    <CardBody py={4}>
+                    <CardBody p={5}>
                         <Flex justify="space-between" align="start">
                             <Box>
                                 <Text fontSize="xs" color="gray.500" mb={1}>Total Users</Text>
@@ -504,7 +684,7 @@ const UsersPageContent: React.FC = () => {
 
                 {/* Active Users */}
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
-                    <CardBody py={4}>
+                    <CardBody p={5}>
                         <Flex justify="space-between" align="start">
                             <Box>
                                 <Text fontSize="xs" color="gray.500" mb={1}>Active Users</Text>
@@ -522,7 +702,7 @@ const UsersPageContent: React.FC = () => {
 
                 {/* Total Wallet Balance */}
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
-                    <CardBody py={4}>
+                    <CardBody p={5}>
                         <Flex justify="space-between" align="start">
                             <Box>
                                 <Text fontSize="xs" color="gray.500" mb={1}>Total Wallet Balance</Text>
@@ -540,7 +720,7 @@ const UsersPageContent: React.FC = () => {
 
                 {/* Total Orders */}
                 <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
-                    <CardBody py={4}>
+                    <CardBody p={5}>
                         <Flex justify="space-between" align="start">
                             <Box>
                                 <Text fontSize="xs" color="gray.500" mb={1}>Total Orders</Text>
@@ -551,24 +731,6 @@ const UsersPageContent: React.FC = () => {
                             </Box>
                             <Box p={2} bg="rgba(66, 153, 225, 0.2)" borderRadius="lg">
                                 <Icon as={Activity} color="blue.400" boxSize={5} />
-                            </Box>
-                        </Flex>
-                    </CardBody>
-                </Card>
-
-                {/* Pending Payouts */}
-                <Card bg="gray.900" borderColor="gray.800" borderWidth="1px">
-                    <CardBody py={4}>
-                        <Flex justify="space-between" align="start">
-                            <Box>
-                                <Text fontSize="xs" color="gray.500" mb={1}>Pending Payouts</Text>
-                                <Text fontSize="2xl" fontWeight="bold" color="gray.100">
-                                    ₦127K
-                                </Text>
-                                <Text fontSize="xs" color="orange.400">Requires approval</Text>
-                            </Box>
-                            <Box p={2} bg="rgba(236, 201, 75, 0.2)" borderRadius="lg">
-                                <Icon as={Clock} color="yellow.400" boxSize={5} />
                             </Box>
                         </Flex>
                     </CardBody>
@@ -864,9 +1026,38 @@ const UsersPageContent: React.FC = () => {
                                     w="full"
                                     colorScheme="green"
                                     leftIcon={<Plus size={16} />}
-                                    onClick={onManualCreditOpen}
+                                    onClick={() => {
+                                        setTransactionType('credit');
+                                        onManualCreditOpen();
+                                    }}
                                 >
                                     Manual Credit
+                                </Button>
+
+                                <Button
+                                    w="full"
+                                    colorScheme="red"
+                                    variant="outline"
+                                    borderColor="red.600"
+                                    leftIcon={<Minus size={16} />}
+                                    color="red.300"
+                                    onClick={() => {
+                                        setTransactionType('debit');
+                                        onManualCreditOpen();
+                                    }}
+                                >
+                                    Manual Debit
+                                </Button>
+
+                                <Button
+                                    w="full"
+                                    variant="outline"
+                                    borderColor="gray.600"
+                                    leftIcon={<DollarSign size={16} />}
+                                    color="gray.300"
+                                    onClick={onWalletActionsOpen}
+                                >
+                                    View Wallet Actions
                                 </Button>
 
                                 <Button
@@ -879,63 +1070,50 @@ const UsersPageContent: React.FC = () => {
                                 >
                                     View All Transactions
                                 </Button>
-
-                                <Button
-                                    w="full"
-                                    variant="outline"
-                                    borderColor="gray.600"
-                                    leftIcon={<DollarSign size={16} />}
-                                    color="gray.300"
-                                >
-                                    Pending Payouts
-                                </Button>
-
-                                <Button
-                                    w="full"
-                                    variant="outline"
-                                    borderColor="gray.600"
-                                    leftIcon={<Clock size={16} />}
-                                    color="gray.300"
-                                >
-                                    Refund Requests
-                                </Button>
                             </VStack>
 
                             <Divider my={4} borderColor="gray.700" />
 
-                            {/* Recent Activity */}
+                            {/* Recent Activity - Live from API */}
                             <Text fontSize="sm" fontWeight="600" color="gray.400" mb={3}>
                                 Recent Activity
                             </Text>
                             <VStack spacing={2} align="stretch">
-                                <Flex justify="space-between" align="center" py={2}>
-                                    <HStack spacing={2}>
-                                        <Box w={2} h={2} borderRadius="full" bg="green.400" />
-                                        <Text fontSize="xs" color="gray.400">Credit processed</Text>
-                                    </HStack>
-                                    <Text fontSize="xs" color="gray.500">2m ago</Text>
-                                </Flex>
-                                <Flex justify="space-between" align="center" py={2}>
-                                    <HStack spacing={2}>
-                                        <Box w={2} h={2} borderRadius="full" bg="orange.400" />
-                                        <Text fontSize="xs" color="gray.400">Payout pending</Text>
-                                    </HStack>
-                                    <Text fontSize="xs" color="gray.500">15m ago</Text>
-                                </Flex>
-                                <Flex justify="space-between" align="center" py={2}>
-                                    <HStack spacing={2}>
-                                        <Box w={2} h={2} borderRadius="full" bg="blue.400" />
-                                        <Text fontSize="xs" color="gray.400">Refund approved</Text>
-                                    </HStack>
-                                    <Text fontSize="xs" color="gray.500">1h ago</Text>
-                                </Flex>
+                                {fundingsLoading ? (
+                                    <Flex justify="center" py={4}>
+                                        <Spinner size="sm" />
+                                    </Flex>
+                                ) : manualFundings.length === 0 ? (
+                                    <Text fontSize="xs" color="gray.500" textAlign="center" py={2}>
+                                        No recent activity
+                                    </Text>
+                                ) : (
+                                    manualFundings.slice(0, 3).map((funding) => (
+                                        <Flex key={funding.id} justify="space-between" align="center" py={2}>
+                                            <HStack spacing={2}>
+                                                <Box
+                                                    w={2}
+                                                    h={2}
+                                                    borderRadius="full"
+                                                    bg={funding.amount >= 0 ? 'green.400' : 'red.400'}
+                                                />
+                                                <Text fontSize="xs" color="gray.400">
+                                                    {funding.amount >= 0 ? 'Credit' : 'Debit'}: {formatCurrency(Math.abs(funding.amount))}
+                                                </Text>
+                                            </HStack>
+                                            <Text fontSize="xs" color="gray.500">
+                                                {formatRelativeTime(funding.createdAt)}
+                                            </Text>
+                                        </Flex>
+                                    ))
+                                )}
                             </VStack>
                         </CardBody>
                     </Card>
                 </Box>
             </Flex>
 
-            {/* Manual Credit Modal */}
+            {/* Manual Credit/Debit Modal */}
             <Modal isOpen={isManualCreditOpen} onClose={onManualCreditClose} size="4xl" scrollBehavior="inside">
                 <ModalOverlay />
                 <ModalContent bg="gray.900" borderColor="gray.800" maxH="90vh">
@@ -951,10 +1129,7 @@ const UsersPageContent: React.FC = () => {
                             />
                             <Box>
                                 <HStack spacing={2}>
-                                    <Text fontSize="lg" fontWeight="600" color="gray.100">Manual Wallet Credit</Text>
-                                    <Badge colorScheme="orange" variant="solid" fontSize="xs">
-                                        Requires Approval
-                                    </Badge>
+                                    <Text fontSize="lg" fontWeight="600" color="gray.100">Manual Wallet Transaction</Text>
                                 </HStack>
                             </Box>
                         </HStack>
@@ -962,71 +1137,189 @@ const UsersPageContent: React.FC = () => {
                     <ModalCloseButton color="gray.400" />
                     <ModalBody py={6}>
                         <VStack spacing={6} align="stretch">
-                            {/* Credit User Wallet Form */}
+                            {/* Credit/Debit Form */}
                             <Box bg="gray.800" p={6} borderRadius="lg" borderWidth="1px" borderColor="gray.700">
-                                <Text fontSize="md" fontWeight="600" color="purple.400" mb={1}>
-                                    Credit User Wallet
-                                </Text>
+                                {/* Transaction Type Tabs */}
+                                <Tabs
+                                    variant="soft-rounded"
+                                    colorScheme={transactionType === 'credit' ? 'green' : 'red'}
+                                    mb={4}
+                                    onChange={(index) => setTransactionType(index === 0 ? 'credit' : 'debit')}
+                                    index={transactionType === 'credit' ? 0 : 1}
+                                >
+                                    <TabList>
+                                        <Tab
+                                            _selected={{ bg: 'green.600', color: 'white' }}
+                                            color="gray.400"
+                                        >
+                                            <HStack spacing={2}>
+                                                <Plus size={16} />
+                                                <Text>Credit Wallet</Text>
+                                            </HStack>
+                                        </Tab>
+                                        <Tab
+                                            _selected={{ bg: 'red.600', color: 'white' }}
+                                            color="gray.400"
+                                        >
+                                            <HStack spacing={2}>
+                                                <Minus size={16} />
+                                                <Text>Debit Wallet</Text>
+                                            </HStack>
+                                        </Tab>
+                                    </TabList>
+                                </Tabs>
+
                                 <Text fontSize="sm" color="gray.400" mb={4}>
-                                    Manually add credit to a user's wallet. This action requires dual approval for amounts above ₦50,000.
+                                    {transactionType === 'credit'
+                                        ? "Add funds to a user's wallet."
+                                        : "Remove funds from a user's wallet. Use with caution."}
                                 </Text>
 
-                                {/* Search User */}
+                                {/* Select User - Single select */}
                                 <FormControl mb={4}>
-                                    <FormLabel fontSize="sm" color="gray.300">Search User</FormLabel>
+                                    <FormLabel fontSize="sm" color="gray.300">
+                                        Select User *
+                                    </FormLabel>
+
+                                    {/* Selected user display */}
+                                    {selectedUser ? (
+                                        <Flex
+                                            align="center"
+                                            justify="space-between"
+                                            bg="gray.800"
+                                            p={3}
+                                            borderRadius="md"
+                                            borderWidth="1px"
+                                            borderColor="purple.500"
+                                            mb={2}
+                                        >
+                                            <HStack spacing={3}>
+                                                <Avatar size="sm" name={getUserName(selectedUser)} bg="purple.600" />
+                                                <Box>
+                                                    <Text fontSize="sm" color="gray.100" fontWeight="500">
+                                                        {getUserName(selectedUser)}
+                                                    </Text>
+                                                    <Text fontSize="xs" color="gray.500">
+                                                        {selectedUser.email}
+                                                    </Text>
+                                                </Box>
+                                            </HStack>
+                                            <Button
+                                                size="xs"
+                                                variant="ghost"
+                                                colorScheme="red"
+                                                onClick={() => setSelectedUser(null)}
+                                            >
+                                                Change
+                                            </Button>
+                                        </Flex>
+                                    ) : (
+                                        /* Search input - only show when no user selected */
+                                        <Box position="relative">
+                                            <InputGroup>
+                                                <InputLeftElement>
+                                                    <Icon as={Search} color="gray.500" boxSize={4} />
+                                                </InputLeftElement>
+                                                <Input
+                                                    placeholder="Type to search by name or email..."
+                                                    value={creditSearch}
+                                                    onChange={(e) => {
+                                                        setCreditSearch(e.target.value);
+                                                        setShowUserDropdown(e.target.value.length >= 2);
+                                                    }}
+                                                    onFocus={() => creditSearch.length >= 2 && setShowUserDropdown(true)}
+                                                    bg="gray.900"
+                                                    borderColor="gray.600"
+                                                    color="gray.100"
+                                                    _placeholder={{ color: 'gray.500' }}
+                                                />
+                                            </InputGroup>
+
+                                            {/* Dropdown with matched users */}
+                                            {showUserDropdown && creditSearch.length >= 2 && (
+                                                <Box
+                                                    position="absolute"
+                                                    top="100%"
+                                                    left={0}
+                                                    right={0}
+                                                    bg="gray.800"
+                                                    borderWidth="1px"
+                                                    borderColor="gray.600"
+                                                    borderRadius="md"
+                                                    maxH="200px"
+                                                    overflowY="auto"
+                                                    zIndex={10}
+                                                    mt={1}
+                                                >
+                                                    {allCustomerUsers
+                                                        .filter(u =>
+                                                            getUserName(u).toLowerCase().includes(creditSearch.toLowerCase()) ||
+                                                            u.email?.toLowerCase().includes(creditSearch.toLowerCase())
+                                                        )
+                                                        .slice(0, 10)
+                                                        .map(user => (
+                                                            <Box
+                                                                key={user.id}
+                                                                px={3}
+                                                                py={2}
+                                                                cursor="pointer"
+                                                                _hover={{ bg: 'gray.700' }}
+                                                                onClick={() => {
+                                                                    setSelectedUser(user);
+                                                                    setCreditSearch('');
+                                                                    setShowUserDropdown(false);
+                                                                }}
+                                                            >
+                                                                <Text fontSize="sm" color="gray.100">{getUserName(user)}</Text>
+                                                                <Text fontSize="xs" color="gray.500">{user.email}</Text>
+                                                            </Box>
+                                                        ))
+                                                    }
+                                                    {allCustomerUsers.filter(u =>
+                                                        getUserName(u).toLowerCase().includes(creditSearch.toLowerCase()) ||
+                                                        u.email?.toLowerCase().includes(creditSearch.toLowerCase())
+                                                    ).length === 0 && (
+                                                            <Box px={3} py={2}>
+                                                                <Text fontSize="sm" color="gray.500">No users found</Text>
+                                                            </Box>
+                                                        )}
+                                                </Box>
+                                            )}
+                                            <Text fontSize="xs" color="gray.500" mt={1}>
+                                                Type at least 2 characters to search
+                                            </Text>
+                                        </Box>
+                                    )}
+                                </FormControl>
+
+
+
+                                {/* Amount */}
+                                <FormControl mb={4}>
+                                    <FormLabel fontSize="sm" color="gray.300">
+                                        {transactionType === 'credit' ? 'Credit' : 'Debit'} Amount *
+                                    </FormLabel>
                                     <InputGroup>
                                         <InputLeftElement>
-                                            <Icon as={Search} color="gray.500" boxSize={4} />
+                                            <Text color="gray.400" fontSize="sm">₦</Text>
                                         </InputLeftElement>
                                         <Input
-                                            placeholder="Search by name, phone, or email..."
-                                            value={creditSearch}
-                                            onChange={(e) => setCreditSearch(e.target.value)}
+                                            placeholder="0.00"
+                                            value={creditAmount}
+                                            onChange={(e) => setCreditAmount(e.target.value)}
                                             bg="gray.900"
                                             borderColor="gray.600"
                                             color="gray.100"
+                                            type="number"
                                             _placeholder={{ color: 'gray.500' }}
                                         />
                                     </InputGroup>
+                                    <Text fontSize="xs" color="orange.400" mt={1}>Minimum: ₦100</Text>
                                 </FormControl>
-
-                                {/* Amount and Reference */}
-                                <SimpleGrid columns={2} spacing={4} mb={4}>
-                                    <FormControl>
-                                        <FormLabel fontSize="sm" color="gray.300">Credit Amount</FormLabel>
-                                        <InputGroup>
-                                            <InputLeftElement>
-                                                <Text color="gray.400" fontSize="sm">₦</Text>
-                                            </InputLeftElement>
-                                            <Input
-                                                placeholder="0.00"
-                                                value={creditAmount}
-                                                onChange={(e) => setCreditAmount(e.target.value)}
-                                                bg="gray.900"
-                                                borderColor="gray.600"
-                                                color="gray.100"
-                                                type="number"
-                                                _placeholder={{ color: 'gray.500' }}
-                                            />
-                                        </InputGroup>
-                                        <Text fontSize="xs" color="orange.400" mt={1}>Minimum: ₦100</Text>
-                                    </FormControl>
-                                    <FormControl>
-                                        <FormLabel fontSize="sm" color="gray.300">Transaction Reference</FormLabel>
-                                        <Input
-                                            value={creditReference}
-                                            onChange={(e) => setCreditReference(e.target.value)}
-                                            bg="gray.900"
-                                            borderColor="gray.600"
-                                            color="gray.100"
-                                        />
-                                        <Text fontSize="xs" color="gray.500" mt={1}>Optional: Internal reference for tracking</Text>
-                                    </FormControl>
-                                </SimpleGrid>
 
                                 {/* Reason */}
                                 <FormControl mb={4}>
-                                    <FormLabel fontSize="sm" color="gray.300">Reason for Credit *</FormLabel>
+                                    <FormLabel fontSize="sm" color="gray.300">Reason *</FormLabel>
                                     <Select
                                         placeholder="Select reason..."
                                         value={creditReason}
@@ -1035,11 +1328,23 @@ const UsersPageContent: React.FC = () => {
                                         borderColor="gray.600"
                                         color="gray.100"
                                     >
-                                        <option value="refund">Order Refund</option>
-                                        <option value="compensation">Service Compensation</option>
-                                        <option value="promotional">Promotional Credit</option>
-                                        <option value="correction">Account Correction</option>
-                                        <option value="other">Other</option>
+                                        {transactionType === 'credit' ? (
+                                            <>
+                                                <option value="Order Refund">Order Refund</option>
+                                                <option value="Service Compensation">Service Compensation</option>
+                                                <option value="Promotional Credit">Promotional Credit</option>
+                                                <option value="Account Correction">Account Correction</option>
+                                                <option value="Other">Other</option>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <option value="Order Cancellation">Order Cancellation</option>
+                                                <option value="Fraud Prevention">Fraud Prevention</option>
+                                                <option value="Account Correction">Account Correction</option>
+                                                <option value="Chargeback">Chargeback</option>
+                                                <option value="Other">Other</option>
+                                            </>
+                                        )}
                                     </Select>
                                 </FormControl>
 
@@ -1047,7 +1352,7 @@ const UsersPageContent: React.FC = () => {
                                 <FormControl mb={4}>
                                     <FormLabel fontSize="sm" color="gray.300">Additional Notes *</FormLabel>
                                     <Textarea
-                                        placeholder="Provide detailed explanation for this credit transaction..."
+                                        placeholder={`Provide detailed explanation for this ${transactionType} transaction...`}
                                         value={creditNotes}
                                         onChange={(e) => setCreditNotes(e.target.value)}
                                         bg="gray.900"
@@ -1057,7 +1362,7 @@ const UsersPageContent: React.FC = () => {
                                         _placeholder={{ color: 'gray.500' }}
                                     />
                                     <Text fontSize="xs" color="gray.500" mt={1}>
-                                        Required for audit trail and approval process
+                                        Required for audit trail
                                     </Text>
                                 </FormControl>
 
@@ -1067,89 +1372,364 @@ const UsersPageContent: React.FC = () => {
                                         Cancel
                                     </Button>
                                     <Button
-                                        colorScheme="purple"
-                                        leftIcon={<Plus size={16} />}
+                                        type="button"
+                                        colorScheme={transactionType === 'credit' ? 'green' : 'red'}
+                                        leftIcon={transactionType === 'credit' ? <Plus size={16} /> : <Minus size={16} />}
                                         onClick={handleProcessCredit}
+                                        isLoading={fundWalletMutation.isPending || debitWalletMutation.isPending}
+                                        isDisabled={fundWalletMutation.isPending || debitWalletMutation.isPending || !selectedUser}
                                     >
-                                        Process Credit
+                                        Process {transactionType === 'credit' ? 'Credit' : 'Debit'}
                                     </Button>
                                 </HStack>
                             </Box>
 
-                            {/* Recent Manual Credits */}
+                            {/* Recent Manual Fundings */}
                             <Box>
-                                <Text fontSize="md" fontWeight="600" color="purple.400" mb={1}>
-                                    Recent Manual Credits
-                                </Text>
-                                <Text fontSize="sm" color="gray.400" mb={4}>
-                                    Last 10 manual credit transactions
-                                </Text>
+                                <HStack justify="space-between" mb={4}>
+                                    <Box>
+                                        <Text fontSize="md" fontWeight="600" color="purple.400" mb={1}>
+                                            Recent Manual Transactions
+                                        </Text>
+                                        <Text fontSize="sm" color="gray.400">
+                                            Last {Math.min(7, manualFundings.length)} manual credit/debit transactions
+                                        </Text>
+                                    </Box>
+                                    <Button
+                                        size="xs"
+                                        variant="ghost"
+                                        leftIcon={<RefreshCw size={12} />}
+                                        onClick={() => refetchFundings()}
+                                        isLoading={fundingsLoading}
+                                    >
+                                        Refresh
+                                    </Button>
+                                </HStack>
 
                                 <Box overflowX="auto">
-                                    <Table variant="simple" size="sm">
-                                        <Thead>
-                                            <Tr>
-                                                <Th color="gray.500" fontSize="xs" borderColor="gray.700">DATE</Th>
-                                                <Th color="gray.500" fontSize="xs" borderColor="gray.700">USER</Th>
-                                                <Th color="gray.500" fontSize="xs" borderColor="gray.700">AMOUNT</Th>
-                                                <Th color="gray.500" fontSize="xs" borderColor="gray.700">REASON</Th>
-                                                <Th color="gray.500" fontSize="xs" borderColor="gray.700">STATUS</Th>
-                                                <Th color="gray.500" fontSize="xs" borderColor="gray.700">INITIATED BY</Th>
-                                            </Tr>
-                                        </Thead>
-                                        <Tbody>
-                                            {recentCredits.map((credit) => (
-                                                <Tr key={credit.id}>
-                                                    <Td color="gray.300" borderColor="gray.700" fontSize="sm">
-                                                        {credit.date}
-                                                    </Td>
-                                                    <Td borderColor="gray.700">
-                                                        <HStack spacing={2}>
-                                                            <Avatar size="xs" name={credit.user.name} />
-                                                            <VStack align="start" spacing={0}>
-                                                                <Text fontSize="sm" fontWeight="500" color="gray.100">
-                                                                    {credit.user.name}
-                                                                </Text>
-                                                                <Text fontSize="xs" color="gray.500">
-                                                                    {credit.user.phone}
-                                                                </Text>
-                                                            </VStack>
-                                                        </HStack>
-                                                    </Td>
-                                                    <Td color="gray.100" fontWeight="500" borderColor="gray.700" fontSize="sm">
-                                                        {formatCurrency(credit.amount)}
-                                                    </Td>
-                                                    <Td color="gray.300" borderColor="gray.700" fontSize="sm">
-                                                        {credit.reason}
-                                                    </Td>
-                                                    <Td borderColor="gray.700">
-                                                        <Text color={getStatusColor(credit.status)} fontSize="sm">
-                                                            {credit.status}
-                                                        </Text>
-                                                    </Td>
-                                                    <Td color="gray.400" borderColor="gray.700" fontSize="sm">
-                                                        {credit.initiatedBy}
-                                                    </Td>
+                                    {fundingsLoading ? (
+                                        <Flex justify="center" py={8}>
+                                            <Spinner size="md" color="purple.500" />
+                                        </Flex>
+                                    ) : manualFundings.length === 0 ? (
+                                        <Flex justify="center" py={8}>
+                                            <Text color="gray.500">No manual transactions yet</Text>
+                                        </Flex>
+                                    ) : (
+                                        <Table variant="simple" size="sm">
+                                            <Thead>
+                                                <Tr>
+                                                    <Th color="gray.500" fontSize="xs" borderColor="gray.700">DATE</Th>
+                                                    <Th color="gray.500" fontSize="xs" borderColor="gray.700">REF</Th>
+                                                    <Th color="gray.500" fontSize="xs" borderColor="gray.700">AMOUNT</Th>
+                                                    <Th color="gray.500" fontSize="xs" borderColor="gray.700">DESCRIPTION</Th>
+                                                    <Th color="gray.500" fontSize="xs" borderColor="gray.700">STATUS</Th>
+                                                    <Th color="gray.500" fontSize="xs" borderColor="gray.700">BY</Th>
+                                                    <Th color="gray.500" fontSize="xs" borderColor="gray.700">ACTIONS</Th>
                                                 </Tr>
-                                            ))}
-                                        </Tbody>
-                                    </Table>
+                                            </Thead>
+                                            <Tbody>
+                                                {manualFundings.slice(0, 7).map((funding) => (
+                                                    <Tr key={funding.id}>
+                                                        <Td color="gray.300" borderColor="gray.700" fontSize="sm">
+                                                            {formatDateTime(funding.createdAt)}
+                                                        </Td>
+                                                        <Td borderColor="gray.700">
+                                                            <Text fontSize="xs" color="gray.400" fontFamily="mono">
+                                                                {funding.transactionReference?.slice(0, 12)}...
+                                                            </Text>
+                                                        </Td>
+                                                        <Td borderColor="gray.700">
+                                                            <Text
+                                                                fontWeight="500"
+                                                                fontSize="sm"
+                                                                color={funding.amount >= 0 ? 'green.400' : 'red.400'}
+                                                            >
+                                                                {funding.amount >= 0 ? '+' : ''}{formatCurrency(funding.amount)}
+                                                            </Text>
+                                                        </Td>
+                                                        <Td color="gray.300" borderColor="gray.700" fontSize="sm" maxW="200px">
+                                                            <Text noOfLines={1}>{funding.description}</Text>
+                                                        </Td>
+                                                        <Td borderColor="gray.700">
+                                                            <Badge
+                                                                colorScheme={funding.status === 'SUCCESSFUL' ? 'green' : funding.status === 'REVERSED' ? 'red' : 'yellow'}
+                                                                fontSize="xs"
+                                                            >
+                                                                {funding.status}
+                                                            </Badge>
+                                                        </Td>
+                                                        <Td color="gray.400" borderColor="gray.700" fontSize="sm">
+                                                            {funding.fundedBy}
+                                                        </Td>
+                                                        <Td borderColor="gray.700">
+                                                            {funding.status === 'SUCCESSFUL' && funding.amount > 0 && (
+                                                                <Button
+                                                                    size="xs"
+                                                                    colorScheme="red"
+                                                                    variant="outline"
+                                                                    isLoading={reversalMutation.isPending}
+                                                                    onClick={() => {
+                                                                        if (window.confirm(`Reverse ${formatCurrency(funding.amount)}? This will debit the user's wallet.`)) {
+                                                                            reversalMutation.mutate({
+                                                                                transactionReference: funding.transactionReference,
+                                                                                reason: 'Manual reversal by admin',
+                                                                            });
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    Reverse
+                                                                </Button>
+                                                            )}
+                                                        </Td>
+                                                    </Tr>
+                                                ))}
+                                            </Tbody>
+                                        </Table>
+                                    )}
                                 </Box>
                             </Box>
                         </VStack>
                     </ModalBody>
                 </ModalContent>
             </Modal>
-        </Box>
-    );
-};
 
-// Wrap with Error Boundary
-export const UsersPage: React.FC = () => {
-    return (
-        <ErrorBoundary>
-            <UsersPageContent />
-        </ErrorBoundary>
+            {/* Wallet Actions Modal */}
+            <Modal isOpen={isWalletActionsOpen} onClose={onWalletActionsClose} size="6xl">
+                <ModalOverlay bg="blackAlpha.700" />
+                <ModalContent bg="gray.900" borderColor="gray.700" borderWidth="1px">
+                    <ModalHeader borderBottomWidth="1px" borderColor="gray.700">
+                        <HStack spacing={3}>
+                            <Box p={2} bg="purple.900" borderRadius="lg">
+                                <Icon as={DollarSign} color="purple.400" boxSize={5} />
+                            </Box>
+                            <Box>
+                                <Text color="gray.100">All Wallet Actions</Text>
+                                <Text fontSize="sm" color="gray.400" fontWeight="normal">
+                                    Complete history of manual credits, debits, and reversals
+                                </Text>
+                            </Box>
+                        </HStack>
+                    </ModalHeader>
+                    <ModalCloseButton color="gray.400" />
+                    <ModalBody py={6}>
+                        {/* Filter & Sort Controls */}
+                        <Flex
+                            direction={{ base: 'column', md: 'row' }}
+                            gap={3}
+                            mb={4}
+                            flexWrap="wrap"
+                            align={{ base: 'stretch', md: 'center' }}
+                        >
+                            {/* Search */}
+                            <InputGroup maxW={{ base: 'full', md: '250px' }}>
+                                <InputLeftElement>
+                                    <Icon as={Search} color="gray.500" boxSize={4} />
+                                </InputLeftElement>
+                                <Input
+                                    placeholder="Search user, ref, description..."
+                                    value={walletActionsSearch}
+                                    onChange={(e) => setWalletActionsSearch(e.target.value)}
+                                    bg="gray.800"
+                                    borderColor="gray.600"
+                                    color="gray.100"
+                                    size="sm"
+                                    _placeholder={{ color: 'gray.500' }}
+                                />
+                            </InputGroup>
+
+                            {/* Type Filter */}
+                            <Select
+                                value={walletActionsTypeFilter}
+                                onChange={(e) => setWalletActionsTypeFilter(e.target.value as 'all' | 'credit' | 'debit')}
+                                bg="gray.800"
+                                borderColor="gray.600"
+                                color="gray.100"
+                                size="sm"
+                                maxW={{ base: 'full', md: '150px' }}
+                            >
+                                <option value="all">All Types</option>
+                                <option value="credit">Credits Only</option>
+                                <option value="debit">Debits Only</option>
+                            </Select>
+
+                            {/* Status Filter */}
+                            <Select
+                                value={walletActionsStatusFilter}
+                                onChange={(e) => setWalletActionsStatusFilter(e.target.value)}
+                                bg="gray.800"
+                                borderColor="gray.600"
+                                color="gray.100"
+                                size="sm"
+                                maxW={{ base: 'full', md: '150px' }}
+                            >
+                                <option value="all">All Status</option>
+                                <option value="SUCCESSFUL">Successful</option>
+                                <option value="REVERSED">Reversed</option>
+                                <option value="PENDING">Pending</option>
+                            </Select>
+
+                            {/* Sort By */}
+                            <Select
+                                value={walletActionsSortBy}
+                                onChange={(e) => setWalletActionsSortBy(e.target.value as 'date' | 'amount')}
+                                bg="gray.800"
+                                borderColor="gray.600"
+                                color="gray.100"
+                                size="sm"
+                                maxW={{ base: 'full', md: '130px' }}
+                            >
+                                <option value="date">Sort by Date</option>
+                                <option value="amount">Sort by Amount</option>
+                            </Select>
+
+                            {/* Sort Order */}
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                borderColor="gray.600"
+                                color="gray.300"
+                                onClick={() => setWalletActionsSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                                leftIcon={walletActionsSortOrder === 'desc' ? <Icon as={ChevronRight} transform="rotate(90deg)" /> : <Icon as={ChevronRight} transform="rotate(-90deg)" />}
+                            >
+                                {walletActionsSortOrder === 'desc' ? 'Newest' : 'Oldest'}
+                            </Button>
+
+                            {/* Results Count */}
+                            <Text fontSize="sm" color="gray.500" ml={{ base: 0, md: 'auto' }}>
+                                {filteredWalletActions.length} of {manualFundings.length} actions
+                            </Text>
+                        </Flex>
+
+                        <Box overflowX="auto">
+                            {fundingsLoading ? (
+                                <Flex justify="center" py={8}>
+                                    <Spinner size="lg" color="purple.500" />
+                                </Flex>
+                            ) : filteredWalletActions.length === 0 ? (
+                                <Flex justify="center" py={8} direction="column" align="center">
+                                    <Icon as={Wallet} color="gray.600" boxSize={10} mb={3} />
+                                    <Text color="gray.500">
+                                        {manualFundings.length === 0 ? 'No wallet actions yet' : 'No matching wallet actions'}
+                                    </Text>
+                                </Flex>
+                            ) : (
+                                <Table variant="simple" size="sm">
+                                    <Thead>
+                                        <Tr>
+                                            <Th color="gray.500" fontSize="xs" borderColor="gray.700">DATE</Th>
+                                            <Th color="gray.500" fontSize="xs" borderColor="gray.700">REF</Th>
+                                            <Th color="gray.500" fontSize="xs" borderColor="gray.700">AMOUNT</Th>
+                                            <Th color="gray.500" fontSize="xs" borderColor="gray.700">USER</Th>
+                                            <Th color="gray.500" fontSize="xs" borderColor="gray.700">STATUS</Th>
+                                            <Th color="gray.500" fontSize="xs" borderColor="gray.700">BY</Th>
+                                            <Th color="gray.500" fontSize="xs" borderColor="gray.700">ACTIONS</Th>
+                                        </Tr>
+                                    </Thead>
+                                    <Tbody>
+                                        {filteredWalletActions.map((funding) => {
+                                            // Find user by userId from users
+                                            const fundingUser = users.find(u => u.id === funding.userId);
+                                            return (
+                                                <Tr key={funding.id}>
+                                                    <Td color="gray.300" borderColor="gray.700" fontSize="sm">
+                                                        {formatDateTime(funding.createdAt)}
+                                                    </Td>
+                                                    <Td borderColor="gray.700">
+                                                        <Text fontSize="xs" color="gray.400" fontFamily="mono">
+                                                            {funding.transactionReference}
+                                                        </Text>
+                                                    </Td>
+                                                    <Td borderColor="gray.700">
+                                                        <Text
+                                                            fontWeight="600"
+                                                            fontSize="sm"
+                                                            color={funding.amount >= 0 ? 'green.400' : 'red.400'}
+                                                        >
+                                                            {funding.amount >= 0 ? '+' : ''}{formatCurrency(funding.amount)}
+                                                        </Text>
+                                                    </Td>
+                                                    <Td borderColor="gray.700">
+                                                        <Text fontSize="sm" color="gray.300">
+                                                            {fundingUser ? getUserName(fundingUser) : 'Unknown User'}
+                                                        </Text>
+                                                        <Text fontSize="xs" color="gray.500">
+                                                            {fundingUser?.email || funding.userId?.slice(0, 8)}
+                                                        </Text>
+                                                    </Td>
+                                                    <Td borderColor="gray.700">
+                                                        <Badge
+                                                            colorScheme={funding.status === 'SUCCESSFUL' ? 'green' : funding.status === 'REVERSED' ? 'red' : 'yellow'}
+                                                            fontSize="xs"
+                                                        >
+                                                            {funding.status}
+                                                        </Badge>
+                                                    </Td>
+                                                    <Td borderColor="gray.700">
+                                                        <Text fontSize="sm" color="gray.400">
+                                                            {funding.fundedBy}
+                                                        </Text>
+                                                    </Td>
+                                                    <Td borderColor="gray.700">
+                                                        <Popover placement="left">
+                                                            <PopoverTrigger>
+                                                                <Button
+                                                                    size="xs"
+                                                                    variant="ghost"
+                                                                    colorScheme="purple"
+                                                                    leftIcon={<Eye size={12} />}
+                                                                >
+                                                                    View Reason
+                                                                </Button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent bg="gray.800" borderColor="gray.600" maxW="350px">
+                                                                <PopoverArrow bg="gray.800" />
+                                                                <PopoverCloseButton />
+                                                                <PopoverHeader borderColor="gray.600" fontWeight="600" color="gray.100">
+                                                                    Transaction Details
+                                                                </PopoverHeader>
+                                                                <PopoverBody>
+                                                                    <VStack align="start" spacing={2}>
+                                                                        <Box>
+                                                                            <Text fontSize="xs" color="gray.500" mb={1}>Reference</Text>
+                                                                            <Text fontSize="sm" color="gray.300" fontFamily="mono">
+                                                                                {funding.transactionReference}
+                                                                            </Text>
+                                                                        </Box>
+                                                                        <Box>
+                                                                            <Text fontSize="xs" color="gray.500" mb={1}>Reason & Notes</Text>
+                                                                            <Text fontSize="sm" color="gray.200">
+                                                                                {funding.description || 'No description provided'}
+                                                                            </Text>
+                                                                        </Box>
+                                                                        <Box>
+                                                                            <Text fontSize="xs" color="gray.500" mb={1}>Balance Change</Text>
+                                                                            <HStack>
+                                                                                <Text fontSize="sm" color="gray.400">
+                                                                                    {formatCurrency(funding.oldBalance)}
+                                                                                </Text>
+                                                                                <Text fontSize="sm" color="gray.500">→</Text>
+                                                                                <Text fontSize="sm" color={funding.amount >= 0 ? 'green.400' : 'red.400'}>
+                                                                                    {formatCurrency(funding.newBalance)}
+                                                                                </Text>
+                                                                            </HStack>
+                                                                        </Box>
+                                                                    </VStack>
+                                                                </PopoverBody>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    </Td>
+                                                </Tr>
+                                            );
+                                        })}
+                                    </Tbody>
+                                </Table>
+                            )}
+                        </Box>
+                    </ModalBody>
+                </ModalContent>
+            </Modal>
+        </Box >
     );
 };
 

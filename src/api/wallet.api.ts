@@ -68,10 +68,75 @@ export const walletApi = {
     },
 
     // Run daily payouts (admin)
-    runPayouts: async (): Promise<StandardResponse<any>> => {
-        const response = await api.get('/api/v1/wallet/run-payouts');
+    runPayouts: async (date?: string): Promise<StandardResponse<any>> => {
+        const response = await api.post('/api/v1/wallet/run-payouts', null, {
+            params: date ? { date } : undefined,
+        });
+        return response.data;
+    },
+
+    // Get all payouts (admin) - with filters
+    getAllPayouts: async (filters?: {
+        vendorId?: string;
+        status?: string;
+        startDate?: string;
+        endDate?: string;
+        minAmount?: number;
+        maxAmount?: number;
+        bankName?: string;
+        search?: string;
+        page?: number;
+        limit?: number;
+    }): Promise<StandardResponse<{ payouts: PayoutTransaction[]; total: number; page: number; limit: number }>> => {
+        const response = await api.get('/api/v1/wallet/payouts', {
+            params: filters,
+        });
+        return response.data;
+    },
+
+    // Fund wallet manually (admin)
+    fundWallet: async (data: {
+        userId: string;
+        amount: number;
+        description: string;
+    }): Promise<StandardResponse<any>> => {
+        const response = await api.post('/api/v1/wallet/fund-wallet', data);
+        return response.data;
+    },
+
+    // Debit wallet manually (admin)
+    debitWallet: async (data: {
+        userId: string;
+        amount: number;
+        description: string;
+    }): Promise<StandardResponse<any>> => {
+        const response = await api.post('/api/v1/wallet/debit-wallet', data);
+        return response.data;
+    },
+
+    // Get manual funding history (admin)
+    getManualFundingHistory: async (filters?: {
+        userId?: string;
+        page?: number;
+        limit?: number;
+        startDate?: string;
+        endDate?: string;
+    }): Promise<StandardResponse<any>> => {
+        const response = await api.get('/api/v1/wallet/manual-fundings', {
+            params: filters,
+        });
+        return response.data;
+    },
+
+    // Reverse a manual funding (admin)
+    reverseManualFunding: async (transactionReference: string, reason: string): Promise<StandardResponse<any>> => {
+        const response = await api.post('/api/v1/wallet/reverse-manual-funding', {
+            transactionReference,
+            reason,
+        });
         return response.data;
     },
 };
 
 export default walletApi;
+
