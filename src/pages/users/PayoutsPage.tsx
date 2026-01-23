@@ -238,7 +238,7 @@ export const PayoutsPage: React.FC = () => {
     }, [payoutsData]);
 
     // Get total count from paginated response
-    const totalPayouts = payoutsData?.data?.meta?.total || tablePayouts.length;
+    const totalPayouts = payoutsData?.data?.total || tablePayouts.length;
 
     // Sort payouts by amount
     const sortedPayouts = useMemo(() => {
