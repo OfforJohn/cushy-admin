@@ -120,7 +120,7 @@ export const MerchantsPage: React.FC = () => {
     });
 
     // Extract payouts from response
-    const vendorPayouts = vendorPayoutsData?.data?.data || [];
+    const vendorPayouts = vendorPayoutsData?.data?.payouts || [];
 
     const vendors: StoreType[] = vendorsData?.data || [];
 
