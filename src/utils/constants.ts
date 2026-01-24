@@ -117,6 +117,7 @@ export const NAV_ITEMS = [
         icon: 'Megaphone',
         children: [
             { label: 'Ad Listing', path: '/marketing/ads' },
+            { label: 'Push In-App', path: '/marketing/push-in-app' },
             { label: 'Announcements', path: '/marketing/announcements' },
             { label: 'Segments', path: '/marketing/segments' },
             { label: 'Referrals', path: '/marketing/referrals' },
