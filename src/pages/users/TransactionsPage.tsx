@@ -444,18 +444,26 @@ export const TransactionsPage: React.FC = () => {
                                                     </Text>
                                                 </HStack>
                                             </Td>
-                                            <Td borderColor="gray.800">
-                                                <HStack spacing={2}>
+                                            <Td borderColor="gray.800" maxW="180px">
+                                                <HStack spacing={2} alignItems="flex-start">
                                                     <Avatar
                                                         size="xs"
                                                         name={`${txn.user?.firstName || ''} ${txn.user?.lastName || ''}`}
                                                         bg="purple.500"
+                                                        mt={0.5}
                                                     />
-                                                    <Box>
-                                                        <Text fontSize="sm" color="gray.100">
+                                                    <Box maxW="140px">
+                                                        <Text fontSize="sm" color="gray.100" noOfLines={1}>
                                                             {txn.user?.firstName || ''} {txn.user?.lastName || ''}
                                                         </Text>
-                                                        <Text fontSize="xs" color="gray.500">{txn.user?.email || txn.userId}</Text>
+                                                        <Text
+                                                            fontSize="xs"
+                                                            color="gray.500"
+                                                            wordBreak="break-all"
+                                                            lineHeight="1.3"
+                                                        >
+                                                            {txn.user?.email || txn.userId}
+                                                        </Text>
                                                     </Box>
                                                 </HStack>
                                             </Td>
