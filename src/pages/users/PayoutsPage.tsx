@@ -114,7 +114,7 @@ export const PayoutsPage: React.FC = () => {
     // Date filter state
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // desc = highest first
+    const [sortBy, setSortBy] = useState<string>('date_desc'); // Options: amount_desc, amount_asc, date_desc, date_asc
 
     // Fetch stores to calculate total merchant wallet balance
     const { data: storesData, isLoading: storesLoading } = useQuery({
@@ -240,14 +240,30 @@ export const PayoutsPage: React.FC = () => {
     // Get total count from paginated response
     const totalPayouts = payoutsData?.data?.total || tablePayouts.length;
 
-    // Sort payouts by amount
+    // Sort payouts by selected criteria
     const sortedPayouts = useMemo(() => {
         return [...tablePayouts].sort((a, b) => {
-            const amountA = Number(a.amount) || 0;
-            const amountB = Number(b.amount) || 0;
-            return sortOrder === 'desc' ? amountB - amountA : amountA - amountB;
+            switch (sortBy) {
+                case 'amount_desc': {
+                    const amountA = Number(a.amount) || 0;
+                    const amountB = Number(b.amount) || 0;
+                    return amountB - amountA;
+                }
+                case 'amount_asc': {
+                    const amountA = Number(a.amount) || 0;
+                    const amountB = Number(b.amount) || 0;
+                    return amountA - amountB;
+                }
+                case 'date_asc': {
+                    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+                }
+                case 'date_desc':
+                default: {
+                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                }
+            }
         });
-    }, [tablePayouts, sortOrder]);
+    }, [tablePayouts, sortBy]);
 
 
     const getStatusColor = (status: string) => {
@@ -275,9 +291,16 @@ export const PayoutsPage: React.FC = () => {
     };
 
     const getVendorName = (payout: Payout) => {
-        if (payout.vendor?.store?.name) return payout.vendor.store.name;
-        if (payout.vendor?.firstName) return `${payout.vendor.firstName} ${payout.vendor.lastName || ''}`.trim();
-        return payout.accountName || 'Unknown Vendor';
+        const storeName = payout.vendor?.store?.name;
+        const vendorFullName = payout.vendor?.firstName
+            ? `${payout.vendor.firstName} ${payout.vendor.lastName || ''}`.trim()
+            : null;
+
+        return {
+            displayName: storeName || vendorFullName || payout.accountName || 'Unknown Vendor',
+            vendorName: vendorFullName,
+            storeName: storeName,
+        };
     };
 
     const handleExportCSV = () => {
@@ -286,16 +309,20 @@ export const PayoutsPage: React.FC = () => {
             return;
         }
 
-        const headers = ['Reference', 'Vendor', 'Amount', 'Status', 'Bank', 'Account', 'Date'];
-        const rows = sortedPayouts.map(p => [
-            p.reference,
-            getVendorName(p),
-            formatCurrency(p.amount),
-            p.status,
-            p.bankName || 'N/A',
-            p.accountNumber || 'N/A',
-            formatDateTime(p.createdAt),
-        ]);
+        const headers = ['Reference', 'Store Name', 'Vendor Name', 'Amount', 'Status', 'Bank', 'Account', 'Date'];
+        const rows = sortedPayouts.map(p => {
+            const vendorInfo = getVendorName(p);
+            return [
+                p.reference,
+                vendorInfo.storeName || vendorInfo.displayName,
+                vendorInfo.vendorName || 'N/A',
+                formatCurrency(p.amount),
+                p.status,
+                p.bankName || 'N/A',
+                p.accountNumber || 'N/A',
+                formatDateTime(p.createdAt),
+            ];
+        });
 
         const csvContent = [
             headers.join(','),
@@ -485,17 +512,20 @@ export const PayoutsPage: React.FC = () => {
                             />
                         </HStack>
 
-                        {/* Sort Toggle */}
-                        <Button
+                        {/* Sort Dropdown */}
+                        <Select
                             size="sm"
-                            variant="outline"
+                            maxW="170px"
+                            bg="gray.800"
                             borderColor="gray.700"
-                            color="gray.300"
-                            leftIcon={<TrendingUp size={14} />}
-                            onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
                         >
-                            {sortOrder === 'desc' ? 'Highest First' : 'Lowest First'}
-                        </Button>
+                            <option value="date_desc">Date (Newest)</option>
+                            <option value="date_asc">Date (Oldest)</option>
+                            <option value="amount_desc">Amount (High→Low)</option>
+                            <option value="amount_asc">Amount (Low→High)</option>
+                        </Select>
 
                         {(statusFilter || searchQuery || dateFrom || dateTo) && (
                             <Button
@@ -548,21 +578,31 @@ export const PayoutsPage: React.FC = () => {
                                         sortedPayouts.map((payout) => (
                                             <Tr key={payout.id} _hover={{ bg: 'gray.800' }}>
                                                 <Td borderColor="gray.800">
-                                                    <HStack spacing={3}>
-                                                        <Avatar
-                                                            size="sm"
-                                                            name={getVendorName(payout)}
-                                                            bg="purple.600"
-                                                        />
-                                                        <VStack align="start" spacing={0}>
-                                                            <Text fontSize="sm" fontWeight="500" color="gray.100">
-                                                                {getVendorName(payout)}
-                                                            </Text>
-                                                            <Text fontSize="xs" color="gray.500">
-                                                                {payout.reference}
-                                                            </Text>
-                                                        </VStack>
-                                                    </HStack>
+                                                    {(() => {
+                                                        const vendorInfo = getVendorName(payout);
+                                                        return (
+                                                            <HStack spacing={3}>
+                                                                <Avatar
+                                                                    size="sm"
+                                                                    name={vendorInfo.displayName}
+                                                                    bg="purple.600"
+                                                                />
+                                                                <VStack align="start" spacing={0}>
+                                                                    <Text fontSize="sm" fontWeight="500" color="gray.100">
+                                                                        {vendorInfo.displayName}
+                                                                    </Text>
+                                                                    {vendorInfo.storeName && vendorInfo.vendorName && (
+                                                                        <Text fontSize="xs" color="purple.300">
+                                                                            {vendorInfo.vendorName}
+                                                                        </Text>
+                                                                    )}
+                                                                    <Text fontSize="xs" color="gray.500">
+                                                                        {payout.reference}
+                                                                    </Text>
+                                                                </VStack>
+                                                            </HStack>
+                                                        );
+                                                    })()}
                                                 </Td>
                                                 <Td borderColor="gray.800">
                                                     <Text fontSize="sm" fontWeight="600" color="gray.100">
