@@ -1,4 +1,43 @@
+// Get all Expo tokens
+const fetchExpoTokens = async () => {
+    try {
+        const response = await fetch('https://cushy-admin-mark-1.onrender.com/expo-tokens');
+        return await response.json();
+    } catch (error) {
+        console.error('Fetch tokens error:', error);
+        return { tokens: [] };
+    }
+};
+
+// Register Expo token
+const registerExpoToken = async (token: string) => {
+    try {
+        const response = await fetch('https://cushy-admin-mark-1.onrender.com/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Register token error:', error);
+        return null;
+    }
+};
 import React, { useState } from 'react';
+// Push notification sender
+const sendPushNotification = async (title: string, body: string, data: object) => {
+    try {
+        const response = await fetch('https://cushy-admin-mark-1.onrender.com/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, body, data }),
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Push notification error:', error);
+        return null;
+    }
+};
 import {
     Box,
     Flex,
@@ -280,13 +319,19 @@ export const AdListingPage: React.FC = () => {
         return num.toString();
     };
 
-    const handleCreateBanner = () => {
+    const handleCreateBanner = async () => {
         toast({
             title: 'Banner Created',
             description: 'Your banner ad has been created successfully.',
             status: 'success',
             duration: 3000,
         });
+
+        // Send push notification
+        if (newBanner.title && newBanner.buttonText) {
+            await sendPushNotification(newBanner.title, newBanner.buttonText, {});
+        }
+
         onCreateClose();
         // Reset form
         setNewBanner({
@@ -303,6 +348,8 @@ export const AdListingPage: React.FC = () => {
             userSegments: ['All Users'],
         });
     };
+
+
 
     return (
         <Box p={6}>

@@ -19,6 +19,7 @@ import { LogisticsPage } from './pages/logistics/LogisticsPage';
 import { AdListingPage } from './pages/marketing/AdListingPage';
 import { TransactionsPage } from './pages/users/TransactionsPage';
 import { AnalyticsPage } from './pages/analytics/AnalyticsPage';
+import PremiumPushPage from './pages/marketing/PremiumPushPage';
 
 // Placeholder pages - will be implemented incrementally
 const PlaceholderPage: React.FC<{ title: string }> = ({ title }) => (
@@ -109,6 +110,7 @@ const AppRoutes: React.FC = () => {
 
         {/* Marketing */}
         <Route path="marketing/ads" element={<AdListingPage />} />
+        <Route path="marketing/push-in-app" element={<PremiumPushPage />} />
         <Route path="marketing/announcements" element={<PlaceholderPage title="Announcements" />} />
         <Route path="marketing/segments" element={<PlaceholderPage title="Segments & Campaigns" />} />
         <Route path="marketing/referrals" element={<PlaceholderPage title="Referrals" />} />
