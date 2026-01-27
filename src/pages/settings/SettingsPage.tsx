@@ -44,6 +44,7 @@ import {
     Spinner,
     Alert,
     AlertIcon,
+    InputRightElement,
 } from '@chakra-ui/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -64,10 +65,16 @@ import {
     Bell,
     Tag,
     Trash2,
+    Lock,
+    Eye,
+    EyeOff,
+    KeyRound,
 } from 'lucide-react';
 import { adminApi } from '../../api/admin.api';
 import { promoApi, Coupon, CreateCouponDto, CouponType } from '../../api/promo.api';
 import { storesApi } from '../../api/stores.api';
+import { usersApi } from '../../api/users.api';
+import { useAuth } from '../../context/AuthContext';
 
 // System Service interface
 interface SystemService {
@@ -101,6 +108,15 @@ export const SettingsPage: React.FC = () => {
         endDate: '',
         usageLimit: undefined,
     });
+
+    // Change password state
+    const { user } = useAuth();
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
 
     // Fetch free delivery status - with error handling
     const { data: freeDeliveryData, isError: freeDeliveryError } = useQuery({
@@ -333,6 +349,72 @@ export const SettingsPage: React.FC = () => {
             });
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleChangePassword = async () => {
+        // Validation
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            toast({
+                title: 'All fields are required',
+                status: 'warning',
+                duration: 3000,
+            });
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            toast({
+                title: 'New password must be at least 6 characters',
+                status: 'warning',
+                duration: 3000,
+            });
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            toast({
+                title: 'Passwords do not match',
+                description: 'New password and confirm password must be the same',
+                status: 'error',
+                duration: 3000,
+            });
+            return;
+        }
+
+        if (!user?.email) {
+            toast({
+                title: 'Session error',
+                description: 'Please log in again',
+                status: 'error',
+                duration: 3000,
+            });
+            return;
+        }
+
+        setIsChangingPassword(true);
+        try {
+            await usersApi.changePassword(user.email, currentPassword, newPassword);
+            toast({
+                title: 'Password changed successfully',
+                description: 'Your password has been updated',
+                status: 'success',
+                duration: 3000,
+            });
+            // Clear the form
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || 'Failed to change password';
+            toast({
+                title: 'Failed to change password',
+                description: errorMessage === 'INCORRECT_OLD_PASSWORD' ? 'Current password is incorrect' : errorMessage,
+                status: 'error',
+                duration: 5000,
+            });
+        } finally {
+            setIsChangingPassword(false);
         }
     };
 
@@ -704,6 +786,97 @@ export const SettingsPage: React.FC = () => {
                 </CardBody>
             </Card>
 
+            {/* Security Section */}
+            <Card bg="gray.900" borderColor="gray.800" mb={6}>
+                <CardHeader>
+                    <HStack spacing={3}>
+                        <Box p={2} borderRadius="lg" bg="purple.500" opacity={0.8}>
+                            <Icon as={KeyRound} color="white" boxSize={5} />
+                        </Box>
+                        <Box>
+                            <Heading size="sm">Security</Heading>
+                            <Text fontSize="sm" color="gray.500">Manage your account security settings</Text>
+                        </Box>
+                    </HStack>
+                </CardHeader>
+                <CardBody pt={0}>
+                    <Box>
+                        <Text fontWeight="500" color="gray.200" mb={4}>Change Password</Text>
+                        <VStack spacing={4} align="stretch" maxW="400px">
+                            <FormControl>
+                                <FormLabel fontSize="sm" color="gray.400">Current Password</FormLabel>
+                                <InputGroup>
+                                    <Input
+                                        type={showCurrentPassword ? 'text' : 'password'}
+                                        placeholder="Enter current password"
+                                        value={currentPassword}
+                                        onChange={(e) => setCurrentPassword(e.target.value)}
+                                        bg="gray.800"
+                                        borderColor="gray.700"
+                                    />
+                                    <InputRightElement>
+                                        <IconButton
+                                            aria-label={showCurrentPassword ? 'Hide' : 'Show'}
+                                            icon={showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                        />
+                                    </InputRightElement>
+                                </InputGroup>
+                            </FormControl>
+
+                            <FormControl>
+                                <FormLabel fontSize="sm" color="gray.400">New Password</FormLabel>
+                                <InputGroup>
+                                    <Input
+                                        type={showNewPassword ? 'text' : 'password'}
+                                        placeholder="Enter new password (min 6 characters)"
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        bg="gray.800"
+                                        borderColor="gray.700"
+                                    />
+                                    <InputRightElement>
+                                        <IconButton
+                                            aria-label={showNewPassword ? 'Hide' : 'Show'}
+                                            icon={showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setShowNewPassword(!showNewPassword)}
+                                        />
+                                    </InputRightElement>
+                                </InputGroup>
+                            </FormControl>
+
+                            <FormControl>
+                                <FormLabel fontSize="sm" color="gray.400">Confirm New Password</FormLabel>
+                                <Input
+                                    type="password"
+                                    placeholder="Confirm new password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    bg="gray.800"
+                                    borderColor="gray.700"
+                                />
+                            </FormControl>
+
+                            <Button
+                                colorScheme="purple"
+                                size="sm"
+                                leftIcon={<Lock size={14} />}
+                                onClick={handleChangePassword}
+                                isLoading={isChangingPassword}
+                                loadingText="Changing..."
+                                alignSelf="flex-start"
+                            >
+                                Change Password
+                            </Button>
+                        </VStack>
+                    </Box>
+                </CardBody>
+            </Card>
+
             {/* Footer */}
             <Flex justify="space-between" align={{ base: 'start', md: 'center' }} flexDir={{ base: 'column', md: 'row' }} gap={3}>
                 <Text fontSize={{ base: 'xs', md: 'sm' }} color="gray.500">
@@ -943,4 +1116,3 @@ export const SettingsPage: React.FC = () => {
 };
 
 export default SettingsPage;
-
