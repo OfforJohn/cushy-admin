@@ -67,11 +67,9 @@ export const walletApi = {
         return response.data;
     },
 
-    // Run daily payouts (admin)
-    runPayouts: async (date?: string): Promise<StandardResponse<any>> => {
-        const response = await api.post('/api/v1/wallet/run-payouts', null, {
-            params: date ? { date } : undefined,
-        });
+    // Run daily payouts (admin) - processes all pending settlements
+    runPayouts: async (): Promise<StandardResponse<any>> => {
+        const response = await api.post('/api/v1/wallet/run-payouts');
         return response.data;
     },
 
