@@ -37,8 +37,6 @@ import {
     ModalBody,
     ModalCloseButton,
     ModalFooter,
-    FormControl,
-    FormLabel,
     useDisclosure,
 } from '@chakra-ui/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -89,10 +87,6 @@ export const PayoutsPage: React.FC = () => {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const [payoutDate, setPayoutDate] = useState(() => {
-        const today = new Date();
-        return today.toISOString().split('T')[0]; // YYYY-MM-DD format
-    });
     const { isOpen: isRunPayoutsOpen, onOpen: onRunPayoutsOpen, onClose: onRunPayoutsClose } = useDisclosure();
     const toast = useToast();
     const queryClient = useQueryClient();
@@ -153,7 +147,7 @@ export const PayoutsPage: React.FC = () => {
 
     // Run payouts mutation
     const runPayoutsMutation = useMutation({
-        mutationFn: (date?: string) => walletApi.runPayouts(date),
+        mutationFn: () => walletApi.runPayouts(),
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['payouts'] });
             queryClient.invalidateQueries({ queryKey: ['allPayoutsStats'] });
@@ -731,34 +725,30 @@ export const PayoutsPage: React.FC = () => {
             </Card>
 
             {/* Run Payouts Modal */}
-            <Modal isOpen={isRunPayoutsOpen} onClose={onRunPayoutsClose}>
+            <Modal isOpen={isRunPayoutsOpen} onClose={onRunPayoutsClose} isCentered>
                 <ModalOverlay />
                 <ModalContent bg="gray.900" borderColor="gray.800">
                     <ModalHeader color="gray.100">
                         <HStack spacing={2}>
                             <Icon as={Play} color="purple.400" />
-                            <Text>Run Daily Payouts</Text>
+                            <Text>Run Payouts</Text>
                         </HStack>
                     </ModalHeader>
                     <ModalCloseButton color="gray.400" />
                     <ModalBody>
                         <Text color="gray.400" mb={4}>
-                            This will process all pending payouts for merchants based on delivered orders on the selected date.
+                            This will process all pending merchant settlements. Payouts will be sent to each vendor's registered bank account.
                         </Text>
-                        <FormControl>
-                            <FormLabel color="gray.300">Select Date</FormLabel>
-                            <Input
-                                type="date"
-                                value={payoutDate}
-                                onChange={(e) => setPayoutDate(e.target.value)}
-                                bg="gray.800"
-                                borderColor="gray.700"
-                                color="gray.100"
-                            />
-                            <Text fontSize="xs" color="gray.500" mt={1}>
-                                Choose the date for which to process vendor payouts (based on delivered orders)
+                        <Box bg="gray.800" p={4} borderRadius="md" borderWidth="1px" borderColor="gray.700">
+                            <Text fontSize="sm" color="gray.300" fontWeight="500" mb={2}>
+                                What happens when you run payouts:
                             </Text>
-                        </FormControl>
+                            <VStack align="start" spacing={1} fontSize="sm" color="gray.400">
+                                <Text>• All pending vendor earnings are calculated</Text>
+                                <Text>• Bank transfers are initiated to each vendor</Text>
+                                <Text>• Payout records are created for tracking</Text>
+                            </VStack>
+                        </Box>
                     </ModalBody>
                     <ModalFooter>
                         <HStack spacing={3}>
@@ -769,7 +759,7 @@ export const PayoutsPage: React.FC = () => {
                                 colorScheme="purple"
                                 leftIcon={<Play size={16} />}
                                 onClick={() => {
-                                    runPayoutsMutation.mutate(payoutDate);
+                                    runPayoutsMutation.mutate();
                                     onRunPayoutsClose();
                                 }}
                                 isLoading={runPayoutsMutation.isPending}
