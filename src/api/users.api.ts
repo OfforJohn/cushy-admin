@@ -57,28 +57,45 @@ export const usersApi = {
         return response.data;
     },
 
-    // Change password
-    changePassword: async (currentPassword: string, newPassword: string): Promise<StandardResponse<any>> => {
+    // Change password (requires old password verification)
+    changePassword: async (emailOrMobile: string, oldPassword: string, newPassword: string): Promise<StandardResponse<any>> => {
         const response = await api.post('/api/v1/auth/change-password', {
-            currentPassword,
+            emailOrMobile,
+            oldPassword,
             newPassword,
         });
         return response.data;
     },
 
     // Send password reset OTP
-    sendPasswordResetOTP: async (email: string): Promise<StandardResponse<any>> => {
-        const response = await api.post('/api/v1/auth/send-password-otp', { email });
+    sendPasswordResetOTP: async (emailOrMobile: string, otpType: 'EMAIL' | 'MOBILE' = 'EMAIL'): Promise<StandardResponse<any>> => {
+        const response = await api.post('/api/v1/auth/send-password-otp', {
+            emailOrMobile,
+            otpType,
+        });
         return response.data;
     },
 
-    // Reset password
-    resetPassword: async (email: string, otp: string, newPassword: string): Promise<StandardResponse<any>> => {
+    // Reset password with OTP
+    resetPassword: async (emailOrMobile: string, otp: string, password: string, otpType: 'EMAIL' | 'MOBILE' = 'EMAIL'): Promise<StandardResponse<any>> => {
         const response = await api.patch('/api/v1/auth/reset-password', {
-            email,
+            emailOrMobile,
             otp,
-            newPassword,
+            password,
+            otpType,
         });
+        return response.data;
+    },
+
+    // Admin Login 2FA - Step 1: Validate credentials and send OTP
+    adminLogin: async (email: string, password: string): Promise<StandardResponse<{ loginToken: string; message: string }>> => {
+        const response = await api.post('/api/v1/auth/admin/login', { email, password });
+        return response.data;
+    },
+
+    // Admin Login 2FA - Step 2: Verify OTP and complete login
+    adminVerifyLogin: async (email: string, otp: string, loginToken: string): Promise<StandardResponse<any>> => {
+        const response = await api.post('/api/v1/auth/admin/verify-login', { email, otp, loginToken });
         return response.data;
     },
 };
