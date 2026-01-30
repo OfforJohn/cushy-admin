@@ -1,6 +1,20 @@
 import api from './index';
 import { StandardResponse, DashboardStats, OrderGraphData, VendorListItem, UserSummaryItem, DailyTransactionPercentage } from '../types/api.types';
 
+// Vendor credentials/documents interface
+export interface VendorCredentials {
+    id: string;
+    userId: string;
+    cacURL?: string;              // Business Registration (CAC)
+    governmentId?: string;        // Government ID (NIN)
+    proofOfAddressURL?: string;   // Proof of Address
+    pharmacyLicenseURL?: string;  // Pharmacy License (optional for pharmacy category)
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    vendorCategory?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
 export const adminApi = {
     // Dashboard Stats
     getDashboardStats: async (days?: string): Promise<StandardResponse<DashboardStats>> => {
@@ -119,6 +133,20 @@ export const adminApi = {
     getGlobalFreeDeliveryStatus: async (): Promise<StandardResponse<{ result: boolean }>> => {
         const response = await api.get('/api/v1/admin/get-global-free-delivery-status');
         return response.data;
+    },
+
+    // Vendor Credentials/Documents
+    getVendorCredentials: async (userId: string): Promise<StandardResponse<VendorCredentials | null>> => {
+        try {
+            const response = await api.get(`/api/v1/admin/vendor-credentials/${userId}`);
+            return response.data;
+        } catch (error: any) {
+            // Return null if credentials not found (404) - vendor might not have uploaded docs yet
+            if (error?.statusCode === 404) {
+                return { error: false, message: 'No credentials found', data: null };
+            }
+            throw error;
+        }
     },
 };
 
