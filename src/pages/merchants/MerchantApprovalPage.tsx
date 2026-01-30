@@ -191,6 +191,7 @@ export const MerchantApprovalPage: React.FC = () => {
     // Calculate stats from API - Total vendors = verified + unverified (all registered)
     const pendingCount = vendorStats?.unverifiedVendors ?? filteredByLocation.filter(v => !v.isVerified).length;
     const approvedCount = vendorStats?.verifiedVendors ?? filteredByLocation.filter(v => v.isVerified).length;
+    const rejectedCount = vendorStats?.rejectedVendors ?? 0; // Vendors with REJECTED credential status
     const totalVendors = (vendorStats?.verifiedVendors ?? 0) + (vendorStats?.unverifiedVendors ?? 0) || pagination.total;
     const newVendors = vendorStats?.newVendors ?? 0;
 
@@ -373,8 +374,9 @@ export const MerchantApprovalPage: React.FC = () => {
                             </Box>
                             <Box>
                                 <Text fontSize="xs" color="gray.500">Rejected</Text>
-                                <Text fontSize="2xl" fontWeight="bold" color="gray.100">-</Text>
-                                <Text fontSize="xs" color="gray.500">Coming soon</Text>
+                                <Text fontSize="2xl" fontWeight="bold" color="gray.100">
+                                    {rejectedCount}
+                                </Text>
                             </Box>
                         </HStack>
                     </CardBody>
