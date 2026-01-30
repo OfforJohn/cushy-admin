@@ -40,6 +40,7 @@ import {
     ModalFooter,
     useDisclosure,
     Divider,
+    Link,
 } from '@chakra-ui/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -62,8 +63,9 @@ import {
     Phone,
     MapPin,
     Calendar,
+    ExternalLink,
 } from 'lucide-react';
-import { adminApi } from '../../api/admin.api';
+import { adminApi, VendorCredentials } from '../../api/admin.api';
 import { useLocationFilter, matchesLocationFilter } from '../../context/LocationContext';
 
 interface Vendor {
@@ -117,6 +119,15 @@ export const MerchantApprovalPage: React.FC = () => {
         queryKey: ['vendorStats'],
         queryFn: () => adminApi.getVendorStats(),
     });
+
+    // Fetch vendor credentials when modal is opened
+    const { data: credentialsData, isLoading: credentialsLoading } = useQuery({
+        queryKey: ['vendorCredentials', selectedVendor?.id],
+        queryFn: () => adminApi.getVendorCredentials(selectedVendor!.id),
+        enabled: !!selectedVendor && isOpen,
+    });
+
+    const vendorCredentials = credentialsData?.data;
 
     const { selectedLocation } = useLocationFilter();
 
@@ -735,38 +746,113 @@ export const MerchantApprovalPage: React.FC = () => {
                                 <Divider borderColor="gray.700" />
 
                                 {/* Verification Documents */}
-                                <Text fontWeight="600" color="gray.100">Verification Documents</Text>
+                                <Flex justify="space-between" align="center">
+                                    <Text fontWeight="600" color="gray.100">Verification Documents</Text>
+                                    {credentialsLoading && <Spinner size="sm" color="purple.400" />}
+                                </Flex>
 
                                 <SimpleGrid columns={1} spacing={3}>
+                                    {/* Business Registration (CAC) */}
                                     <Box p={3} bg="gray.800" borderRadius="md">
                                         <Flex justify="space-between" align="center">
                                             <HStack>
                                                 <Icon as={FileText} color="green.400" />
                                                 <Text color="gray.100">Business Registration (CAC)</Text>
                                             </HStack>
-                                            <Badge colorScheme="gray">Coming Soon</Badge>
+                                            {vendorCredentials?.cacURL ? (
+                                                <Link href={vendorCredentials.cacURL} isExternal>
+                                                    <Button size="xs" colorScheme="purple" rightIcon={<ExternalLink size={12} />}>
+                                                        View Document
+                                                    </Button>
+                                                </Link>
+                                            ) : (
+                                                <Badge colorScheme="red">Not Uploaded</Badge>
+                                            )}
                                         </Flex>
                                     </Box>
 
+                                    {/* Government ID */}
                                     <Box p={3} bg="gray.800" borderRadius="md">
                                         <Flex justify="space-between" align="center">
                                             <HStack>
                                                 <Icon as={FileText} color="blue.400" />
-                                                <Text color="gray.100">Government ID</Text>
+                                                <Text color="gray.100">Government ID (NIN)</Text>
                                             </HStack>
-                                            <Badge colorScheme="gray">Coming Soon</Badge>
+                                            {vendorCredentials?.governmentId ? (
+                                                <Link href={vendorCredentials.governmentId} isExternal>
+                                                    <Button size="xs" colorScheme="purple" rightIcon={<ExternalLink size={12} />}>
+                                                        View Document
+                                                    </Button>
+                                                </Link>
+                                            ) : (
+                                                <Badge colorScheme="red">Not Uploaded</Badge>
+                                            )}
                                         </Flex>
                                     </Box>
 
+                                    {/* Proof of Address */}
                                     <Box p={3} bg="gray.800" borderRadius="md">
                                         <Flex justify="space-between" align="center">
                                             <HStack>
-                                                <Icon as={FileText} color="purple.400" />
-                                                <Text color="gray.100">Tax Identification (TIN)</Text>
+                                                <Icon as={FileText} color="orange.400" />
+                                                <Text color="gray.100">Proof of Address</Text>
                                             </HStack>
-                                            <Badge colorScheme="gray">Coming Soon</Badge>
+                                            {vendorCredentials?.proofOfAddressURL ? (
+                                                <Link href={vendorCredentials.proofOfAddressURL} isExternal>
+                                                    <Button size="xs" colorScheme="purple" rightIcon={<ExternalLink size={12} />}>
+                                                        View Document
+                                                    </Button>
+                                                </Link>
+                                            ) : (
+                                                <Badge colorScheme="red">Not Uploaded</Badge>
+                                            )}
                                         </Flex>
                                     </Box>
+
+                                    {/* Pharmacy License (only show if vendor is pharmacy or has document) */}
+                                    {(selectedVendor?.store?.category?.toLowerCase() === 'med_tech' ||
+                                        selectedVendor?.store?.category?.toLowerCase() === 'pharmacy' ||
+                                        vendorCredentials?.pharmacyLicenseURL) && (
+                                            <Box p={3} bg="gray.800" borderRadius="md">
+                                                <Flex justify="space-between" align="center">
+                                                    <HStack>
+                                                        <Icon as={FileText} color="purple.400" />
+                                                        <Text color="gray.100">Pharmacy License</Text>
+                                                    </HStack>
+                                                    {vendorCredentials?.pharmacyLicenseURL ? (
+                                                        <Link href={vendorCredentials.pharmacyLicenseURL} isExternal>
+                                                            <Button size="xs" colorScheme="purple" rightIcon={<ExternalLink size={12} />}>
+                                                                View Document
+                                                            </Button>
+                                                        </Link>
+                                                    ) : (
+                                                        <Badge colorScheme="gray">Not Uploaded (Optional)</Badge>
+                                                    )}
+                                                </Flex>
+                                            </Box>
+                                        )}
+
+                                    {/* Document Status Badge */}
+                                    {vendorCredentials && (
+                                        <Box p={3} bg="gray.800" borderRadius="md">
+                                            <Flex justify="space-between" align="center">
+                                                <HStack>
+                                                    <Icon as={CheckCircle} color={vendorCredentials.status === 'APPROVED' ? 'green.400' : vendorCredentials.status === 'REJECTED' ? 'red.400' : 'yellow.400'} />
+                                                    <Text color="gray.100">Document Status</Text>
+                                                </HStack>
+                                                <Badge colorScheme={vendorCredentials.status === 'APPROVED' ? 'green' : vendorCredentials.status === 'REJECTED' ? 'red' : 'yellow'}>
+                                                    {vendorCredentials.status}
+                                                </Badge>
+                                            </Flex>
+                                        </Box>
+                                    )}
+
+                                    {/* No documents message */}
+                                    {!credentialsLoading && !vendorCredentials && (
+                                        <Box p={4} bg="gray.800" borderRadius="md" textAlign="center">
+                                            <Text color="gray.500">No documents uploaded yet</Text>
+                                        </Box>
+                                    )}
                                 </SimpleGrid>
                             </VStack>
                         )}
