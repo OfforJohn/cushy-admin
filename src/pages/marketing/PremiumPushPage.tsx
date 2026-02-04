@@ -16,7 +16,7 @@ const PremiumPushPage: React.FC = () => {
   const handleFetchTokens = async () => {
     setFetchingTokens(true);
     try {
-      const res = await fetch('https://cushy-admin-mark-1.onrender.com/expo-tokens');
+      const res = await fetch('https://api.cushyaccess.com/api/v1/notifications/expo-tokens');
       const data = await res.json();
       if (data.tokens) {
         localStorage.setItem('expoTokens', JSON.stringify(data.tokens));
@@ -76,7 +76,7 @@ const PremiumPushPage: React.FC = () => {
       return;
     }
     setSending(true);
-    await fetch('https://cushy-admin-mark-1.onrender.com/send-in-app', {
+    await fetch('https://api.cushyaccess.com/api/v1/notifications/send-in-app', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(premiumPayload),
