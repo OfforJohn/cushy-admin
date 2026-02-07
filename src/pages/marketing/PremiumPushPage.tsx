@@ -12,7 +12,7 @@ const PremiumPushPage: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
   const toast = useToast();
-  // Fetch Expo tokens and store in localStorage
+  // Fetch Expo tokens and store in localorage
   const handleFetchTokens = async () => {
     setFetchingTokens(true);
     try {
