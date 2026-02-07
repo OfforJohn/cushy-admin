@@ -67,7 +67,7 @@ const PremiumPushPage: React.FC = () => {
   const handleInAppPremiumPush = async () => {
     if (!premiumPayload.title.trim()) {
       toast({
-        title: 'Title is required',
+        title: 'Title is required.',
         description: 'Please enter a title before sending the notification.',
         status: 'warning',
         duration: 4000,
